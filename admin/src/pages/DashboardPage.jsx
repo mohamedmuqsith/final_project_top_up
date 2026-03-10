@@ -3,6 +3,9 @@ import { orderApi, statsApi } from "../lib/api";
 import { DollarSignIcon, PackageIcon, ShoppingBagIcon, UsersIcon } from "lucide-react";
 import { capitalizeText, formatDate, getOrderStatusBadge } from "../lib/utils";
 
+
+
+
 function DashboardPage() {
   const { data: ordersData, isLoading: ordersLoading } = useQuery({
     queryKey: ["orders"],
@@ -40,7 +43,6 @@ function DashboardPage() {
       icon: <PackageIcon className="size-8" />,
     },
   ];
-
   return (
     <div className="space-y-6">
       {/* STATS */}
