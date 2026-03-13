@@ -1,5 +1,23 @@
 import mongoose from "mongoose";
 
+export const ELECTRONICS_CATEGORIES = [
+  "Smartphones",
+  "Laptops",
+  "Tablets",
+  "Audio",
+  "Headphones",
+  "Speakers",
+  "Gaming",
+  "Accessories",
+  "Smart Home",
+  "Wearables",
+  "Cameras",
+  "Storage",
+  "Networking",
+  "Monitors",
+  "Computer Components"
+];
+
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -21,9 +39,14 @@ const productSchema = new mongoose.Schema(
       min: 0,
       default: 0,
     },
+    lowStockThreshold: {
+      type: Number,
+      default: 10,
+    },
     category: {
       type: String,
       required: true,
+      enum: ELECTRONICS_CATEGORIES,
     },
     images: [
       {

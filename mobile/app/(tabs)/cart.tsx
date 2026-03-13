@@ -11,6 +11,7 @@ import { Image } from "expo-image";
 import OrderSummary from "@/components/OrderSummary";
 import AddressSelectionModal from "@/components/AddressSelectionModal";
 
+import * as Linking from "expo-linking";
 import * as Sentry from "@sentry/react-native";
 
 const CartScreen = () => {
@@ -110,7 +111,8 @@ const CartScreen = () => {
 
       const { error: initError } = await initPaymentSheet({
         paymentIntentClientSecret: data.clientSecret,
-        merchantDisplayName: "Your Store Name",
+        merchantDisplayName: "TechSpot Electronics",
+        returnURL: Linking.createURL("stripe-redirect"), // Correct way to generate returnURL in Expo
       });
 
       if (initError) {

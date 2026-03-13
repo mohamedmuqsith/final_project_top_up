@@ -35,8 +35,8 @@ export const orderApi = {
 };
 
 export const statsApi = {
-  getDashboard: async () => {
-    const { data } = await axiosInstance.get("/admin/stats");
+  getDashboard: async (timeRange = "weekly") => {
+    const { data } = await axiosInstance.get(`/admin/stats?timeRange=${timeRange}`);
     return data;
   },
 };
@@ -44,6 +44,34 @@ export const statsApi = {
 export const customerApi = {
   getAll: async () => {
     const { data } = await axiosInstance.get("/admin/customers");
+    return data;
+  },
+};
+
+export const notificationApi = {
+  getNotifications: async (params = {}) => {
+    const { data } = await axiosInstance.get("/notifications", { 
+      params: { ...params, recipientType: "admin" } 
+    });
+    return data;
+  },
+  getUnreadCount: async () => {
+    const { data } = await axiosInstance.get("/notifications/unread-count?recipientType=admin");
+    return data;
+  },
+  markAsRead: async (id) => {
+    const { data } = await axiosInstance.patch(`/notifications/${id}/read`);
+    return data;
+  },
+  markAllAsRead: async () => {
+    const { data } = await axiosInstance.patch("/notifications/read-all?recipientType=admin");
+    return data;
+  },
+};
+
+export const inventoryApi = {
+  getAlerts: async () => {
+    const { data } = await axiosInstance.get("/admin/alerts");
     return data;
   },
 };

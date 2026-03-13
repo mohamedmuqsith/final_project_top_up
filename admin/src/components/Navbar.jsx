@@ -1,5 +1,6 @@
 import { UserButton } from "@clerk/clerk-react";
 import { useLocation } from "react-router";
+import NotificationDropdown from "./NotificationDropdown";
 
 import {
   ClipboardListIcon,
@@ -7,12 +8,14 @@ import {
   PanelLeftIcon,
   ShoppingBagIcon,
   UsersIcon,
+  AlertCircleIcon,
 } from "lucide-react";
 
 // eslint-disable-next-line
 export const NAVIGATION = [
   { name: "Dashboard", path: "/dashboard", icon: <HomeIcon className="size-5" /> },
   { name: "Products", path: "/products", icon: <ShoppingBagIcon className="size-5" /> },
+  { name: "Inventory Alerts", path: "/inventory-alerts", icon: <AlertCircleIcon className="size-5" /> },
   { name: "Orders", path: "/orders", icon: <ClipboardListIcon className="size-5" /> },
   { name: "Customers", path: "/customers", icon: <UsersIcon className="size-5" /> },
 ];
@@ -32,7 +35,8 @@ function Navbar() {
         </h1>
       </div>
 
-      <div className="mr-5">
+      <div className="flex-none gap-2 px-4">
+        <NotificationDropdown />
         <UserButton />
       </div>
     </div>

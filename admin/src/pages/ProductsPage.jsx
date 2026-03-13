@@ -12,6 +12,7 @@ function ProductsPage() {
     category: "",
     price: "",
     stock: "",
+    lowStockThreshold: "",
     description: "",
   });
   const [images, setImages] = useState([]);
@@ -59,6 +60,7 @@ function ProductsPage() {
       category: "",
       price: "",
       stock: "",
+      lowStockThreshold: "",
       description: "",
     });
     setImages([]);
@@ -72,6 +74,7 @@ function ProductsPage() {
       category: product.category,
       price: product.price.toString(),
       stock: product.stock.toString(),
+      lowStockThreshold: product.lowStockThreshold ? product.lowStockThreshold.toString() : "",
       description: product.description,
     });
     setImagePreviews(product.images);
@@ -104,6 +107,9 @@ function ProductsPage() {
     formDataToSend.append("description", formData.description);
     formDataToSend.append("price", formData.price);
     formDataToSend.append("stock", formData.stock);
+    if (formData.lowStockThreshold) {
+      formDataToSend.append("lowStockThreshold", formData.lowStockThreshold);
+    }
     formDataToSend.append("category", formData.category);
 
     // only append new images if they were selected
@@ -133,7 +139,7 @@ function ProductsPage() {
       {/* PRODUCTS GRID */}
       <div className="grid grid-cols-1 gap-4">
         {products?.map((product) => {
-          const status = getStockStatusBadge(product.stock);
+          const status = getStockStatusBadge(product.stock, product.isLowStock);
 
           return (
             <div key={product._id} className="card bg-base-100 shadow-xl">
@@ -192,7 +198,7 @@ function ProductsPage() {
 
       {/* ADD/EDIT PRODUCT MODAL */}
 
-      <input type="checkbox" className="modal-toggle" checked={showModal} />
+      <input type="checkbox" className="modal-toggle" checked={showModal} readOnly />
 
       <div className="modal">
         <div className="modal-box max-w-2xl">
@@ -234,10 +240,13 @@ function ProductsPage() {
                   required
                 >
                   <option value="">Select category</option>
-                  <option value="Electronics">Electronics</option>
-                  <option value="Accessories">Accessories</option>
-                  <option value="Fashion">Fashion</option>
-                  <option value="Sports">Sports</option>
+                  {[
+                    "Smartphones", "Laptops", "Tablets", "Audio", "Headphones",
+                    "Speakers", "Gaming", "Accessories", "Smart Home", "Wearables",
+                    "Cameras", "Storage", "Networking", "Monitors", "Computer Components"
+                  ].map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -271,6 +280,20 @@ function ProductsPage() {
                   required
                 />
               </div>
+            </div>
+
+            <div className="form-control">
+              <label className="label">
+                <span>Low Stock Threshold</span>
+                <span className="label-text-alt text-xs opacity-60">Optional (Default 10)</span>
+              </label>
+              <input
+                type="number"
+                placeholder="10"
+                className="input input-bordered w-full"
+                value={formData.lowStockThreshold}
+                onChange={(e) => setFormData({ ...formData, lowStockThreshold: e.target.value })}
+              />
             </div>
 
             <div className="form-control flex flex-col gap-2">

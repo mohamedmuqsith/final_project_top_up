@@ -16,11 +16,13 @@
     "@tanstack/react-query": "^5.90.21",
     "axios": "^1.13.6",
     "build": "^0.1.4",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.577.0",
     "npm": "^11.11.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.1",
+    "recharts": "^3.8.0",
     "run": "^1.5.0",
     "tailwindcss": "^4.2.1"
   },

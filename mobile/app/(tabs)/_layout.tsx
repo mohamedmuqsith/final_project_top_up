@@ -4,10 +4,32 @@ import { useAuth } from "@clerk/expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { StyleSheet } from "react-native";
+import { useApi } from "@/lib/api";
+import { useEffect, useState } from "react";
 
 const TabsLayout = () => {
   const { isSignedIn, isLoaded } = useAuth();
   const insets = useSafeAreaInsets();
+  const api = useApi();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (isSignedIn && api) {
+      const fetchCount = async () => {
+        try {
+          const { data } = await api.get("/notifications/unread-count");
+          setUnreadCount(data.unreadCount);
+        } catch (e) {
+          // ignore error to not spam console
+        }
+      };
+      
+      fetchCount();
+      interval = setInterval(fetchCount, 30000); // poll every 30s
+    }
+    return () => clearInterval(interval);
+  }, [isSignedIn, api]);
 
   if (!isLoaded) return null; // for a better ux
   if (!isSignedIn) return <Redirect href={"/(auth)"} />;
@@ -63,6 +85,15 @@ const TabsLayout = () => {
         options={{
           title: "Profile",
           tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          title: "Inbox",
+          tabBarIcon: ({ color, size }) => <Ionicons name="notifications" size={size} color={color} />,
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadgeStyle: { backgroundColor: "#ef4444" }
         }}
       />
     </Tabs>
