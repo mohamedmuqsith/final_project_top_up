@@ -1,6 +1,7 @@
+import { useSSO } from "@clerk/expo";
 import { useState } from "react";
 import { Alert } from "react-native";
-import { useSSO } from "@clerk/expo";
+
 function useSocialAuth() {
   const [loadingStrategy, setLoadingStrategy] = useState<string | null>(null);
   const { startSSOFlow } = useSSO();
@@ -10,12 +11,11 @@ function useSocialAuth() {
 
     try {
       const { createdSessionId, setActive } = await startSSOFlow({ strategy });
-
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
       }
     } catch (error) {
-      console.log("✖ Error in social auth:", error);
+      console.log("💥 Error in social auth:", error);
       const provider = strategy === "oauth_google" ? "Google" : "Apple";
       Alert.alert("Error", `Failed to sign in with ${provider}. Please try again.`);
     } finally {
@@ -23,8 +23,7 @@ function useSocialAuth() {
     }
   };
 
-  return { handleSocialAuth,loadingStrategy };
+  return { loadingStrategy, handleSocialAuth };
 }
-
 
 export default useSocialAuth;
