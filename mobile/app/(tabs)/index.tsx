@@ -7,12 +7,23 @@ import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Image } from "react-native";
 
-const CATEGORIES = [
+const CATEGORIES: { name: string; icon?: any; image?: any }[] = [
   { name: "All", icon: "grid-outline" as const },
-  { name: "Electronics", image: require("@/assets/images/electronics.png") },
-  { name: "Fashion", image: require("@/assets/images/fashion.png") },
-  { name: "Sports", image: require("@/assets/images/sports.png") },
-  { name: "Books", image: require("@/assets/images/books.png") },
+  { name: "Smartphones", icon: "phone-portrait-outline" as const },
+  { name: "Laptops", icon: "laptop-outline" as const },
+  { name: "Tablets", icon: "tablet-portrait-outline" as const },
+  { name: "Audio", icon: "musical-notes-outline" as const },
+  { name: "Headphones", icon: "headset-outline" as const },
+  { name: "Speakers", icon: "volume-high-outline" as const },
+  { name: "Gaming", icon: "game-controller-outline" as const },
+  { name: "Accessories", icon: "hardware-chip-outline" as const },
+  { name: "Smart Home", icon: "home-outline" as const },
+  { name: "Wearables", icon: "watch-outline" as const },
+  { name: "Cameras", icon: "camera-outline" as const },
+  { name: "Storage", icon: "server-outline" as const },
+  { name: "Networking", icon: "wifi-outline" as const },
+  { name: "Monitors", icon: "desktop-outline" as const },
+  { name: "Computer Components", icon: "hardware-chip-outline" as const }
 ];
 
 const ShopScreen = () => {
@@ -91,7 +102,7 @@ const ShopScreen = () => {
                 >
                   {category.icon ? (
                     <Ionicons
-                      name={category.icon}
+                      name={category.icon as any}
                       size={36}
                       color={isSelected ? "#121212" : "#fff"}
                     />

@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { Product } from "../models/product.model.js";
 import { Order } from "../models/order.model.js";
 import { Cart } from "../models/cart.model.js";
+import { createNotification, checkAndCreateInventoryNotifications } from "../services/notification.service.js";
 
 const stripe = new Stripe(ENV.STRIPE_SECRET_KEY);
 
@@ -140,15 +141,67 @@ export async function handleWebhook(req, res) {
 
       // update product stock
       const items = JSON.parse(orderItems);
+      const productIds = [];
       for (const item of items) {
+        productIds.push(item.product);
         await Product.findByIdAndUpdate(item.product, {
           $inc: { stock: -item.quantity },
         });
       }
 
+      // Fire role-specific notifications
+      // 1. Customer: Order confirmation
+      await createNotification({
+        recipientType: "customer",
+        recipientId: userId,
+        title: "Order Placed Successfully",
+        message: `Your order for $${parseFloat(totalPrice).toFixed(2)} has been placed. We're getting it ready!`,
+        type: "ORDER_PLACED", // Use correct storefront type
+        entityId: order._id,
+        entityModel: "Order",
+      });
+
+      // 2. Admin: Operational alert
+      await createNotification({
+        recipientType: "admin",
+        title: "New Order Received",
+        message: `Business Alert: New order of $${parseFloat(totalPrice).toFixed(2)} received from ${shippingAddress?.fullName || 'a customer'}. (Order ID: ${order._id.toString().slice(-6).toUpperCase()})`,
+        type: "NEW_ORDER",
+        entityId: order._id,
+        entityModel: "Order",
+        actionUrl: "/orders"
+      });
+
+      // Run inventory dedup notification check on the purchased products
+      await checkAndCreateInventoryNotifications(productIds);
+
       console.log("Order created successfully:", order._id);
     } catch (error) {
       console.error("Error creating order from webhook:", error);
+    }
+  } else if (event.type === "payment_intent.payment_failed") {
+    const paymentIntent = event.data.object;
+    const { userId } = paymentIntent.metadata;
+    
+    // 1. Alert the Admin
+    await createNotification({
+      recipientType: "admin",
+      title: "Payment Failed",
+      message: `Operational Alert: A payment intent for $${(paymentIntent.amount / 100).toFixed(2)} just failed.`,
+      type: "PAYMENT_FAILED",
+      entityId: paymentIntent.id
+    });
+
+    // 2. Alert the Customer (if possible)
+    if (userId) {
+      await createNotification({
+        recipientType: "customer",
+        recipientId: userId,
+        title: "Payment Unsuccessful",
+        message: "Your payment was not successful. Please check your payment method and try again.",
+        type: "PAYMENT_FAILED", // Should be in allowed types if we want it to show
+        entityId: paymentIntent.id
+      });
     }
   }
 

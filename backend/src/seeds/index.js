@@ -4,82 +4,54 @@ import { ENV } from "../config/env.js";
 
 const products = [
   {
-    name: "Wireless Bluetooth Headphones",
+    name: "Wireless ANC Headphones Pro",
     description:
-      "Premium over-ear headphones with active noise cancellation, 30-hour battery life, and premium sound quality. Perfect for music lovers and travelers.",
-    price: 149.99,
+      "Premium over-ear headphones with active noise cancellation, 40-hour battery life, and high-fidelity sound. Perfect for travel and deep focus.",
+    price: 249.99,
     stock: 50,
-    category: "Electronics",
+    category: "Headphones",
     images: [
       "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500",
       "https://images.unsplash.com/photo-1484704849700-f032a568e944?w=500",
     ],
-    averageRating: 4.5,
-    totalReviews: 128,
+    averageRating: 4.8,
+    totalReviews: 312,
   },
   {
-    name: "Smart Watch Series 5",
+    name: "UltraBook Pro 15",
     description:
-      "Advanced fitness tracking, heart rate monitor, GPS, and water-resistant design. Stay connected with notifications and apps on your wrist.",
-    price: 299.99,
-    stock: 35,
-    category: "Electronics",
+      "A high-performance laptop featuring a 15-inch OLED display, 16GB RAM, and a 1TB SSD. Ideal for creators and power users.",
+    price: 1299.99,
+    stock: 20,
+    category: "Laptops",
     images: [
-      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500",
-      "https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=500",
-    ],
-    averageRating: 4.7,
-    totalReviews: 256,
-  },
-  {
-    name: "Leather Crossbody Bag",
-    description:
-      "Handcrafted genuine leather bag with adjustable strap. Features multiple compartments and elegant design perfect for daily use.",
-    price: 89.99,
-    stock: 25,
-    category: "Fashion",
-    images: [
-      "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500",
-      "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500",
-    ],
-    averageRating: 4.3,
-    totalReviews: 89,
-  },
-  {
-    name: "Running Shoes - Pro Edition",
-    description:
-      "Lightweight running shoes with responsive cushioning and breathable mesh upper. Designed for performance and comfort during long runs.",
-    price: 129.99,
-    stock: 60,
-    category: "Sports",
-    images: [
-      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500",
-      "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=500",
+      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500",
+      "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500",
     ],
     averageRating: 4.6,
-    totalReviews: 342,
+    totalReviews: 185,
   },
   {
-    name: "Bestselling Mystery Novel",
+    name: "Galaxy Ultra Smartphone",
     description:
-      "A gripping psychological thriller that will keep you on the edge of your seat. New York Times bestseller with over 1 million copies sold.",
-    price: 24.99,
-    stock: 100,
-    category: "Books",
+      "Flagship smartphone with a 108MP camera, all-day battery life, and an immersive 120Hz display.",
+    price: 999.99,
+    stock: 35,
+    category: "Smartphones",
     images: [
-      "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=500",
-      "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=500",
+      "https://images.unsplash.com/photo-1598327105666-5b89351cb31b?w=500",
+      "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500",
     ],
-    averageRating: 4.8,
-    totalReviews: 1243,
+    averageRating: 4.9,
+    totalReviews: 540,
   },
   {
-    name: "Portable Bluetooth Speaker",
+    name: "Bluetooth Portable Speaker",
     description:
-      "Waterproof wireless speaker with 360-degree sound, 12-hour battery life, and durable design. Perfect for outdoor adventures.",
+      "Waterproof, rugged bluetooth speaker delivering 360-degree sound. Up to 12 hours of playtime for your outdoor adventures.",
     price: 79.99,
-    stock: 45,
-    category: "Electronics",
+    stock: 120,
+    category: "Speakers",
     images: [
       "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=500",
       "https://images.unsplash.com/photo-1589003077984-894e133dabab?w=500",
@@ -88,40 +60,12 @@ const products = [
     totalReviews: 167,
   },
   {
-    name: "Classic Denim Jacket",
+    name: "Mechanical Gaming Keyboard",
     description:
-      "Timeless denim jacket with vintage wash and comfortable fit. A wardrobe essential that pairs perfectly with any outfit.",
-    price: 69.99,
-    stock: 40,
-    category: "Fashion",
-    images: [
-      "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500",
-      "https://images.unsplash.com/photo-1578587018452-892bacefd3f2?w=500",
-    ],
-    averageRating: 4.2,
-    totalReviews: 95,
-  },
-  {
-    name: "Yoga Mat Pro",
-    description:
-      "Extra-thick non-slip yoga mat with carrying strap. Eco-friendly material provides excellent cushioning and grip for all yoga styles.",
-    price: 49.99,
-    stock: 75,
-    category: "Sports",
-    images: [
-      "https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=500",
-      "https://images.unsplash.com/photo-1592432678016-e910b452f9a2?w=500",
-    ],
-    averageRating: 4.5,
-    totalReviews: 203,
-  },
-  {
-    name: "Mechanical Keyboard RGB",
-    description:
-      "Gaming keyboard with customizable RGB lighting, mechanical switches, and programmable keys. Built for gamers and typing enthusiasts.",
+      "Tactile mechanical switches with customizable per-key RGB lighting. Built for competitive gamers and typing enthusiasts.",
     price: 119.99,
     stock: 30,
-    category: "Electronics",
+    category: "Gaming",
     images: [
       "https://images.unsplash.com/photo-1595225476474-87563907a212?w=500",
       "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500",
@@ -130,19 +74,75 @@ const products = [
     totalReviews: 421,
   },
   {
-    name: "Coffee Table Book Collection",
+    name: "4K Action Camera",
     description:
-      "Stunning photography book featuring architecture and design from around the world. Hardcover edition with 300+ pages of inspiration.",
-    price: 39.99,
-    stock: 55,
-    category: "Books",
+      "Rugged and waterproof to 33ft. Shoots stunning 4K video with advanced stabilization for extreme sports and vlogging.",
+    price: 299.99,
+    stock: 45,
+    category: "Cameras",
     images: [
-      "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?w=500",
-      "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=500",
+      "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=500",
+      "https://images.unsplash.com/photo-1580210515124-780c1dfd4f0d?w=500"
+    ],
+    averageRating: 4.5,
+    totalReviews: 89,
+  },
+  {
+    name: "Smart Watch Series X",
+    description:
+      "Advanced fitness and health tracking, heart rate monitor, GPS, and custom watch faces. Your ultimate digital companion.",
+    price: 349.99,
+    stock: 60,
+    category: "Wearables",
+    images: [
+      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500",
+      "https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=500",
+    ],
+    averageRating: 4.7,
+    totalReviews: 256,
+  },
+  {
+    name: "1TB NVMe M.2 SSD",
+    description:
+      "Lightning-fast internal solid state drive. Drastically cut load times and boost system responsiveness.",
+    price: 89.99,
+    stock: 150,
+    category: "Storage",
+    images: [
+      "https://images.unsplash.com/photo-1628557044797-f8f2d4ce1a82?w=500",
+      "https://images.unsplash.com/photo-1590483736622-398541ce1fdd?w=500"
+    ],
+    averageRating: 4.9,
+    totalReviews: 610,
+  },
+  {
+    name: "Wireless Charging Pad",
+    description:
+      "Sleek and minimalist 15W fast-charging pad. Compatible with all Qi-enabled smartphones and earbuds.",
+    price: 39.99,
+    stock: 200,
+    category: "Accessories",
+    images: [
+      "https://images.unsplash.com/photo-1622445270947-32dc2ee7c24f?w=500",
+      "https://images.unsplash.com/photo-1615526658079-5e263c965e31?w=500"
+    ],
+    averageRating: 4.3,
+    totalReviews: 120,
+  },
+  {
+    name: "Smart Home Hub Controller",
+    description:
+      "Voice-activated smart display to control lights, locks, cameras, and thermostats. Keep your whole house connected.",
+    price: 149.99,
+    stock: 40,
+    category: "Smart Home",
+    images: [
+      "https://images.unsplash.com/photo-1558089687-f282ffcbc126?w=500",
+      "https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=500"
     ],
     averageRating: 4.6,
-    totalReviews: 134,
-  },
+    totalReviews: 295,
+  }
 ];
 
 const seedDatabase = async () => {
