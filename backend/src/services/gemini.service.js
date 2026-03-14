@@ -48,15 +48,17 @@ No markdown wrappers, no conversational text, strictly JSON array.
 `;
 
   try {
-    const response = await aiInstance.models.generateContent({
+    const model = aiInstance.getGenerativeModel({ 
       model: 'gemini-1.5-flash',
-      contents: prompt,
-      config: {
+      generationConfig: {
         responseMimeType: "application/json",
       }
     });
 
-    const parsedResponse = JSON.parse(response.text);
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+
+    const parsedResponse = JSON.parse(text);
     if (!Array.isArray(parsedResponse)) throw new Error("Output was not a JSON array");
     return parsedResponse;
     
