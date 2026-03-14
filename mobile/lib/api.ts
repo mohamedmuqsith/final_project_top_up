@@ -29,6 +29,9 @@ const api = axios.create({
   timeout: 10000, // Add a timeout so it doesn't hang forever
 });
 
+// Module-level flag: log the Clerk offline warning only ONCE per session
+let hasLoggedOfflineWarning = false;
+
 export const useApi = () => {
   const { getToken, isLoaded, isSignedIn } = useAuth();
 
@@ -44,10 +47,13 @@ export const useApi = () => {
           }
         }
       } catch (error: any) {
-        // If Clerk says we're offline (clerk_offline), we log it but don't crash the request
+        // If Clerk says we're offline (clerk_offline), log it ONCE to avoid flooding
         // The backend will handle the unauthorized response if a token was strictly required
         if (error?.code === "clerk_offline") {
-          console.warn("[Clerk] Offline: Proceeding without token");
+          if (!hasLoggedOfflineWarning) {
+            hasLoggedOfflineWarning = true;
+            console.warn("[Clerk] Offline: Proceeding without token (this warning will not repeat)");
+          }
         } else {
           console.error("[Clerk] Token error:", error);
         }
