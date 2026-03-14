@@ -15,7 +15,7 @@ const TabsLayout = () => {
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
-    if (isSignedIn && api) {
+    if (isLoaded && isSignedIn && api) {
       const fetchCount = async () => {
         try {
           const { data } = await api.get("/notifications/unread-count");
@@ -29,7 +29,7 @@ const TabsLayout = () => {
       interval = setInterval(fetchCount, 30000); // poll every 30s
     }
     return () => clearInterval(interval);
-  }, [isSignedIn, api]);
+  }, [isLoaded, isSignedIn, api]);
 
   if (!isLoaded) return null; // for a better ux
   if (!isSignedIn) return <Redirect href={"/(auth)"} />;
