@@ -66,22 +66,33 @@ function OrdersPage() {
                       0
                     );
 
+                    const ALLOWED_TRANSITIONS = {
+                      pending: ["processing", "cancelled"],
+                      processing: ["shipped", "cancelled"],
+                      shipped: ["delivered"],
+                      delivered: [],
+                      cancelled: [],
+                    };
+
+                    const isTerminal = ["delivered", "cancelled"].includes(order.status);
+                    const validNextStatuses = ALLOWED_TRANSITIONS[order.status] || [];
+
                     return (
-                      <tr key={order._id}>
+                      <tr key={order._id} className="hover:bg-base-200/50 transition-colors">
                         <td>
-                          <span className="font-medium">#{order._id.slice(-8).toUpperCase()}</span>
+                          <span className="font-mono text-sm">#{order._id.slice(-8).toUpperCase()}</span>
                         </td>
 
                         <td>
                           <div className="font-medium">{order.shippingAddress.fullName}</div>
-                          <div className="text-sm opacity-60">
-                            {order.shippingAddress.city}, {order.shippingAddress.state}
+                          <div className="text-xs opacity-60">
+                            {order.shippingAddress.city}
                           </div>
                         </td>
 
                         <td>
-                          <div className="font-medium">{totalQuantity} items</div>
-                          <div className="text-sm opacity-60">
+                          <div className="text-sm">{totalQuantity} items</div>
+                          <div className="text-xs opacity-50 truncate max-w-[150px]">
                             {order.orderItems[0]?.name}
                             {order.orderItems.length > 1 && ` +${order.orderItems.length - 1} more`}
                           </div>
@@ -92,20 +103,33 @@ function OrdersPage() {
                         </td>
 
                         <td>
-                          <select
-                            value={order.status}
-                            onChange={(e) => handleStatusChange(order._id, e.target.value)}
-                            className="select select-sm"
-                            disabled={updateStatusMutation.isPending}
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="shipped">Shipped</option>
-                            <option value="delivered">Delivered</option>
-                          </select>
+                          {isTerminal ? (
+                            <div className={`badge badge-sm font-semibold py-3 px-4 ${
+                              order.status === 'delivered' ? 'badge-success text-success-content' : 'badge-error text-error-content'
+                            }`}>
+                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                            </div>
+                          ) : (
+                            <select
+                              value={order.status}
+                              onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                              className="select select-bordered select-xs w-full max-w-[130px] focus:outline-none"
+                              disabled={updateStatusMutation.isPending}
+                            >
+                              <option value={order.status}>
+                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                              </option>
+                              {validNextStatuses.map((status) => (
+                                <option key={status} value={status}>
+                                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                                </option>
+                              ))}
+                            </select>
+                          )}
                         </td>
 
                         <td>
-                          <span className="text-sm opacity-60">{formatDate(order.createdAt)}</span>
+                          <span className="text-xs opacity-60">{formatDate(order.createdAt)}</span>
                         </td>
                       </tr>
                     );

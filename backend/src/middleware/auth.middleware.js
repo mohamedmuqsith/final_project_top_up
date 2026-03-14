@@ -18,21 +18,25 @@ export const protectRoute = [
         console.log(`[Auth] User ${clerkId} not found in DB. Attempting JIT provisioning...`);
         try {
           const clerkUser = await clerkClient.users.getUser(clerkId);
-          const email = clerkUser.emailAddresses[0]?.email_address;
+          const email = clerkUser.emailAddresses[0]?.emailAddress;
           const name = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || "User";
           
+          if (!email) {
+            console.warn(`[Auth] JIT provisioning: No email found for user ${clerkId}`);
+          }
+
           user = await User.create({
             clerkId,
-            email,
+            email: email || `${clerkId}@noemail.clerk.com`, // Fallback to avoid validation failure
             name,
             imageUrl: clerkUser.imageUrl,
             addresses: [],
             wishlist: [],
           });
-          console.log(`[Auth] JIT provisioning successful for ${email}`);
+          console.log(`[Auth] JIT provisioning successful for ${user.email}`);
         } catch (clerkError) {
           console.error("[Auth] JIT provisioning failed:", clerkError.message);
-          return res.status(404).json({ message: "User not found in local database and sync failed" });
+          return res.status(404).json({ message: `User sync failed: ${clerkError.message}` });
         }
       }
 
