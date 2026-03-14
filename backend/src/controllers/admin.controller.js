@@ -30,12 +30,20 @@ export async function createProduct(req, res) {
 
     const imageUrls = uploadResults.map((result) => result.secure_url);
 
+    const parsedPrice = parseFloat(price);
+    const parsedStock = parseInt(stock);
+    const parsedThreshold = lowStockThreshold !== undefined ? parseInt(lowStockThreshold) : 10;
+
+    if (isNaN(parsedPrice) || isNaN(parsedStock)) {
+      return res.status(400).json({ message: "Invalid price or stock value" });
+    }
+
     const product = await Product.create({
       name,
       description,
-      price: parseFloat(price),
-      stock: parseInt(stock),
-      lowStockThreshold: lowStockThreshold !== undefined ? parseInt(lowStockThreshold) : 10,
+      price: parsedPrice,
+      stock: parsedStock,
+      lowStockThreshold: isNaN(parsedThreshold) ? 10 : parsedThreshold,
       category,
       images: imageUrls,
     });
@@ -45,8 +53,12 @@ export async function createProduct(req, res) {
 
     res.status(201).json(product);
   } catch (error) {
-    console.error("Error creating product", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Error creating product:", error);
+    res.status(500).json({ 
+      message: "Internal server error", 
+      error: error.message,
+      details: error.errors
+    });
   }
 }
 
@@ -84,9 +96,29 @@ export async function updateProduct(req, res) {
 
     if (name) product.name = name;
     if (description) product.description = description;
-    if (price !== undefined) product.price = parseFloat(price);
-    if (stock !== undefined) product.stock = parseInt(stock);
-    if (lowStockThreshold !== undefined) product.lowStockThreshold = parseInt(lowStockThreshold);
+    
+    // Robust parsing for numbers
+    if (price !== undefined && price !== "") {
+      const parsedPrice = parseFloat(price);
+      if (!isNaN(parsedPrice)) {
+        product.price = parsedPrice;
+      }
+    }
+    
+    if (stock !== undefined && stock !== "") {
+      const parsedStock = parseInt(stock);
+      if (!isNaN(parsedStock)) {
+        product.stock = parsedStock;
+      }
+    }
+    
+    if (lowStockThreshold !== undefined && lowStockThreshold !== "") {
+      const parsedThreshold = parseInt(lowStockThreshold);
+      if (!isNaN(parsedThreshold)) {
+        product.lowStockThreshold = parsedThreshold;
+      }
+    }
+
     if (category) product.category = category;
 
     // handle image updates if new images are uploaded
@@ -114,8 +146,12 @@ export async function updateProduct(req, res) {
 
     res.status(200).json(product);
   } catch (error) {
-    console.error("Error updating products:", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Error updating product:", error);
+    res.status(500).json({ 
+      message: "Internal server error", 
+      error: error.message,
+      details: error.errors // Mongoose validation details
+    });
   }
 }
 

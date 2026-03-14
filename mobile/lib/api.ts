@@ -6,15 +6,17 @@ import Constants from "expo-constants";
 
 // Dynamically determine the API URL based on the environment
 const getBaseUrl = () => {
-  // If we're in production, return the production URL
-  // return "https://finalprojecttopup-2533t.sevalla.app/api";
+  // If we're in development, use the local IP
+  if (__DEV__) {
+    // Constants.expoConfig?.hostUri is the best way to find your machine's IP in Expo
+    const hostUri = Constants.expoConfig?.hostUri;
+    const host = hostUri ? hostUri.split(':')[0] : '127.0.0.1';
+    
+    return `http://${host}:3000/api`;
+  }
 
-  // For development:
-  // Constants.expoConfig?.hostUri is the best way to find your machine's IP in Expo
-  const hostUri = Constants.expoConfig?.hostUri;
-  const host = hostUri ? hostUri.split(':')[0] : 'localhost';
-  
-  return `http://${host}:3000/api`;
+  // Fallback to production URL
+  return "https://finalprojecttopup-2533t.sevalla.app/api";
 };
 
 const API_URL = getBaseUrl();
