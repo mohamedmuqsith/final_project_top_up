@@ -18,7 +18,7 @@ const TabsLayout = () => {
     if (isLoaded && isSignedIn && api) {
       const fetchCount = async () => {
         try {
-          const { data } = await api.get("/notifications/unread-count");
+          const { data } = await api.get("notifications/unread-count");
           setUnreadCount(data.unreadCount);
         } catch (e) {
           // ignore error to not spam console

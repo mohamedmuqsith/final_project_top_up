@@ -52,7 +52,8 @@ export default function NotificationsScreen() {
 
   const fetchNotifications = async (pageNumber = 1, isRefresh = false) => {
     try {
-      const { data } = await api.get(`/notifications?recipientType=customer&page=${pageNumber}&limit=15`);
+      const url = `notifications?recipientType=customer&page=${pageNumber}&limit=15`;
+      const { data } = await api.get(url);
       
       const notificationsArray = data.notifications || [];
       
@@ -64,8 +65,8 @@ export default function NotificationsScreen() {
       }
       
       setHasMore(data.currentPage < data.totalPages);
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
+    } catch (error: any) {
+      console.error("Error fetching notifications:", error?.response?.status || error.message);
     } finally {
       setLoading(false);
       setRefreshing(false);

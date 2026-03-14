@@ -13,8 +13,12 @@ export const getStatusColor = (status: string) => {
       return "#10B981";
     case "shipped":
       return "#3B82F6";
+    case "processing":
+      return "#A855F7";
     case "pending":
       return "#F59E0B";
+    case "cancelled":
+      return "#EF4444";
     default:
       return "#666";
   }

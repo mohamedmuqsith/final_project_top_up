@@ -12,11 +12,11 @@ const getBaseUrl = () => {
     const hostUri = Constants.expoConfig?.hostUri;
     const host = hostUri ? hostUri.split(':')[0] : '127.0.0.1';
     
-    return `http://${host}:3000/api`;
+    return `http://${host}:3000/api/`;
   }
 
   // Fallback to production URL
-  return "https://finalprojecttopup-2533t.sevalla.app/api";
+  return "https://finalprojecttopup-2533t.sevalla.app/api/";
 };
 
 const API_URL = getBaseUrl();

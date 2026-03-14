@@ -172,24 +172,42 @@ export async function getAllOrders(_, res) {
 export async function updateOrderStatus(req, res) {
   try {
     const { orderId } = req.params;
-    const { status } = req.body;
+    const { status: newStatus } = req.body;
 
-    if (!["pending", "shipped", "delivered", "cancelled"].includes(status)) {
-      return res.status(400).json({ error: "Invalid status" });
-    }
+    const ALLOWED_TRANSITIONS = {
+      pending: ["processing", "cancelled"],
+      processing: ["shipped", "cancelled"],
+      shipped: ["delivered"],
+      delivered: [], // Terminal
+      cancelled: [], // Terminal
+    };
 
     const order = await Order.findById(orderId);
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    order.status = status;
+    const currentStatus = order.status;
 
-    if (status === "shipped" && !order.shippedAt) {
+    // Validate transition
+    if (currentStatus !== newStatus) {
+      if (!ALLOWED_TRANSITIONS[currentStatus].includes(newStatus)) {
+        return res.status(400).json({ 
+          error: `Invalid status transition from '${currentStatus}' to '${newStatus}'` 
+        });
+      }
+    } else {
+      // If same status, just return success
+      return res.status(200).json(order);
+    }
+
+    order.status = newStatus;
+
+    if (newStatus === "shipped" && !order.shippedAt) {
       order.shippedAt = new Date();
     }
 
-    if (status === "delivered" && !order.deliveredAt) {
+    if (newStatus === "delivered" && !order.deliveredAt) {
       order.deliveredAt = new Date();
     }
 
@@ -198,26 +216,26 @@ export async function updateOrderStatus(req, res) {
     // Trigger Notification natively
     let type = "";
     let message = "";
-    if (status === "shipped") {
+    if (newStatus === "processing") {
+      type = "ORDER_PLACED"; // Reuse or create specific one if needed
+      message = "Your order is now being processed.";
+    } else if (newStatus === "shipped") {
       type = "ORDER_SHIPPED";
       message = "Great news! Your order has been shipped and is on its way.";
-    } else if (status === "delivered") {
+    } else if (newStatus === "delivered") {
       type = "ORDER_DELIVERED";
       message = "Your order has been delivered. Enjoy your electronics!";
-    } else if (status === "pending") {
-      type = "ORDER_PLACED";
-      message = "Your order is pending fulfillment.";
-    } else if (status === "cancelled") {
+    } else if (newStatus === "cancelled") {
       type = "ORDER_CANCELLED";
       message = "Your order has been cancelled. Please contact support if you have questions.";
     }
 
     if (type) {
-      // 1. Personal Personal Notification to CUSTOMER
+      // 1. Personal Notification to CUSTOMER
       await createNotification({
         recipientType: "customer",
-        recipientId: order.user.toString(), // Ensure ID is a string for broader compatibility
-        title: `Your Order is ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+        recipientId: order.user.toString(),
+        title: `Your Order is ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
         message,
         type,
         entityId: order._id,
@@ -227,15 +245,20 @@ export async function updateOrderStatus(req, res) {
       // 2. Operational Business Notification to ADMIN (Feed)
       let adminType = "";
       let adminMessage = "";
-      if (status === "shipped") {
+      const idStr = order._id.toString().slice(-6).toUpperCase();
+      
+      if (newStatus === "processing") {
+        adminType = "NEW_ORDER";
+        adminMessage = `Operational Alert: Order #${idStr} moved to PROCESSING.`;
+      } else if (newStatus === "shipped") {
         adminType = "ORDER_MARKED_SHIPPED";
-        adminMessage = `Operational Alert: Order #${order._id.toString().slice(-6).toUpperCase()} marked as SHIPPED.`;
-      } else if (status === "delivered") {
+        adminMessage = `Operational Alert: Order #${idStr} marked as SHIPPED.`;
+      } else if (newStatus === "delivered") {
         adminType = "ORDER_MARKED_DELIVERED";
-        adminMessage = `Operational Alert: Order #${order._id.toString().slice(-6).toUpperCase()} marked as DELIVERED.`;
-      } else if (status === "cancelled") {
+        adminMessage = `Operational Alert: Order #${idStr} marked as DELIVERED.`;
+      } else if (newStatus === "cancelled") {
         adminType = "ORDER_CANCELLED";
-        adminMessage = `Operational Alert: Order #${order._id.toString().slice(-6).toUpperCase()} marked as CANCELLED.`;
+        adminMessage = `Operational Alert: Order #${idStr} marked as CANCELLED.`;
       }
 
       if (adminType) {
