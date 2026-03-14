@@ -48,7 +48,11 @@ const ProductsGrid = ({ products, isLoading, isError }: ProductsGridProps) => {
     >
       <View className="relative">
         <Image
-          source={{ uri: product.images[0] }}
+          source={
+            product.images?.[0] 
+              ? { uri: product.images[0] } 
+              : require("../assets/images/auth-image.png") 
+          }
           className="w-full h-44 bg-background-lighter"
           resizeMode="cover"
         />
