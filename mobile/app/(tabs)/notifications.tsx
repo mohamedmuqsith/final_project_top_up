@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useApi } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import SafeScreen from "@/components/SafeScreen";
 
 const CUSTOMER_ALLOWED_TYPES = [
   "ORDER_PLACED",
@@ -123,32 +124,33 @@ export default function NotificationsScreen() {
     return (
       <TouchableOpacity 
         onPress={() => handlePress(item)}
-        className={`p-4 border-b border-gray-100 flex-row gap-3 ${isUnread ? "bg-teal-50/50" : "bg-white"}`}
+        className={`bg-surface rounded-2xl mb-3 mx-4 p-4 flex-row gap-3 overflow-hidden ${isUnread ? "border border-primary/30" : ""}`}
+        activeOpacity={0.8}
       >
         <View className="mt-1">
           {item.type.includes("SUCCESS") || item.type.includes("PLACED") ? (
-            <Ionicons name="checkmark-circle" size={24} color="#4FD1C5" />
+            <Ionicons name="checkmark-circle" size={24} color="#00D9FF" />
           ) : item.type.includes("SHIPPED") ? (
-            <Ionicons name="airplane" size={24} color="#4FD1C5" />
+            <Ionicons name="airplane" size={24} color="#00D9FF" />
           ) : item.type.includes("DELIVERED") ? (
-            <Ionicons name="gift" size={24} color="#4FD1C5" />
+            <Ionicons name="gift" size={24} color="#00D9FF" />
           ) : item.type.includes("CANCELLED") ? (
-            <Ionicons name="close-circle" size={24} color="#EF4444" />
+            <Ionicons name="close-circle" size={24} color="#FF6B6B" />
           ) : (
-            <Ionicons name="notifications" size={24} color={isUnread ? "#4FD1C5" : "#9CA3AF"} />
+            <Ionicons name="notifications" size={24} color={isUnread ? "#00D9FF" : "#666666"} />
           )}
         </View>
         <View className="flex-1">
           <View className="flex-row justify-between items-start">
-            <Text className={`font-semibold text-base ${isUnread ? "text-gray-900" : "text-gray-700"}`}>
+            <Text className={`text-text-primary text-base font-bold pr-2`}>
               {item.title}
             </Text>
-            {isUnread && <View className="w-2 h-2 rounded-full bg-teal-400 mt-2" />}
+            {isUnread && <View className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />}
           </View>
-          <Text className={`mt-1 text-sm ${isUnread ? "text-gray-700" : "text-gray-500"}`}>
+          <Text className={`mt-1 text-text-secondary text-sm`}>
             {item.message}
           </Text>
-          <Text className="mt-2 text-xs text-gray-400">
+          <Text className="mt-2 text-text-secondary/70 text-xs font-medium">
             {getRelativeTime(item.createdAt)}
           </Text>
         </View>
@@ -158,47 +160,56 @@ export default function NotificationsScreen() {
 
   if (loading && page === 1) {
     return (
-      <View className="flex-1 justify-center items-center bg-white">
-        <ActivityIndicator size="large" color="#4FD1C5" />
-      </View>
+      <SafeScreen>
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#00D9FF" />
+          <Text className="text-text-secondary mt-4">Loading notifications...</Text>
+        </View>
+      </SafeScreen>
     );
   }
 
   return (
-    <View className="flex-1 bg-white">
-      <View className="px-6 pt-16 pb-4 bg-white border-b border-gray-100 flex-row justify-between items-end">
-        <Text className="text-3xl font-bold text-gray-900">Notifications</Text>
-        <TouchableOpacity onPress={markAllAsRead}>
-          <Text className="text-teal-500 font-semibold mb-1">Mark all read</Text>
-        </TouchableOpacity>
+    <SafeScreen>
+      <View className="px-6 pb-4 pt-6 flex-row justify-between items-end mb-2">
+        <Text className="text-text-primary text-3xl font-bold tracking-tight">Notifications</Text>
+        {notifications.length > 0 && (
+          <TouchableOpacity onPress={markAllAsRead} activeOpacity={0.7} className="mb-1">
+            <Text className="text-primary font-semibold">Mark all read</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <FlatList
         data={notifications}
         keyExtractor={(item) => item._id}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 100, paddingTop: 4 }}
+        showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4FD1C5" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00D9FF" />
         }
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
         ListEmptyComponent={
           <View className="flex-1 justify-center items-center mt-32 px-10">
-            <Ionicons name="notifications-off-outline" size={64} color="#D1D5DB" />
-            <Text className="text-gray-500 text-lg mt-4 text-center">
-              You're all caught up! No active notifications.
+            <Ionicons name="notifications-off-outline" size={64} color="#666666" />
+            <Text className="text-text-primary font-bold text-lg mt-4 text-center">
+              You're all caught up! 
+            </Text>
+            <Text className="text-text-secondary text-sm mt-1 text-center">
+              No active notifications at the moment.
             </Text>
           </View>
         }
         ListFooterComponent={
           loading && page > 1 ? (
-            <View className="py-4">
-              <ActivityIndicator size="small" color="#4FD1C5" />
+            <View className="py-4 mt-2">
+              <ActivityIndicator size="small" color="#00D9FF" />
             </View>
           ) : null
         }
       />
-    </View>
+    </SafeScreen>
   );
 }

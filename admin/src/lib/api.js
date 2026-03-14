@@ -75,3 +75,17 @@ export const inventoryApi = {
     return data;
   },
 };
+
+export const salesReportApi = {
+  get: async (range = "30d") => {
+    const { data } = await axiosInstance.get(`/admin/sales-report?range=${range}`);
+    return data;
+  },
+};
+
+export const inventoryReportApi = {
+  get: async () => {
+    const { data } = await axiosInstance.get("/admin/inventory-report");
+    return data;
+  },
+};

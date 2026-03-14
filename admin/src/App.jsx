@@ -7,6 +7,8 @@ import DashboardLayout from "./layouts/DashboardLayout";
 import OrdersPage from "./pages/OrdersPage";
 import CustomersPage from "./pages/CustomersPage";
 import InventoryAlertsPage from "./pages/InventoryAlertsPage";
+import SalesReportsPage from "./pages/SalesReportsPage";
+import InventoryReportsPage from "./pages/InventoryReportsPage";
 import PageLoader from "./components/PageLoader";
 
 function App() {
@@ -30,6 +32,8 @@ function App() {
         <Route path="inventory-alerts" element={<InventoryAlertsPage />} />
         <Route path="orders" element={<OrdersPage />} />
         <Route path="customers" element={<CustomersPage />} />
+        <Route path="sales-reports" element={<SalesReportsPage />} />
+        <Route path="inventory-reports" element={<InventoryReportsPage />} />
       </Route>
     </Routes>
   );

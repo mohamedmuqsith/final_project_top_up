@@ -483,3 +483,267 @@ export async function getInventoryAlerts(req, res) {
     res.status(500).json({ error: "Internal server error" });
   }
 }
+
+// GET /api/admin/sales-report?range=30d|90d|ytd
+export async function getSalesReport(req, res) {
+  try {
+    const { range = "30d" } = req.query;
+
+    // Determine date range
+    const now = new Date();
+    let startDate;
+    let dateFormat;
+    let groupLabel;
+
+    if (range === "90d") {
+      startDate = new Date(now);
+      startDate.setDate(startDate.getDate() - 90);
+      dateFormat = "%Y-W%U"; // weekly
+      groupLabel = "weekly";
+    } else if (range === "ytd") {
+      startDate = new Date(now.getFullYear(), 0, 1); // Jan 1st of current year
+      dateFormat = "%Y-%m"; // monthly
+      groupLabel = "monthly";
+    } else {
+      // Default: 30d
+      startDate = new Date(now);
+      startDate.setDate(startDate.getDate() - 30);
+      dateFormat = "%Y-%m-%d"; // daily
+      groupLabel = "daily";
+    }
+
+    const matchStage = {
+      createdAt: { $gte: startDate },
+      "paymentResult.status": "succeeded",
+    };
+
+    // 1. Summary metrics
+    const summaryAgg = await Order.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$totalPrice" },
+          totalOrders: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const totalRevenue = summaryAgg[0]?.totalRevenue || 0;
+    const totalOrders = summaryAgg[0]?.totalOrders || 0;
+    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+    // 2. Revenue & orders over time
+    const timeSeriesAgg = await Order.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: { $dateToString: { format: dateFormat, date: "$createdAt" } },
+          revenue: { $sum: "$totalPrice" },
+          orders: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const chartData = timeSeriesAgg.map((item) => ({
+      date: item._id,
+      revenue: parseFloat(item.revenue.toFixed(2)),
+      orders: item.orders,
+    }));
+
+    // 3. Top products by units sold
+    const topProductsAgg = await Order.aggregate([
+      { $match: matchStage },
+      { $unwind: "$orderItems" },
+      {
+        $group: {
+          _id: "$orderItems.product",
+          totalUnitsSold: { $sum: "$orderItems.quantity" },
+          totalRevenue: {
+            $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] },
+          },
+          productName: { $first: "$orderItems.name" },
+          productImage: { $first: "$orderItems.image" },
+        },
+      },
+      { $sort: { totalUnitsSold: -1 } },
+      { $limit: 5 },
+    ]);
+
+    // Enrich top products with current stock from Product collection
+    const productIds = topProductsAgg.map((p) => p._id);
+    const productsData = await Product.find(
+      { _id: { $in: productIds } },
+      "stock"
+    ).lean();
+    const stockMap = {};
+    productsData.forEach((p) => {
+      stockMap[p._id.toString()] = p.stock;
+    });
+
+    const topProducts = topProductsAgg.map((p) => ({
+      _id: p._id,
+      name: p.productName,
+      image: p.productImage,
+      unitsSold: p.totalUnitsSold,
+      revenue: parseFloat(p.totalRevenue.toFixed(2)),
+      stock: stockMap[p._id.toString()] ?? 0,
+    }));
+
+    // 4. Top categories by revenue
+    const topCategoriesAgg = await Order.aggregate([
+      { $match: matchStage },
+      { $unwind: "$orderItems" },
+      {
+        $lookup: {
+          from: "products",
+          localField: "orderItems.product",
+          foreignField: "_id",
+          as: "productInfo",
+        },
+      },
+      { $unwind: { path: "$productInfo", preserveNullAndEmptyArrays: false } },
+      {
+        $group: {
+          _id: "$productInfo.category",
+          totalRevenue: {
+            $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] },
+          },
+          totalUnitsSold: { $sum: "$orderItems.quantity" },
+          productCount: { $addToSet: "$orderItems.product" },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          totalRevenue: 1,
+          totalUnitsSold: 1,
+          productCount: { $size: "$productCount" },
+        },
+      },
+      { $sort: { totalRevenue: -1 } },
+      { $limit: 5 },
+    ]);
+
+    const topCategories = topCategoriesAgg.map((c) => ({
+      category: c._id,
+      revenue: parseFloat(c.totalRevenue.toFixed(2)),
+      unitsSold: c.totalUnitsSold,
+      productCount: c.productCount,
+    }));
+
+    res.status(200).json({
+      summary: {
+        totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+        totalOrders,
+        avgOrderValue: parseFloat(avgOrderValue.toFixed(2)),
+      },
+      chartData,
+      topProducts,
+      topCategories,
+      grouping: groupLabel,
+      range,
+    });
+  } catch (error) {
+    console.error("Error fetching sales report:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+// GET /api/admin/inventory-report
+export async function getInventoryReport(req, res) {
+  try {
+    // 1. Summary Metrics & Category Aggregations
+    const inventoryAgg = await Product.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalInventoryValue: { $sum: { $multiply: ["$stock", "$price"] } },
+          totalUnitsInStock: { $sum: "$stock" },
+          outOfStockCount: {
+            $sum: { $cond: [{ $lte: ["$stock", 0] }, 1, 0] },
+          },
+        },
+      },
+    ]);
+
+    const summary = inventoryAgg[0] || {
+      totalInventoryValue: 0,
+      totalUnitsInStock: 0,
+      outOfStockCount: 0,
+    };
+
+    // Category Aggregations
+    const categoryAgg = await Product.aggregate([
+      {
+        $group: {
+          _id: "$category",
+          totalUnits: { $sum: "$stock" },
+          totalValue: { $sum: { $multiply: ["$stock", "$price"] } },
+          productCount: { $sum: 1 },
+        },
+      },
+      { $sort: { totalUnits: -1 } },
+    ]);
+
+    const stockByCategory = categoryAgg.map((cat) => ({
+      name: cat._id,
+      units: cat.totalUnits,
+      value: parseFloat(cat.totalValue.toFixed(2)),
+      productCount: cat.productCount,
+    }));
+
+    // 2. Out of Stock List
+    const outOfStockProducts = await Product.find(
+      { stock: { $lte: 0 } },
+      "name category price images stock lowStockThreshold updatedAt"
+    )
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    // 3. Low Stock List
+    // We need to find products where 0 < stock <= (lowStockThreshold || 10)
+    // To do this efficiently in MongoDB across all docs, we can use an aggregation or $expr
+    const lowStockProducts = await Product.find({
+      $and: [
+        { stock: { $gt: 0 } },
+        {
+          $expr: {
+            $lte: ["$stock", { $ifNull: ["$lowStockThreshold", 10] }],
+          },
+        },
+      ],
+    })
+      .select("name category price images stock lowStockThreshold updatedAt")
+      .sort({ stock: 1 }) // sort by lowest stock first
+      .lean();
+
+    // Format lists
+    const formatProduct = (p) => ({
+      _id: p._id,
+      name: p.name,
+      category: p.category,
+      price: p.price,
+      stock: p.stock,
+      threshold: p.lowStockThreshold || 10,
+      image: p.images?.[0],
+      updatedAt: p.updatedAt,
+    });
+
+    res.status(200).json({
+      summary: {
+        totalInventoryValue: parseFloat(summary.totalInventoryValue.toFixed(2)),
+        totalUnitsInStock: summary.totalUnitsInStock,
+        outOfStockCount: summary.outOfStockCount,
+        incomingItems: 0, // Not currently supported by backend
+      },
+      stockByCategory,
+      outOfStockList: outOfStockProducts.map(formatProduct),
+      lowStockList: lowStockProducts.map(formatProduct),
+    });
+  } catch (error) {
+    console.error("Error fetching inventory report:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}

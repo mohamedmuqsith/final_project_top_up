@@ -33,3 +33,26 @@ export const formatDate = (dateString) => {
     year: "numeric",
   });
 };
+
+export const CATEGORY_COLORS = {
+  "Smartphones": "#38bdf8", // light blue
+  "Laptops": "#818cf8", // indigo
+  "Tablets": "#c084fc", // purple
+  "Audio": "#f472b6", // pink
+  "Headphones": "#fb7185", // rose
+  "Speakers": "#fb923c", // orange
+  "Gaming": "#facc15", // yellow
+  "Accessories": "#a3e635", // lime
+  "Smart Home": "#34d399", // emerald
+  "Wearables": "#2dd4bf", // teal
+  "Cameras": "#22d3ee", // cyan
+  "Storage": "#60a5fa", // blue
+  "Networking": "#a78bfa", // violet
+  "Monitors": "#f43f5e", // deeper red
+  "Computer Components": "#eab308", // darker yellow
+  "default": "#94a3b8" // slate
+};
+
+export const getCategoryColor = (category) => {
+  return CATEGORY_COLORS[category] || CATEGORY_COLORS.default;
+};

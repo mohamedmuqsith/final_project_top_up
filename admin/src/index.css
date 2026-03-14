@@ -2,3 +2,22 @@
 @plugin "daisyui" {
   themes: night;
 }
+
+:root {
+  /* 
+   * Fallback hex colors for Recharts SVG elements.
+   * `oklch(var(...))` often fails to evaluate inside SVG fill/stroke in some browsers 
+   * resulting in black slices in PieCharts/BarCharts. 
+   * These match DaisyUI 'night' theme exactly.
+   */
+  --chart-primary: #38bdf8;
+  --chart-secondary: #818cf8;
+  --chart-accent: #f471b5;
+  --chart-info: #0ca5e9;
+  --chart-success: #2dd4bf;
+  --chart-warning: #f4bf50;
+  --chart-error: #fb7085;
+  --chart-base-content: #cbd5e1;
+  --chart-base-100: #0f172a;
+  --chart-base-300: #1e293b;
+}

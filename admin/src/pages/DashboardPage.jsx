@@ -130,9 +130,9 @@ function DashboardPage() {
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "oklch(var(--b1))",
-                        borderColor: "oklch(var(--b3))",
-                        color: "oklch(var(--bc))",
+                        backgroundColor: "var(--chart-base-100)",
+                        borderColor: "var(--chart-base-300)",
+                        color: "var(--chart-base-content)",
                         borderRadius: "8px",
                       }}
                     />
@@ -140,7 +140,7 @@ function DashboardPage() {
                     <Line
                       type="monotone"
                       dataKey="revenue"
-                      stroke="oklch(var(--p))"
+                      stroke="var(--chart-primary)"
                       strokeWidth={3}
                       activeDot={{ r: 8 }}
                       name="Revenue ($)"
@@ -172,15 +172,15 @@ function DashboardPage() {
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "oklch(var(--b1))",
-                        borderColor: "oklch(var(--b3))",
-                        color: "oklch(var(--bc))",
+                        backgroundColor: "var(--chart-base-100)",
+                        borderColor: "var(--chart-base-300)",
+                        color: "var(--chart-base-content)",
                         borderRadius: "8px",
                       }}
-                      cursor={{ fill: "oklch(var(--bc) / 0.1)" }}
+                      cursor={{ fill: "var(--chart-base-300)" }}
                     />
                     <Legend />
-                    <Bar dataKey="orders" fill="oklch(var(--s))" radius={[4, 4, 0, 0]} name="Orders Count" />
+                    <Bar dataKey="orders" fill="var(--chart-secondary)" radius={[4, 4, 0, 0]} name="Orders Count" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
