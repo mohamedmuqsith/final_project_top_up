@@ -202,7 +202,7 @@ function ProductsPage() {
 
       <div className="modal">
         <div className="modal-box max-w-2xl">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between border-b border-base-200 pb-4 mb-2">
             <h3 className="font-bold text-2xl">
               {editingProduct ? "Edit Product" : "Add New Product"}
             </h3>
@@ -212,17 +212,17 @@ function ProductsPage() {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6 pt-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="form-control">
                 <label className="label">
-                  <span>Product Name</span>
+                  <span className="font-semibold text-sm">Product Name</span>
                 </label>
 
                 <input
                   type="text"
                   placeholder="Enter product name"
-                  className="input input-bordered"
+                  className="input input-bordered focus:border-primary focus:outline-none transition-colors"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
@@ -231,10 +231,10 @@ function ProductsPage() {
 
               <div className="form-control">
                 <label className="label">
-                  <span>Category</span>
+                  <span className="font-semibold text-sm">Category</span>
                 </label>
                 <select
-                  className="select select-bordered"
+                  className="select select-bordered focus:border-primary focus:outline-none transition-colors"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   required
@@ -254,13 +254,13 @@ function ProductsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="form-control">
                 <label className="label">
-                  <span>Price ($)</span>
+                  <span className="font-semibold text-sm">Price ($)</span>
                 </label>
                 <input
                   type="number"
                   step="0.01"
                   placeholder="0.00"
-                  className="input input-bordered"
+                  className="input input-bordered focus:border-primary focus:outline-none transition-colors"
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                   required
@@ -269,12 +269,12 @@ function ProductsPage() {
 
               <div className="form-control">
                 <label className="label">
-                  <span>Stock</span>
+                  <span className="font-semibold text-sm">Stock</span>
                 </label>
                 <input
                   type="number"
                   placeholder="0"
-                  className="input input-bordered"
+                  className="input input-bordered focus:border-primary focus:outline-none transition-colors"
                   value={formData.stock}
                   onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
                   required
@@ -283,26 +283,26 @@ function ProductsPage() {
             </div>
 
             <div className="form-control">
-              <label className="label">
-                <span>Low Stock Threshold</span>
+              <label className="label items-baseline">
+                <span className="font-semibold text-sm">Low Stock Threshold</span>
                 <span className="label-text-alt text-xs opacity-60">Optional (Default 10)</span>
               </label>
               <input
                 type="number"
                 placeholder="10"
-                className="input input-bordered w-full"
+                className="input input-bordered w-full focus:border-primary focus:outline-none transition-colors"
                 value={formData.lowStockThreshold}
                 onChange={(e) => setFormData({ ...formData, lowStockThreshold: e.target.value })}
               />
             </div>
 
-            <div className="form-control flex flex-col gap-2">
+            <div className="form-control flex flex-col gap-1">
               <label className="label">
-                <span>Description</span>
+                <span className="font-semibold text-sm">Description</span>
               </label>
               <textarea
-                className="textarea textarea-bordered h-24 w-full"
-                placeholder="Enter product description"
+                className="textarea textarea-bordered h-32 w-full focus:border-primary focus:outline-none transition-colors leading-relaxed"
+                placeholder="Enter detailed product description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 required
@@ -310,37 +310,37 @@ function ProductsPage() {
             </div>
 
             <div className="form-control">
-              <label className="label">
-                <span className="label-text font-semibold text-base flex items-center gap-2">
-                  <ImageIcon className="h-5 w-5" />
+              <label className="label items-baseline mb-1">
+                <span className="font-semibold text-sm flex items-center gap-2">
+                  <ImageIcon className="size-4 opacity-70" />
                   Product Images
                 </span>
                 <span className="label-text-alt text-xs opacity-60">Max 3 images</span>
               </label>
 
-              <div className="bg-base-200 rounded-xl p-4 border-2 border-dashed border-base-300 hover:border-primary transition-colors">
+              <div className="bg-base-200/50 rounded-xl p-5 border-2 border-dashed border-base-content/20 hover:border-primary/50 transition-colors focus-within:border-primary">
                 <input
                   type="file"
                   accept="image/*"
                   multiple
                   onChange={handleImageChange}
-                  className="file-input file-input-bordered file-input-primary w-full"
+                  className="file-input file-input-bordered file-input-primary w-full bg-base-100"
                   required={!editingProduct}
                 />
 
                 {editingProduct && (
-                  <p className="text-xs text-base-content/60 mt-2 text-center">
+                  <p className="text-sm font-medium text-base-content/60 mt-3 text-center">
                     Leave empty to keep current images
                   </p>
                 )}
               </div>
 
               {imagePreviews.length > 0 && (
-                <div className="flex gap-2 mt-2">
+                <div className="flex gap-3 mt-4">
                   {imagePreviews.map((preview, index) => (
-                    <div key={index} className="avatar">
-                      <div className="w-20 rounded-lg">
-                        <img src={preview} alt={`Preview ${index + 1}`} />
+                    <div key={index} className="avatar shadow-sm">
+                      <div className="w-24 rounded-lg outline outline-2 outline-base-content/10">
+                        <img src={preview} alt={`Preview ${index + 1}`} className="object-cover" />
                       </div>
                     </div>
                   ))}
@@ -348,7 +348,7 @@ function ProductsPage() {
               )}
             </div>
 
-            <div className="modal-action">
+            <div className="modal-action border-t border-base-200 pt-6 mt-6">
               <button
                 type="button"
                 onClick={closeModal}
