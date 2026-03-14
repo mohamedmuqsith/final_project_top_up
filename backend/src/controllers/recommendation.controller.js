@@ -77,7 +77,7 @@ export const getSimilarProducts = async (req, res) => {
 // GET /api/recommendations/personalized
 export const getPersonalizedRecommendations = async (req, res) => {
   try {
-    const userId = req.auth().userId;
+    const userId = req.user?.clerkId;
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
     }

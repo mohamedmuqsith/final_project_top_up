@@ -267,7 +267,7 @@ function InventoryReportsPage() {
                       <tr key={product._id}>
                         <td>
                           <div className="flex flex-col gap-1">
-                            <span className="font-medium text-sm max-w-[180px] break-words leading-tight" title={product.name}>
+                            <span className="font-medium text-sm max-w-[180px] wrap-break-word leading-tight" title={product.name}>
                               {product.name}
                             </span>
                             <span className="text-xs opacity-60">{product.category}</span>
@@ -321,7 +321,7 @@ function InventoryReportsPage() {
                       <tr key={product._id}>
                         <td>
                           <div className="flex flex-col gap-1">
-                            <span className="font-medium text-sm max-w-[180px] break-words leading-tight" title={product.name}>
+                            <span className="font-medium text-sm max-w-[180px] wrap-break-word leading-tight" title={product.name}>
                               {product.name}
                             </span>
                             <span className="text-xs opacity-60">{product.category}</span>

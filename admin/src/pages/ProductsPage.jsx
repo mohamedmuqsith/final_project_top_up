@@ -339,7 +339,7 @@ function ProductsPage() {
                 <div className="flex gap-3 mt-4">
                   {imagePreviews.map((preview, index) => (
                     <div key={index} className="avatar shadow-sm">
-                      <div className="w-24 rounded-lg outline outline-2 outline-base-content/10">
+                      <div className="w-24 rounded-lg outline-2 outline-base-content/10">
                         <img src={preview} alt={`Preview ${index + 1}`} className="object-cover" />
                       </div>
                     </div>
