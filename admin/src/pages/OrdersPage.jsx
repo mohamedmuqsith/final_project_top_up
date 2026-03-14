@@ -66,46 +66,75 @@ function OrdersPage() {
                       0
                     );
 
+                    const ALLOWED_TRANSITIONS = {
+                      pending: ["processing", "cancelled"],
+                      processing: ["shipped", "cancelled"],
+                      shipped: ["delivered"],
+                      delivered: [],
+                      cancelled: [],
+                    };
+
+                    const isTerminal = ["delivered", "cancelled"].includes(order.status);
+                    const allowedNext = ALLOWED_TRANSITIONS[order.status] || [];
+
                     return (
                       <tr key={order._id}>
                         <td>
-                          <span className="font-medium">#{order._id.slice(-8).toUpperCase()}</span>
+                          <span className="font-mono text-xs opacity-70">
+                            #{order._id.slice(-8).toUpperCase()}
+                          </span>
                         </td>
 
                         <td>
                           <div className="font-medium">{order.shippingAddress.fullName}</div>
-                          <div className="text-sm opacity-60">
-                            {order.shippingAddress.city}, {order.shippingAddress.state}
+                          <div className="text-xs opacity-60">
+                            {order.shippingAddress.city},{" "}
+                            {order.shippingAddress.province || order.shippingAddress.state}
                           </div>
                         </td>
 
                         <td>
-                          <div className="font-medium">{totalQuantity} items</div>
-                          <div className="text-sm opacity-60">
+                          <div className="text-sm font-medium">{totalQuantity} items</div>
+                          <div className="text-xs opacity-60 truncate max-w-[150px]">
                             {order.orderItems[0]?.name}
                             {order.orderItems.length > 1 && ` +${order.orderItems.length - 1} more`}
                           </div>
                         </td>
 
                         <td>
-                          <span className="font-semibold">${order.totalPrice.toFixed(2)}</span>
+                          <span className="font-semibold text-primary">
+                            ${order.totalPrice.toFixed(2)}
+                          </span>
                         </td>
 
                         <td>
-                          <select
-                            value={order.status}
-                            onChange={(e) => handleStatusChange(order._id, e.target.value)}
-                            className="select select-sm"
-                            disabled={updateStatusMutation.isPending}
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="shipped">Shipped</option>
-                            <option value="delivered">Delivered</option>
-                          </select>
+                          {isTerminal ? (
+                            <div
+                              className={`badge ${
+                                order.status === "delivered" ? "badge-success" : "badge-error"
+                              } badge-outline font-bold capitalize`}
+                            >
+                              {order.status}
+                            </div>
+                          ) : (
+                            <select
+                              value={order.status}
+                              onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                              className="select select-bordered select-sm capitalize font-medium min-w-[120px]"
+                              disabled={updateStatusMutation.isPending}
+                            >
+                              <option value={order.status}>{order.status}</option>
+                              {allowedNext.map((next) => (
+                                <option key={next} value={next}>
+                                  {next}
+                                </option>
+                              ))}
+                            </select>
+                          )}
                         </td>
 
                         <td>
-                          <span className="text-sm opacity-60">{formatDate(order.createdAt)}</span>
+                          <span className="text-xs opacity-60">{formatDate(order.createdAt)}</span>
                         </td>
                       </tr>
                     );

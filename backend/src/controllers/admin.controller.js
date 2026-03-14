@@ -169,84 +169,94 @@ export async function getAllOrders(_, res) {
   }
 }
 
+const ALLOWED_TRANSITIONS = {
+  pending: ["processing", "cancelled"],
+  processing: ["shipped", "cancelled"],
+  shipped: ["delivered"],
+  delivered: [], // terminal state
+  cancelled: [], // terminal state
+};
+
 export async function updateOrderStatus(req, res) {
   try {
     const { orderId } = req.params;
-    const { status } = req.body;
-
-    if (!["pending", "shipped", "delivered", "cancelled"].includes(status)) {
-      return res.status(400).json({ error: "Invalid status" });
-    }
+    const { status: newStatus } = req.body;
 
     const order = await Order.findById(orderId);
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    order.status = status;
+    const currentStatus = order.status;
 
-    if (status === "shipped" && !order.shippedAt) {
+    // Validate transition
+    if (newStatus !== currentStatus) {
+      const allowedNext = ALLOWED_TRANSITIONS[currentStatus] || [];
+      if (!allowedNext.includes(newStatus)) {
+        return res.status(400).json({
+          error: `Invalid transition from ${currentStatus} to ${newStatus}`,
+          allowedTransitions: allowedNext,
+        });
+      }
+    }
+
+    order.status = newStatus;
+
+    if (newStatus === "shipped" && !order.shippedAt) {
       order.shippedAt = new Date();
     }
 
-    if (status === "delivered" && !order.deliveredAt) {
+    if (newStatus === "delivered" && !order.deliveredAt) {
       order.deliveredAt = new Date();
     }
 
     await order.save();
 
-    // Trigger Notification natively
+    // Trigger Notification
     let type = "";
     let message = "";
-    if (status === "shipped") {
+    if (newStatus === "processing") {
+      type = "ORDER_PROCESSING";
+      message = "Your order is now being processed and prepared for shipment.";
+    } else if (newStatus === "shipped") {
       type = "ORDER_SHIPPED";
       message = "Great news! Your order has been shipped and is on its way.";
-    } else if (status === "delivered") {
+    } else if (newStatus === "delivered") {
       type = "ORDER_DELIVERED";
       message = "Your order has been delivered. Enjoy your electronics!";
-    } else if (status === "pending") {
-      type = "ORDER_PLACED";
-      message = "Your order is pending fulfillment.";
-    } else if (status === "cancelled") {
+    } else if (newStatus === "cancelled") {
       type = "ORDER_CANCELLED";
       message = "Your order has been cancelled. Please contact support if you have questions.";
     }
 
     if (type) {
-      // 1. Personal Personal Notification to CUSTOMER
+      // 1. Customer Notification
       await createNotification({
         recipientType: "customer",
-        recipientId: order.user.toString(), // Ensure ID is a string for broader compatibility
-        title: `Your Order is ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+        recipientId: order.user.toString(),
+        title: `Order #${order._id.toString().slice(-6).toUpperCase()} is ${newStatus.toUpperCase()}`,
         message,
         type,
         entityId: order._id,
         entityModel: "Order",
       });
 
-      // 2. Operational Business Notification to ADMIN (Feed)
+      // 2. Admin Operational Notification
       let adminType = "";
-      let adminMessage = "";
-      if (status === "shipped") {
-        adminType = "ORDER_MARKED_SHIPPED";
-        adminMessage = `Operational Alert: Order #${order._id.toString().slice(-6).toUpperCase()} marked as SHIPPED.`;
-      } else if (status === "delivered") {
-        adminType = "ORDER_MARKED_DELIVERED";
-        adminMessage = `Operational Alert: Order #${order._id.toString().slice(-6).toUpperCase()} marked as DELIVERED.`;
-      } else if (status === "cancelled") {
-        adminType = "ORDER_CANCELLED";
-        adminMessage = `Operational Alert: Order #${order._id.toString().slice(-6).toUpperCase()} marked as CANCELLED.`;
-      }
+      if (newStatus === "processing") adminType = "ORDER_MARKED_PROCESSING";
+      else if (newStatus === "shipped") adminType = "ORDER_MARKED_SHIPPED";
+      else if (newStatus === "delivered") adminType = "ORDER_MARKED_DELIVERED";
+      else if (newStatus === "cancelled") adminType = "ORDER_CANCELLED";
 
       if (adminType) {
         await createNotification({
           recipientType: "admin",
-          title: adminType.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' '),
-          message: adminMessage,
+          title: adminType.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" "),
+          message: `Operational: Order #${order._id.toString().slice(-6).toUpperCase()} updated to ${newStatus.toUpperCase()}.`,
           type: adminType,
           entityId: order._id,
           entityModel: "Order",
-          actionUrl: "/orders"
+          actionUrl: "/orders",
         });
       }
     }
