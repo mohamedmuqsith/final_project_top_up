@@ -1,0 +1,67 @@
+import { GoogleGenAI } from '@google/genai';
+import { ENV } from '../config/env.js';
+
+let aiInstance = null;
+if (ENV.GEMINI_API_KEY) {
+  aiInstance = new GoogleGenAI({ apiKey: ENV.GEMINI_API_KEY });
+}
+
+/**
+ * Sends candidate products and context to Gemini for smart ranking.
+ * Returns exactly an array of IDs and Reasons, or null if it fails.
+ */
+export const rankProductsWithGemini = async (context, candidates, type = "similar") => {
+  if (!aiInstance) {
+    console.warn("[Gemini] GEMINI_API_KEY is not set. Using fallback ranking.");
+    return null; /* triggers controller fallback */
+  }
+
+  // Optimize token usage by trimming candidate fields
+  const candidateSummary = candidates.map(c => ({
+    id: c._id, 
+    name: c.name, 
+    category: c.category, 
+    price: c.price, 
+    rating: c.averageRating 
+  }));
+
+  const prompt = `
+You are a product recommendation engine for an electronics e-commerce store.
+Your goal is to select the top 5 BEST product recommendations from the provided "candidates" list, based on the provided "context".
+
+Context (${type === "similar" ? "Target Product Viewed" : "User Preferences/History"}):
+${JSON.stringify(context, null, 2)}
+
+Candidate Products to Choose From:
+${JSON.stringify(candidateSummary, null, 2)}
+
+Instructions:
+1. Select exactly up to 5 best recommendations from the candidate list.
+2. If there are fewer than 5 candidates, return all of them ordered by best match.
+3. Your response must ONLY contain a valid JSON array.
+4. Each object in the array must strictly follow this structure:
+   {
+     "id": "the _id from the candidate",
+     "reason": "a short, 1-sentence explanation of why it was chosen"
+   }
+No markdown wrappers, no conversational text, strictly JSON array.
+`;
+
+  try {
+    const response = await aiInstance.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+      }
+    });
+
+    const parsedResponse = JSON.parse(response.text);
+    if (!Array.isArray(parsedResponse)) throw new Error("Output was not a JSON array");
+    return parsedResponse;
+    
+  } catch (error) {
+    console.error("[Gemini] API or Parsing Error:", error.message);
+    return null; // Signals controller to use rule-based fallback
+  }
+};
