@@ -15,6 +15,7 @@ import productRoutes from "./routes/product.route.js";
 import cartRoutes from "./routes/cart.route.js";
 import paymentRoutes from "./routes/payment.route.js";
 import notificationRoutes from "./routes/notification.route.js";
+import recommendationRoutes from "./routes/recommendation.route.js";
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/recommendations", recommendationRoutes);
 
 //  /api/payment/webhook =>
 

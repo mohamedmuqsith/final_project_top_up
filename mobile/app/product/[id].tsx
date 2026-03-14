@@ -6,6 +6,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
+import HorizontalProductList from "@/components/HorizontalProductList";
+import { useSimilarProducts, useFrequentlyBoughtTogether } from "@/hooks/useRecommendations";
 import {
   View,
   Text,
@@ -21,6 +23,8 @@ const { width } = Dimensions.get("window");
 const ProductDetailScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: product, isError, isLoading } = useProduct(id);
+  const { data: similarData, isLoading: similarLoading, isError: similarError } = useSimilarProducts(id);
+  const { data: boughtTogetherData, isLoading: boughtTogetherLoading, isError: boughtTogetherError } = useFrequentlyBoughtTogether(id);
   const { addToCart, isAddingToCart } = useCart();
 
   const { isInWishlist, toggleWishlist, isAddingToWishlist, isRemovingFromWishlist } =
@@ -197,6 +201,24 @@ const ProductDetailScreen = () => {
             <Text className="text-text-secondary text-base leading-6">{product.description}</Text>
           </View>
         </View>
+
+        {/* Similar Products (Gemini Enhanced) */}
+        <HorizontalProductList 
+          title="Similar Products"
+          products={similarData?.recommendations}
+          isLoading={similarLoading}
+          isError={similarError}
+          aiEnhanced={similarData?.aiEnhanced}
+        />
+
+        {/* Frequently Bought Together */}
+        <HorizontalProductList 
+          title="Frequently Bought Together"
+          products={boughtTogetherData?.recommendations}
+          isLoading={boughtTogetherLoading}
+          isError={boughtTogetherError}
+          aiEnhanced={boughtTogetherData?.aiEnhanced}
+        />
       </ScrollView>
 
       {/* Bottom Action Bar */}

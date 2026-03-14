@@ -30,6 +30,11 @@ const ProfileScreen = () => {
         contentContainerStyle={{ paddingBottom: 100 }}
       >
         {/* HEADER */}
+        <View className="px-6 pb-4 pt-6 flex-row justify-between items-end mb-2">
+          <Text className="text-text-primary text-3xl font-bold tracking-tight">Profile</Text>
+        </View>
+
+        {/* USER INFO */}
         <View className="px-6 pb-8">
           <View className="bg-surface rounded-3xl p-6">
             <View className="flex-row items-center">
@@ -82,10 +87,13 @@ const ProfileScreen = () => {
           <TouchableOpacity
             className="flex-row items-center justify-between py-2"
             activeOpacity={0.7}
+            onPress={() => router.push("/notifications" as any)}
           >
             <View className="flex-row items-center">
-              <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
-              <Text className="text-text-primary font-semibold ml-3">Notifications</Text>
+              <View className="bg-primary/20 p-2 rounded-xl border border-primary/10">
+                <Ionicons name="notifications" size={20} color="#00D9FF" />
+              </View>
+              <Text className="text-text-primary font-semibold ml-4">Notifications</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>
@@ -99,8 +107,10 @@ const ProfileScreen = () => {
             onPress={() => router.push("/privacy-security")}
           >
             <View className="flex-row items-center">
-              <Ionicons name="shield-checkmark-outline" size={22} color="#FFFFFF" />
-              <Text className="text-text-primary font-semibold ml-3">Privacy & Security</Text>
+              <View className="bg-emerald-500/20 p-2 rounded-xl border border-emerald-500/10">
+                <Ionicons name="shield-checkmark" size={20} color="#10B981" />
+              </View>
+              <Text className="text-text-primary font-semibold ml-4">Privacy & Security</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>
@@ -108,12 +118,12 @@ const ProfileScreen = () => {
 
         {/* SIGNOUT BTN */}
         <TouchableOpacity
-          className="mx-6 mb-3 bg-surface rounded-2xl py-5 flex-row items-center justify-center border-2 border-red-500/20"
+          className="mx-6 mb-3 bg-surface/50 rounded-2xl py-5 flex-row items-center justify-center border border-red-500/30"
           activeOpacity={0.8}
           onPress={() => signOut()}
         >
-          <Ionicons name="log-out-outline" size={22} color="#EF4444" />
-          <Text className="text-red-500 font-bold text-base ml-2">Sign Out</Text>
+          <Ionicons name="log-out" size={22} color="#FF6B6B" />
+          <Text className="text-[#FF6B6B] font-bold text-base ml-2">Sign Out</Text>
         </TouchableOpacity>
 
         <Text className="mx-6 mb-3 text-center text-text-secondary text-xs">Version 1.0.0</Text>

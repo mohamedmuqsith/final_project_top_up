@@ -1,6 +1,8 @@
 import ProductsGrid from "@/components/ProductsGrid";
 import SafeScreen from "@/components/SafeScreen";
 import useProducts from "@/hooks/useProducts";
+import { useRecommendedProducts, useTrendingProducts } from "@/hooks/useRecommendations";
+import HorizontalProductList from "@/components/HorizontalProductList";
 
 
 import { Ionicons } from "@expo/vector-icons";
@@ -31,6 +33,8 @@ const ShopScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
 
   const { data: products, isLoading, isError } = useProducts();
+  const { data: recommendations, isLoading: recLoading, isError: recError } = useRecommendedProducts();
+  const { data: trending, isLoading: trendLoading, isError: trendError } = useTrendingProducts();
 
   const filteredProducts = useMemo(() => {
     if (!products) return [];
@@ -114,6 +118,23 @@ const ShopScreen = () => {
             })}
           </ScrollView>
         </View>
+
+        <HorizontalProductList 
+          title="Recommended for You"
+          products={recommendations?.recommendations}
+          isLoading={recLoading}
+          isError={recError}
+          aiEnhanced={recommendations?.aiEnhanced}
+        />
+
+        {/* TRENDING PRODUCTS */}
+        <HorizontalProductList 
+          title="Trending Electronics"
+          products={trending?.recommendations}
+          isLoading={trendLoading}
+          isError={trendError}
+          aiEnhanced={trending?.aiEnhanced}
+        />
 
         <View className="px-6 mb-6">
           <View className="flex-row items-center justify-between mb-4">
