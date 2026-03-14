@@ -11,6 +11,7 @@ import {
   TrendingDownIcon,
 } from "lucide-react";
 import { capitalizeText, formatDate, getOrderStatusBadge } from "../lib/utils";
+import { Link, useNavigate } from "react-router";
 import {
   LineChart,
   Line,
@@ -23,9 +24,10 @@ import {
   Bar,
   Legend,
 } from "recharts";
-
-function DashboardPage() {
-  const [timeRange, setTimeRange] = useState("weekly");
+ 
+ function DashboardPage() {
+   const navigate = useNavigate();
+   const [timeRange, setTimeRange] = useState("weekly");
 
   const {
     data: statsData,
@@ -295,52 +297,71 @@ function DashboardPage() {
                       <span className="text-error font-bold text-sm shrink-0">{p.stock} left</span>
                     </div>
                   ))}
-                  {lowStockProducts.length > 0 && (
-                    <button className="btn btn-sm btn-outline btn-warning w-full mt-2">Manage Inventory</button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Predicted Stockout */}
-          <div className="card bg-base-100 shadow-xl border border-error/20">
-            <div className="card-body p-4 sm:p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <TrendingDownIcon className="text-error size-5 shrink-0" />
-                <h2 className="card-title text-base flex-1 m-0 leading-none">Predicted Stockouts</h2>
-                <div className="badge badge-error text-white border-0">{predictedStockouts.length}</div>
-              </div>
-
-              {isLoading ? (
-                <div className="py-4 text-center">
-                  <span className="loading loading-spinner"></span>
-                </div>
-              ) : predictedStockouts.length === 0 ? (
-                <p className="text-sm text-base-content/60 py-2">No impending stockouts detected.</p>
-              ) : (
-                <div className="space-y-3">
-                  {predictedStockouts.map((p) => (
-                    <div
-                      key={p._id}
-                      className="flex flex-col border-b border-base-200 pb-3 last:border-0 last:pb-0 gap-1"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm truncate pr-2 flex-1 hover:text-primary transition-colors cursor-pointer" title={p.name}>{p.name}</span>
-                        <span className="badge badge-error badge-sm text-white shrink-0 border-0">
-                          {p.daysRemaining === 0 ? "Out Now" : `< ${p.daysRemaining} days`}
-                        </span>
-                      </div>
-                      <div className="text-xs text-base-content/60 flex justify-between px-1">
-                        <span>Stock: {p.stock}</span>
-                        <span>Uses ~{p.avgDailyUnitsSold}/day</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+                     {lowStockProducts.length > 0 && (
+                     <button 
+                       onClick={() => navigate("/inventory-alerts?type=Low Stock")}
+                       className="btn btn-sm btn-outline btn-warning w-full mt-2"
+                     >
+                       Manage Inventory
+                     </button>
+                   )}
+                 </div>
+               )}
+             </div>
+           </div>
+ 
+           {/* Predicted Stockout */}
+           <div className="card bg-base-100 shadow-xl border border-error/20">
+             <div className="card-body p-4 sm:p-6">
+               <div className="flex items-center gap-2 mb-4">
+                 <TrendingDownIcon className="text-error size-5 shrink-0" />
+                 <h2 className="card-title text-base flex-1 m-0 leading-none">Predicted Stockouts</h2>
+                 <div className="badge badge-error text-white border-0">{predictedStockouts.length}</div>
+               </div>
+ 
+               {isLoading ? (
+                 <div className="py-4 text-center">
+                   <span className="loading loading-spinner"></span>
+                 </div>
+               ) : predictedStockouts.length === 0 ? (
+                 <p className="text-sm text-base-content/60 py-2">No impending stockouts detected.</p>
+               ) : (
+                 <div className="space-y-3">
+                   {predictedStockouts.map((p) => (
+                     <div
+                       key={p._id}
+                       className="flex flex-col border-b border-base-200 pb-3 last:border-0 last:pb-0 gap-1"
+                     >
+                       <div className="flex items-center justify-between">
+                         <span 
+                           onClick={() => navigate("/inventory-alerts?type=Predicted Stockout&search=" + p.name)}
+                           className="font-medium text-sm truncate pr-2 flex-1 hover:text-primary transition-colors cursor-pointer" 
+                           title={p.name}
+                         >
+                           {p.name}
+                         </span>
+                         <span className="badge badge-error badge-sm text-white shrink-0 border-0">
+                           {p.daysRemaining === 0 ? "Out Now" : `< ${p.daysRemaining} days`}
+                         </span>
+                       </div>
+                       <div className="text-xs text-base-content/60 flex justify-between px-1">
+                         <span>Stock: {p.stock}</span>
+                         <span>Uses ~{p.avgDailyUnitsSold}/day</span>
+                       </div>
+                     </div>
+                   ))}
+                   {predictedStockouts.length > 0 && (
+                     <button 
+                       onClick={() => navigate("/inventory-alerts?type=Predicted Stockout")}
+                       className="btn btn-sm btn-outline btn-error w-full mt-2"
+                     >
+                       Manage Predicted
+                     </button>
+                   )}
+                 </div>
+               )}
+             </div>
+           </div>
         </div>
       </div>
     </div>
