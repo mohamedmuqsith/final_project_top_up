@@ -9,6 +9,7 @@ import CustomersPage from "./pages/CustomersPage";
 import InventoryAlertsPage from "./pages/InventoryAlertsPage";
 import SalesReportsPage from "./pages/SalesReportsPage";
 import InventoryReportsPage from "./pages/InventoryReportsPage";
+import RestockSuggestionsPage from "./pages/RestockSuggestionsPage";
 import PageLoader from "./components/PageLoader";
 
 function App() {
@@ -34,6 +35,7 @@ function App() {
         <Route path="customers" element={<CustomersPage />} />
         <Route path="sales-reports" element={<SalesReportsPage />} />
         <Route path="inventory-reports" element={<InventoryReportsPage />} />
+        <Route path="restock-suggestions" element={<RestockSuggestionsPage />} />
       </Route>
     </Routes>
   );

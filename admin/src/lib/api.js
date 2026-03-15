@@ -88,4 +88,12 @@ export const inventoryReportApi = {
     const { data } = await axiosInstance.get("/admin/inventory-report");
     return data;
   },
-};
+};
+
+export const restockApi = {
+  get: async () => {
+    const { data } = await axiosInstance.get("/admin/restock-suggestions");
+    return data;
+  },
+};
+

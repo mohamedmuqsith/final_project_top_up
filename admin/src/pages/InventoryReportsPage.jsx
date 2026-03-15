@@ -7,6 +7,7 @@ import {
   AlertOctagonIcon,
   TruckIcon,
   AlertTriangleIcon,
+  DownloadIcon,
 } from "lucide-react";
 import {
   BarChart,
@@ -23,6 +24,7 @@ import {
 } from "recharts";
 
 import { getCategoryColor } from "../lib/utils";
+import { exportToCSV } from "../lib/exportUtils";
 
 const CustomPieTooltip = ({ active, payload, totalValue }) => {
   if (active && payload && payload.length) {
@@ -81,6 +83,19 @@ function InventoryReportsPage() {
     lowStockList = [],
   } = report || {};
 
+  const handleExport = () => {
+    exportToCSV(
+      stockByCategory,
+      [
+        { label: "Category", accessor: (c) => c._id },
+        { label: "Value", accessor: (c) => c.totalValue },
+        { label: "Units", accessor: (c) => c.totalUnits },
+        { label: "Products", accessor: (c) => c.productsCount },
+      ],
+      "inventory_report.csv"
+    );
+  };
+
   const statsCards = [
     {
       name: "Inventory Value",
@@ -116,8 +131,18 @@ function InventoryReportsPage() {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <ClipboardListIcon className="size-7 text-primary" />
-          <h1 className="text-2xl font-bold">Inventory Reports</h1>
+          <button 
+            className="btn btn-sm btn-outline gap-2" 
+            onClick={handleExport}
+            disabled={isLoading || !stockByCategory?.length}
+          >
+            <DownloadIcon className="size-4" />
+            Export CSV
+          </button>
+          <div className="flex items-center gap-3">
+            <ClipboardListIcon className="size-7 text-primary" />
+            <h1 className="text-2xl font-bold">Inventory Reports</h1>
+          </div>
         </div>
       </div>
 

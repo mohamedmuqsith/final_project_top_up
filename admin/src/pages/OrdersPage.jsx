@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { orderApi } from "../lib/api";
 import { formatDate, capitalizeText } from "../lib/utils";
+import { exportToCSV } from "../lib/exportUtils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   XIcon,
@@ -14,6 +15,8 @@ import {
   XCircleIcon,
   CircleDotIcon,
   LoaderIcon,
+  SearchIcon,
+  DownloadIcon,
 } from "lucide-react";
 
 const STATUS_ICON_MAP = {
@@ -37,17 +40,11 @@ function OrderDetailModal({ order, onClose }) {
 
   const totalQuantity = order.orderItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Build timeline
   const timeline = [
     { label: "Order Created", date: order.createdAt, status: "pending" },
   ];
-  if (["processing", "shipped", "delivered"].includes(order.status) || order.status === "cancelled") {
-    if (order.status !== "cancelled" || order.updatedAt) {
-      // If it went through processing
-      if (["processing", "shipped", "delivered"].includes(order.status)) {
-        timeline.push({ label: "Processing", date: null, status: "processing" });
-      }
-    }
+  if (["processing", "shipped", "delivered"].includes(order.status)) {
+    timeline.push({ label: "Processing", date: null, status: "processing" });
   }
   if (order.shippedAt) {
     timeline.push({ label: "Shipped", date: order.shippedAt, status: "shipped" });
@@ -128,9 +125,8 @@ function OrderDetailModal({ order, onClose }) {
           </div>
         </div>
 
-        {/* Payment & Shipping - Side by Side */}
+        {/* Payment & Shipping */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          {/* Payment */}
           <div className="bg-base-200 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <CreditCardIcon className="size-4 text-primary" />
@@ -154,7 +150,6 @@ function OrderDetailModal({ order, onClose }) {
             </div>
           </div>
 
-          {/* Shipping Address */}
           <div className="bg-base-200 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <MapPinIcon className="size-4 text-primary" />
@@ -196,7 +191,6 @@ function OrderDetailModal({ order, onClose }) {
           </ul>
         </div>
 
-        {/* Customer Info */}
         {order.user && (
           <div className="mt-6 pt-4 border-t border-base-300">
             <p className="text-xs opacity-50">
@@ -216,6 +210,8 @@ function OrderDetailModal({ order, onClose }) {
 function OrdersPage() {
   const queryClient = useQueryClient();
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState("All");
 
   const { data: ordersData, isLoading } = useQuery({
     queryKey: ["orders"],
@@ -236,12 +232,71 @@ function OrdersPage() {
 
   const orders = ordersData?.orders || [];
 
+  const filtered = orders.filter((order) => {
+    if (filterStatus !== "All" && order.status !== filterStatus) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const idMatch = order._id.toLowerCase().includes(q);
+      const nameMatch = order.shippingAddress?.fullName?.toLowerCase().includes(q);
+      if (!idMatch && !nameMatch) return false;
+    }
+    return true;
+  });
+
+  const handleExport = () => {
+    exportToCSV(
+      filtered,
+      [
+        { label: "Order ID", accessor: (o) => o._id },
+        { label: "Customer", accessor: (o) => o.shippingAddress?.fullName || "" },
+        { label: "Items", accessor: (o) => o.orderItems.reduce((s, i) => s + i.quantity, 0) },
+        { label: "Total", accessor: (o) => o.totalPrice.toFixed(2) },
+        { label: "Status", accessor: (o) => o.status },
+        { label: "Payment", accessor: (o) => o.paymentResult?.status || "" },
+        { label: "Date", accessor: (o) => formatDate(o.createdAt) },
+      ],
+      "orders_export.csv"
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* HEADER */}
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold">Orders</h1>
-        <p className="text-base-content/70">Manage customer orders</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Orders</h1>
+          <p className="text-base-content/70">Manage customer orders</p>
+        </div>
+        <button className="btn btn-sm btn-outline gap-2" onClick={handleExport} disabled={filtered.length === 0}>
+          <DownloadIcon className="size-4" />
+          Export CSV
+        </button>
+      </div>
+
+      {/* SEARCH & FILTER */}
+      <div className="flex flex-col md:flex-row gap-4 bg-base-100 p-4 rounded-xl shadow-sm border border-base-200">
+        <div className="relative flex-1">
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search by order ID or customer name..."
+            className="input input-bordered pl-10 w-full"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <select
+          className="select select-bordered w-full max-w-[180px]"
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+        >
+          <option value="All">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="processing">Processing</option>
+          <option value="shipped">Shipped</option>
+          <option value="delivered">Delivered</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
       </div>
 
       {/* ORDERS TABLE */}
@@ -251,10 +306,10 @@ function OrdersPage() {
             <div className="flex justify-center py-12">
               <span className="loading loading-spinner loading-lg" />
             </div>
-          ) : orders.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <div className="text-center py-12 text-base-content/60">
-              <p className="text-xl font-semibold mb-2">No orders yet</p>
-              <p className="text-sm">Orders will appear here once customers make purchases</p>
+              <p className="text-xl font-semibold mb-2">No orders found</p>
+              <p className="text-sm">Try adjusting your search or filter</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -272,7 +327,7 @@ function OrdersPage() {
                 </thead>
 
                 <tbody>
-                  {orders.map((order) => {
+                  {filtered.map((order) => {
                     const totalQuantity = order.orderItems.reduce(
                       (sum, item) => sum + item.quantity,
                       0

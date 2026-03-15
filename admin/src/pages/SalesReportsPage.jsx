@@ -12,6 +12,7 @@ import {
   TagIcon,
   CheckCircleIcon,
   XCircleIcon,
+  DownloadIcon,
 } from "lucide-react";
 import {
   LineChart,
@@ -25,6 +26,7 @@ import {
   Bar,
   Legend,
 } from "recharts";
+import { exportToCSV } from "../lib/exportUtils";
 
 const RANGE_OPTIONS = [
   { value: "30d", label: "Last 30 Days" },
@@ -61,6 +63,18 @@ function SalesReportsPage() {
     topProducts = [],
     topCategories = [],
   } = report || {};
+
+  const handleExport = () => {
+    exportToCSV(
+      chartData,
+      [
+        { label: "Date", accessor: (d) => d.name },
+        { label: "Revenue", accessor: (d) => d.revenue },
+        { label: "Orders", accessor: (d) => d.orders },
+      ],
+      `sales_report_${range}.csv`
+    );
+  };
 
   const statsCards = [
     {
@@ -103,17 +117,27 @@ function SalesReportsPage() {
           <TrendingUpIcon className="size-7 text-primary" />
           <h1 className="text-2xl font-bold">Sales Reports</h1>
         </div>
-        <select
-          className="select select-bordered w-full sm:w-auto"
-          value={range}
-          onChange={(e) => setRange(e.target.value)}
-        >
-          {RANGE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-3">
+          <button 
+            className="btn btn-sm btn-outline gap-2" 
+            onClick={handleExport}
+            disabled={isLoading || chartData.length === 0}
+          >
+            <DownloadIcon className="size-4" />
+            Export CSV
+          </button>
+          <select
+            className="select select-bordered w-full sm:w-auto"
+            value={range}
+            onChange={(e) => setRange(e.target.value)}
+          >
+            {RANGE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* SUMMARY STATS */}
