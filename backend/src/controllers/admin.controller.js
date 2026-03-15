@@ -283,8 +283,52 @@ export async function updateOrderStatus(req, res) {
 
 export async function getAllCustomers(_, res) {
   try {
-    const customers = await User.find().sort({ createdAt: -1 }); // latest user first
-    res.status(200).json({ customers });
+    const customers = await User.find().sort({ createdAt: -1 }).lean();
+
+    // Aggregate order stats per customer
+    const orderStats = await Order.aggregate([
+      {
+        $group: {
+          _id: "$user",
+          totalOrders: { $sum: 1 },
+          totalSpend: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$paymentResult.status", "succeeded"] },
+                    { $ne: ["$status", "cancelled"] },
+                  ],
+                },
+                "$totalPrice",
+                0,
+              ],
+            },
+          },
+          lastOrderDate: { $max: "$createdAt" },
+        },
+      },
+    ]);
+
+    const statsMap = {};
+    orderStats.forEach((stat) => {
+      statsMap[stat._id.toString()] = {
+        totalOrders: stat.totalOrders,
+        totalSpend: parseFloat(stat.totalSpend.toFixed(2)),
+        lastOrderDate: stat.lastOrderDate,
+      };
+    });
+
+    const enrichedCustomers = customers.map((customer) => ({
+      ...customer,
+      orderStats: statsMap[customer._id.toString()] || {
+        totalOrders: 0,
+        totalSpend: 0,
+        lastOrderDate: null,
+      },
+    }));
+
+    res.status(200).json({ customers: enrichedCustomers });
   } catch (error) {
     console.error("Error fetching customers:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -393,15 +437,6 @@ export async function getDashboardStats(req, res) {
             image: product.images?.[0],
           });
         }
-      } else if (product.stock === 0) {
-        predictedStockouts.push({
-          _id: product._id,
-          name: product.name,
-          stock: product.stock,
-          avgDailyUnitsSold: 0,
-          daysRemaining: 0,
-          image: product.images?.[0],
-        });
       }
     });
 

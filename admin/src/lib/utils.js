@@ -9,8 +9,12 @@ export const getOrderStatusBadge = (status) => {
       return "badge-success";
     case "shipped":
       return "badge-info";
+    case "processing":
+      return "badge-primary";
     case "pending":
       return "badge-warning";
+    case "cancelled":
+      return "badge-error";
     default:
       return "badge-ghost";
   }

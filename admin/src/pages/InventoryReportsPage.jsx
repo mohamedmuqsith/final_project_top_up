@@ -103,9 +103,9 @@ function InventoryReportsPage() {
     },
     {
       name: "Incoming Items",
-      value: "-",
+      value: "—",
       icon: <TruckIcon className="size-8" />,
-      desc: "Unsupported",
+      desc: "Coming Soon",
       textColor: "opacity-40 grayscale",
       bgColor: "bg-base-200/50",
     },
@@ -130,7 +130,7 @@ function InventoryReportsPage() {
             <div className={`stat-value text-2xl ${stat.name === 'Incoming Items' ? 'opacity-50' : ''}`}>{stat.value}</div>
             <div className="stat-desc mt-1">
               {stat.name === "Incoming Items" ? (
-                <div className="tooltip tooltip-right" data-tip="Incoming shipment tracking is not currently supported in the database.">
+                <div className="tooltip tooltip-right" data-tip="Incoming shipment tracking will be available in a future update.">
                   <span className="badge badge-sm badge-ghost cursor-help border-dashed">{stat.desc}</span>
                 </div>
               ) : (

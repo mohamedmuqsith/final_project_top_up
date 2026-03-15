@@ -39,6 +39,7 @@ export async function checkAndCreateInventoryNotifications(productIds = []) {
     const matchQuery = {
       createdAt: { $gte: sevenDaysAgo },
       "paymentResult.status": "succeeded",
+      status: { $ne: "cancelled" },
     };
 
     const salesAggregation = await Order.aggregate([

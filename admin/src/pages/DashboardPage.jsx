@@ -74,6 +74,7 @@ import {
       name: "Total Revenue",
       value: isLoading ? "..." : `$${totalRevenue.toFixed(2)}`,
       icon: <DollarSignIcon className="size-8" />,
+      desc: "From confirmed sales",
     },
     {
       name: "Confirmed Sales",
@@ -97,11 +98,13 @@ import {
       name: "Total Customers",
       value: isLoading ? "..." : totalCustomers,
       icon: <UsersIcon className="size-8" />,
+      desc: "Registered users",
     },
     {
       name: "Total Products",
       value: isLoading ? "..." : totalProducts,
       icon: <PackageIcon className="size-8" />,
+      desc: "Active catalog",
     },
   ];
 
@@ -128,6 +131,7 @@ import {
             <div className="stat-figure text-primary">{stat.icon}</div>
             <div className="stat-title">{stat.name}</div>
             <div className="stat-value">{stat.value}</div>
+            {stat.desc && <div className="stat-desc mt-1">{stat.desc}</div>}
           </div>
         ))}
       </div>
@@ -136,7 +140,7 @@ import {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card bg-base-100 shadow-xl overflow-hidden">
           <div className="card-body p-4 sm:p-6">
-            <h2 className="card-title mb-4">Revenue Over Time</h2>
+            <h2 className="card-title mb-4">Confirmed Revenue Over Time</h2>
             {isLoading ? (
               <div className="h-[300px] flex items-center justify-center">
                 <span className="loading loading-spinner text-primary"></span>
