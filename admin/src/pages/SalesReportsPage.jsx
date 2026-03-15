@@ -133,7 +133,7 @@ function SalesReportsPage() {
         {/* Revenue Chart */}
         <div className="card bg-base-100 shadow-xl overflow-hidden">
           <div className="card-body p-4 sm:p-6">
-            <h2 className="card-title mb-4">Revenue Growth</h2>
+            <h2 className="card-title mb-4">Confirmed Revenue Over Time</h2>
             {isLoading ? (
               <div className="h-[300px] flex items-center justify-center">
                 <span className="loading loading-spinner text-primary"></span>
@@ -156,7 +156,7 @@ function SalesReportsPage() {
                         color: "var(--chart-base-content)",
                         borderRadius: "8px",
                       }}
-                      formatter={(value) => [`$${value.toLocaleString()}`, "Revenue"]}
+                      formatter={(value) => [`$${value.toLocaleString()}`, "Confirmed Revenue"]}
                     />
                     <Legend />
                     <Line
@@ -165,7 +165,7 @@ function SalesReportsPage() {
                       stroke="var(--chart-primary)"
                       strokeWidth={3}
                       activeDot={{ r: 8 }}
-                      name="Revenue ($)"
+                      name="Confirmed Revenue ($)"
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -177,7 +177,7 @@ function SalesReportsPage() {
         {/* Orders Chart */}
         <div className="card bg-base-100 shadow-xl overflow-hidden">
           <div className="card-body p-4 sm:p-6">
-            <h2 className="card-title mb-4">Order Volume</h2>
+            <h2 className="card-title mb-4">Gross Order Volume</h2>
             {isLoading ? (
               <div className="h-[300px] flex items-center justify-center">
                 <span className="loading loading-spinner text-primary"></span>
@@ -203,7 +203,7 @@ function SalesReportsPage() {
                       cursor={{ fill: "var(--chart-base-300)" }}
                     />
                     <Legend />
-                    <Bar dataKey="orders" fill="var(--chart-secondary)" radius={[4, 4, 0, 0]} name="Orders Count" />
+                    <Bar dataKey="orders" fill="var(--chart-secondary)" radius={[4, 4, 0, 0]} name="Gross Orders" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
