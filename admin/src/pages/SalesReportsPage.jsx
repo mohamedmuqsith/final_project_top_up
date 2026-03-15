@@ -10,6 +10,8 @@ import {
   TrendingUpIcon,
   PackageIcon,
   TagIcon,
+  CheckCircleIcon,
+  XCircleIcon,
 } from "lucide-react";
 import {
   LineChart,
@@ -54,7 +56,7 @@ function SalesReportsPage() {
   }
 
   const {
-    summary = { totalRevenue: 0, totalOrders: 0, avgOrderValue: 0 },
+    summary = { totalRevenue: 0, totalOrders: 0, totalConfirmedSales: 0, cancelledOrders: 0, cancellationRate: 0, avgOrderValue: 0 },
     chartData = [],
     topProducts = [],
     topCategories = [],
@@ -68,16 +70,28 @@ function SalesReportsPage() {
       desc: RANGE_OPTIONS.find((o) => o.value === range)?.label,
     },
     {
+      name: "Confirmed Sales",
+      value: isLoading ? "..." : summary.totalConfirmedSales,
+      icon: <CheckCircleIcon className="size-8 text-success" />,
+      desc: "Paid & active",
+    },
+    {
+      name: "Cancelled Orders",
+      value: isLoading ? "..." : summary.cancelledOrders,
+      icon: <XCircleIcon className="size-8 text-error" />,
+      desc: isLoading ? "" : `${summary.cancellationRate}% rate`,
+    },
+    {
       name: "Total Orders",
       value: isLoading ? "..." : summary.totalOrders,
       icon: <ShoppingBagIcon className="size-8" />,
-      desc: "Paid orders only",
+      desc: "All orders (Gross)",
     },
     {
       name: "Avg Order Value",
       value: isLoading ? "..." : `$${summary.avgOrderValue.toFixed(2)}`,
       icon: <ReceiptIcon className="size-8" />,
-      desc: "Revenue ÷ Orders",
+      desc: "Revenue ÷ Confirmed Sales",
     },
   ];
 
