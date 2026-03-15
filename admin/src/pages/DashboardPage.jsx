@@ -9,6 +9,8 @@ import {
   UsersIcon,
   AlertTriangleIcon,
   TrendingDownIcon,
+  CheckCircleIcon,
+  XCircleIcon,
 } from "lucide-react";
 import { capitalizeText, formatDate, getOrderStatusBadge } from "../lib/utils";
 import { Link, useNavigate } from "react-router";
@@ -23,6 +25,9 @@ import {
   BarChart,
   Bar,
   Legend,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
  
  function DashboardPage() {
@@ -52,12 +57,16 @@ import {
   const {
     totalRevenue = 0,
     totalOrders = 0,
+    confirmedSales = 0,
+    cancelledOrders = 0,
+    cancellationRate = 0,
     totalCustomers = 0,
     totalProducts = 0,
     recentOrders = [],
     lowStockProducts = [],
     predictedStockouts = [],
     chartData = [],
+    statusMap = {},
   } = statsData || {};
 
   const statsCards = [
@@ -67,9 +76,22 @@ import {
       icon: <DollarSignIcon className="size-8" />,
     },
     {
+      name: "Confirmed Sales",
+      value: isLoading ? "..." : confirmedSales,
+      icon: <CheckCircleIcon className="size-8 text-success" />,
+      desc: "Paid & active",
+    },
+    {
+      name: "Cancelled Orders",
+      value: isLoading ? "..." : cancelledOrders,
+      icon: <XCircleIcon className="size-8 text-error" />,
+      desc: isLoading ? "" : `${cancellationRate}% rate`,
+    },
+    {
       name: "Total Orders",
       value: isLoading ? "..." : totalOrders,
       icon: <ShoppingBagIcon className="size-8" />,
+      desc: "All orders (Gross)",
     },
     {
       name: "Total Customers",
@@ -145,7 +167,7 @@ import {
                       stroke="var(--chart-primary)"
                       strokeWidth={3}
                       activeDot={{ r: 8 }}
-                      name="Revenue ($)"
+                      name="Confirmed Revenue ($)"
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -182,11 +204,63 @@ import {
                       cursor={{ fill: "var(--chart-base-300)" }}
                     />
                     <Legend />
-                    <Bar dataKey="orders" fill="var(--chart-secondary)" radius={[4, 4, 0, 0]} name="Orders Count" />
+                    <Bar dataKey="orders" fill="var(--chart-secondary)" radius={[4, 4, 0, 0]} name="Gross Orders Count" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* STATUS BREAKDOWN */}
+        <div className="card bg-base-100 shadow-xl overflow-hidden lg:col-span-2">
+          <div className="card-body p-4 sm:p-6">
+            <h2 className="card-title mb-4">Order Status Breakdown</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={Object.entries(statusMap).map(([name, value]) => ({ name: capitalizeText(name), value }))}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {Object.entries(statusMap).map(([name], index) => {
+                        const colors = {
+                          pending: "#fbbf24",
+                          processing: "#3b82f6",
+                          shipped: "#8b5cf6",
+                          delivered: "#10b981",
+                          cancelled: "#ef4444",
+                        };
+                        return <Cell key={`cell-${index}`} fill={colors[name] || "#94a3b8"} />;
+                      })}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: "var(--chart-base-100)",
+                        borderColor: "var(--chart-base-300)",
+                        color: "var(--chart-base-content)",
+                        borderRadius: "8px",
+                      }}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {Object.entries(statusMap).map(([status, count]) => (
+                  <div key={status} className="flex flex-col p-3 rounded-lg bg-base-200/50">
+                    <span className="text-xs opacity-60 uppercase font-bold tracking-wider">{status}</span>
+                    <span className="text-xl font-bold">{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>

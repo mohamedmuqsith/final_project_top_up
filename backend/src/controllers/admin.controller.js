@@ -296,9 +296,26 @@ export async function getDashboardStats(req, res) {
     const { timeRange = "weekly" } = req.query; // "daily" | "weekly" | "monthly"
 
     const totalOrders = await Order.countDocuments();
+    const confirmedSales = await Order.countDocuments({ "paymentResult.status": "succeeded", status: { $ne: "cancelled" } });
+    const cancelledOrders = await Order.countDocuments({ status: "cancelled" });
+    const cancellationRate = totalOrders > 0 ? ((cancelledOrders / totalOrders) * 100).toFixed(1) : 0;
+
+    const statusBreakdown = await Order.aggregate([
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const statusMap = statusBreakdown.reduce((acc, curr) => {
+      acc[curr._id] = curr.count;
+      return acc;
+    }, {});
 
     const revenueResult = await Order.aggregate([
-      { $match: { "paymentResult.status": "succeeded" } },
+      { $match: { "paymentResult.status": "succeeded", status: { $ne: "cancelled" } } },
       {
         $group: {
           _id: null,
@@ -332,6 +349,7 @@ export async function getDashboardStats(req, res) {
         $match: {
           createdAt: { $gte: thirtyDaysAgo },
           "paymentResult.status": "succeeded",
+          status: { $ne: "cancelled" },
         },
       },
       { $unwind: "$orderItems" },
@@ -404,7 +422,16 @@ export async function getDashboardStats(req, res) {
           orders: { $sum: 1 },
           totalSales: {
             $sum: {
-              $cond: [{ $eq: ["$paymentResult.status", "succeeded"] }, "$totalPrice", 0],
+              $cond: [
+                { 
+                  $and: [
+                    { $eq: ["$paymentResult.status", "succeeded"] },
+                    { $ne: ["$status", "cancelled"] }
+                  ]
+                }, 
+                "$totalPrice", 
+                0
+              ],
             },
           },
         },
@@ -421,6 +448,10 @@ export async function getDashboardStats(req, res) {
     res.status(200).json({
       totalRevenue,
       totalOrders,
+      confirmedSales,
+      cancelledOrders,
+      cancellationRate,
+      statusMap,
       totalCustomers,
       totalProducts,
       recentOrders,
@@ -474,6 +505,7 @@ export async function getInventoryAlerts(req, res) {
         $match: {
           createdAt: { $gte: sevenDaysAgo },
           "paymentResult.status": "succeeded",
+          status: { $ne: "cancelled" },
         },
       },
       { $unwind: "$orderItems" },
@@ -571,34 +603,80 @@ export async function getSalesReport(req, res) {
       groupLabel = "daily";
     }
 
-    const matchStage = {
-      createdAt: { $gte: startDate },
-      "paymentResult.status": "succeeded",
-    };
-
     // 1. Summary metrics
     const summaryAgg = await Order.aggregate([
-      { $match: matchStage },
       {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: "$totalPrice" },
-          totalOrders: { $sum: 1 },
+        $facet: {
+          revenueStats: [
+            { 
+              $match: { 
+                createdAt: { $gte: startDate },
+                "paymentResult.status": "succeeded",
+                status: { $ne: "cancelled" }
+              } 
+            },
+            {
+              $group: {
+                _id: null,
+                totalRevenue: { $sum: "$totalPrice" },
+                totalConfirmedSales: { $sum: 1 },
+              },
+            },
+          ],
+          totalStats: [
+            { $match: { createdAt: { $gte: startDate } } },
+            {
+              $group: {
+                _id: null,
+                totalOrders: { $sum: 1 },
+                cancelledOrders: {
+                  $sum: { $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0] },
+                },
+              },
+            },
+          ],
+        },
+      },
+      {
+        $project: {
+          totalRevenue: { $ifNull: [{ $arrayElemAt: ["$revenueStats.totalRevenue", 0] }, 0] },
+          totalConfirmedSales: { $ifNull: [{ $arrayElemAt: ["$revenueStats.totalConfirmedSales", 0] }, 0] },
+          totalOrders: { $ifNull: [{ $arrayElemAt: ["$totalStats.totalOrders", 0] }, 0] },
+          cancelledOrders: { $ifNull: [{ $arrayElemAt: ["$totalStats.cancelledOrders", 0] }, 0] },
         },
       },
     ]);
+    
+    const { totalRevenue, totalConfirmedSales, totalOrders, cancelledOrders } = summaryAgg[0];
+    const avgOrderValue = totalConfirmedSales > 0 ? totalRevenue / totalConfirmedSales : 0;
+    const cancellationRate = totalOrders > 0 ? ((cancelledOrders / totalOrders) * 100).toFixed(1) : 0;
 
-    const totalRevenue = summaryAgg[0]?.totalRevenue || 0;
-    const totalOrders = summaryAgg[0]?.totalOrders || 0;
-    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-
+    const revenueMatchStage = {
+      createdAt: { $gte: startDate },
+      "paymentResult.status": "succeeded",
+      status: { $ne: "cancelled" },
+    };
+    
     // 2. Revenue & orders over time
     const timeSeriesAgg = await Order.aggregate([
-      { $match: matchStage },
+      { $match: { createdAt: { $gte: startDate } } },
       {
         $group: {
           _id: { $dateToString: { format: dateFormat, date: "$createdAt" } },
-          revenue: { $sum: "$totalPrice" },
+          revenue: {
+            $sum: {
+              $cond: [
+                { 
+                  $and: [
+                    { $eq: ["$paymentResult.status", "succeeded"] },
+                    { $ne: ["$status", "cancelled"] }
+                  ]
+                }, 
+                "$totalPrice", 
+                0
+              ],
+            },
+          },
           orders: { $sum: 1 },
         },
       },
@@ -613,7 +691,7 @@ export async function getSalesReport(req, res) {
 
     // 3. Top products by units sold
     const topProductsAgg = await Order.aggregate([
-      { $match: matchStage },
+      { $match: revenueMatchStage },
       { $unwind: "$orderItems" },
       {
         $group: {
@@ -652,7 +730,7 @@ export async function getSalesReport(req, res) {
 
     // 4. Top categories by revenue
     const topCategoriesAgg = await Order.aggregate([
-      { $match: matchStage },
+      { $match: revenueMatchStage },
       { $unwind: "$orderItems" },
       {
         $lookup: {
@@ -696,6 +774,9 @@ export async function getSalesReport(req, res) {
       summary: {
         totalRevenue: parseFloat(totalRevenue.toFixed(2)),
         totalOrders,
+        totalConfirmedSales,
+        cancelledOrders,
+        cancellationRate,
         avgOrderValue: parseFloat(avgOrderValue.toFixed(2)),
       },
       chartData,
