@@ -6,6 +6,11 @@ import Constants from "expo-constants";
 
 // Dynamically determine the API URL based on the environment
 const getBaseUrl = () => {
+  // If we have an environment variable, use it (highest priority)
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+
   // If we're in development, use the local IP
   if (__DEV__) {
     // Constants.expoConfig?.hostUri is the best way to find your machine's IP in Expo
