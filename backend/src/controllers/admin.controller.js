@@ -319,14 +319,40 @@ export async function getAllCustomers(_, res) {
       };
     });
 
-    const enrichedCustomers = customers.map((customer) => ({
-      ...customer,
-      orderStats: statsMap[customer._id.toString()] || {
+    const now = new Date();
+
+    const enrichedCustomers = customers.map((customer) => {
+      const stats = statsMap[customer._id.toString()] || {
         totalOrders: 0,
         totalSpend: 0,
         lastOrderDate: null,
-      },
-    }));
+      };
+
+      // Compute customer segment
+      let segment = "New";
+      const daysSinceLastOrder = stats.lastOrderDate
+        ? Math.floor((now - new Date(stats.lastOrderDate)) / (1000 * 60 * 60 * 24))
+        : null;
+      const daysSinceJoined = Math.floor((now - new Date(customer.createdAt)) / (1000 * 60 * 60 * 24));
+
+      if (stats.totalOrders >= 5 || stats.totalSpend >= 500) {
+        segment = "VIP";
+      } else if (stats.totalOrders >= 2 && daysSinceLastOrder !== null && daysSinceLastOrder > 60) {
+        segment = "At-Risk";
+      } else if (stats.totalOrders >= 2) {
+        segment = "Repeat";
+      } else if (stats.totalOrders <= 1 && daysSinceJoined <= 30) {
+        segment = "New";
+      } else if (stats.totalOrders <= 1 && daysSinceJoined > 30) {
+        segment = "At-Risk";
+      }
+
+      return {
+        ...customer,
+        orderStats: stats,
+        segment,
+      };
+    });
 
     res.status(200).json({ customers: enrichedCustomers });
   } catch (error) {
@@ -922,3 +948,108 @@ export async function getInventoryReport(req, res) {
     res.status(500).json({ error: "Internal server error" });
   }
 }
+
+// GET /api/admin/restock-suggestions
+export async function getRestockSuggestions(req, res) {
+  try {
+    const products = await Product.find({}, "name stock price images category lowStockThreshold").lean();
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // 30-day sales velocity from confirmed orders only
+    const salesAggregation = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: thirtyDaysAgo },
+          "paymentResult.status": "succeeded",
+          status: { $ne: "cancelled" },
+        },
+      },
+      { $unwind: "$orderItems" },
+      {
+        $group: {
+          _id: "$orderItems.product",
+          totalQuantitySold: { $sum: "$orderItems.quantity" },
+        },
+      },
+    ]);
+
+    const salesMap = {};
+    salesAggregation.forEach((item) => {
+      salesMap[item._id.toString()] = item.totalQuantitySold;
+    });
+
+    const suggestions = [];
+
+    products.forEach((product) => {
+      const totalSold30d = salesMap[product._id.toString()] || 0;
+      const avgDailySales = totalSold30d / 30;
+      const daysRemaining = avgDailySales > 0 ? product.stock / avgDailySales : Infinity;
+      const threshold = product.lowStockThreshold !== undefined ? product.lowStockThreshold : 10;
+
+      // Only include items that need attention
+      const needsRestock = product.stock <= 0 || product.stock <= threshold || (avgDailySales > 0 && daysRemaining <= 14);
+      if (!needsRestock) return;
+
+      // Compute priority
+      let priority;
+      let priorityScore;
+      if (product.stock <= 0) {
+        priority = "Critical";
+        priorityScore = 4;
+      } else if (daysRemaining <= 3) {
+        priority = "Critical";
+        priorityScore = 4;
+      } else if (daysRemaining <= 7 || product.stock <= threshold) {
+        priority = "High";
+        priorityScore = 3;
+      } else if (daysRemaining <= 14) {
+        priority = "Medium";
+        priorityScore = 2;
+      } else {
+        priority = "Low";
+        priorityScore = 1;
+      }
+
+      // Suggested restock: 30-day supply target minus current stock
+      const targetStock = Math.ceil(avgDailySales * 30);
+      const suggestedQty = Math.max(targetStock - product.stock, threshold);
+
+      suggestions.push({
+        _id: product._id,
+        name: product.name,
+        category: product.category,
+        currentStock: product.stock,
+        price: product.price,
+        image: product.images?.[0],
+        avgDailySales: parseFloat(avgDailySales.toFixed(2)),
+        totalSold30d,
+        daysRemaining: daysRemaining === Infinity ? "N/A" : Math.floor(daysRemaining),
+        priority,
+        priorityScore,
+        suggestedRestockQty: suggestedQty,
+        estimatedRestockCost: parseFloat((suggestedQty * product.price).toFixed(2)),
+      });
+    });
+
+    // Sort by priority descending
+    suggestions.sort((a, b) => b.priorityScore - a.priorityScore);
+
+    // Summary counts
+    const summary = {
+      critical: suggestions.filter((s) => s.priority === "Critical").length,
+      high: suggestions.filter((s) => s.priority === "High").length,
+      medium: suggestions.filter((s) => s.priority === "Medium").length,
+      total: suggestions.length,
+      totalEstimatedCost: parseFloat(
+        suggestions.reduce((sum, s) => sum + s.estimatedRestockCost, 0).toFixed(2)
+      ),
+    };
+
+    res.status(200).json({ suggestions, summary });
+  } catch (error) {
+    console.error("Error fetching restock suggestions:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}

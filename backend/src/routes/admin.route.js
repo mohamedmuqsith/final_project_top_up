@@ -11,6 +11,7 @@ import {
   getInventoryAlerts,
   getSalesReport,
   getInventoryReport,
+  getRestockSuggestions,
 } from "../controllers/admin.controller.js";
 import { adminOnly, protectRoute } from "../middleware/auth.middleware.js";
 import { upload } from "../middleware/multer.middleware.js";
@@ -34,6 +35,7 @@ router.get("/stats", getDashboardStats);
 router.get("/alerts", getInventoryAlerts);
 router.get("/sales-report", getSalesReport);
 router.get("/inventory-report", getInventoryReport);
+router.get("/restock-suggestions", getRestockSuggestions);
 
 // PUT: Used for full resource replacement, updating the entire resource
 // PATCH: Used for partial resource updates, updating a specific part of the resource

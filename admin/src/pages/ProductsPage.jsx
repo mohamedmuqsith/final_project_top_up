@@ -1,8 +1,14 @@
 import { useState } from "react";
-import { PlusIcon, PencilIcon, Trash2Icon, XIcon, ImageIcon } from "lucide-react";
+import { PlusIcon, PencilIcon, Trash2Icon, XIcon, ImageIcon, SearchIcon } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productApi } from "../lib/api";
 import { getStockStatusBadge } from "../lib/utils";
+
+const CATEGORIES = [
+  "Smartphones", "Laptops", "Tablets", "Audio", "Headphones",
+  "Speakers", "Gaming", "Accessories", "Smart Home", "Wearables",
+  "Cameras", "Storage", "Networking", "Monitors", "Computer Components"
+];
 
 function ProductsPage() {
   const [showModal, setShowModal] = useState(false);
@@ -18,15 +24,18 @@ function ProductsPage() {
   const [images, setImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
 
+  // Filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategory, setFilterCategory] = useState("All");
+  const [filterStock, setFilterStock] = useState("All");
+
   const queryClient = useQueryClient();
 
-  // fetch some data
   const { data: products = [] } = useQuery({
     queryKey: ["products"],
     queryFn: productApi.getAll,
   });
 
-  // creating, update, deleting
   const createProductMutation = useMutation({
     mutationFn: productApi.create,
     onSuccess: () => {
@@ -52,7 +61,6 @@ function ProductsPage() {
   });
 
   const closeModal = () => {
-    // reset the state
     setShowModal(false);
     setEditingProduct(null);
     setFormData({
@@ -85,7 +93,6 @@ function ProductsPage() {
     const files = Array.from(e.target.files);
     if (files.length > 3) return alert("Maximum 3 images allowed");
 
-    // revoke previous blob URLs to free memory
     imagePreviews.forEach((url) => {
       if (url.startsWith("blob:")) URL.revokeObjectURL(url);
     });
@@ -97,7 +104,6 @@ function ProductsPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // for new products, require images
     if (!editingProduct && imagePreviews.length === 0) {
       return alert("Please upload at least one image");
     }
@@ -112,7 +118,6 @@ function ProductsPage() {
     }
     formDataToSend.append("category", formData.category);
 
-    // only append new images if they were selected
     if (images.length > 0) images.forEach((image) => formDataToSend.append("images", image));
 
     if (editingProduct) {
@@ -121,6 +126,16 @@ function ProductsPage() {
       createProductMutation.mutate(formDataToSend);
     }
   };
+
+  // Apply filters
+  const filtered = (products || []).filter((product) => {
+    if (searchQuery && !product.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (filterCategory !== "All" && product.category !== filterCategory) return false;
+    if (filterStock === "In Stock" && product.stock <= 0) return false;
+    if (filterStock === "Low Stock" && (product.stock <= 0 || !product.isLowStock)) return false;
+    if (filterStock === "Out of Stock" && product.stock > 0) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -136,65 +151,106 @@ function ProductsPage() {
         </button>
       </div>
 
+      {/* SEARCH & FILTERS */}
+      <div className="flex flex-col md:flex-row gap-4 bg-base-100 p-4 rounded-xl shadow-sm border border-base-200">
+        <div className="relative flex-1">
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search products..."
+            className="input input-bordered pl-10 w-full"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <select
+          className="select select-bordered w-full max-w-[180px]"
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+        >
+          <option value="All">All Categories</option>
+          {CATEGORIES.map((cat) => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
+        <select
+          className="select select-bordered w-full max-w-[150px]"
+          value={filterStock}
+          onChange={(e) => setFilterStock(e.target.value)}
+        >
+          <option value="All">All Stock</option>
+          <option value="In Stock">In Stock</option>
+          <option value="Low Stock">Low Stock</option>
+          <option value="Out of Stock">Out of Stock</option>
+        </select>
+      </div>
+
       {/* PRODUCTS GRID */}
-      <div className="grid grid-cols-1 gap-4">
-        {products?.map((product) => {
-          const status = getStockStatusBadge(product.stock, product.isLowStock);
+      {filtered.length === 0 ? (
+        <div className="text-center py-12 text-base-content/60">
+          <p className="text-xl font-semibold mb-2">No products found</p>
+          <p className="text-sm">Try adjusting your search or filter</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {filtered.map((product) => {
+            const status = getStockStatusBadge(product.stock, product.isLowStock);
 
-          return (
-            <div key={product._id} className="card bg-base-100 shadow-xl">
-              <div className="card-body">
-                <div className="flex items-center gap-6">
-                  <div className="avatar">
-                    <div className="w-20 rounded-xl">
-                      <img src={product.images[0]} alt={product.name} />
-                    </div>
-                  </div>
-
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="card-title">{product.name}</h3>
-                        <p className="text-base-content/70 text-sm">{product.category}</p>
-                      </div>
-                      <div className={`badge ${status.class}`}>{status.text}</div>
-                    </div>
-                    <div className="flex items-center gap-6 mt-4">
-                      <div>
-                        <p className="text-xs text-base-content/70">Price</p>
-                        <p className="font-bold text-lg">${product.price}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-base-content/70">Stock</p>
-                        <p className="font-bold text-lg">{product.stock} units</p>
+            return (
+              <div key={product._id} className="card bg-base-100 shadow-xl">
+                <div className="card-body">
+                  <div className="flex items-center gap-6">
+                    <div className="avatar">
+                      <div className="w-20 rounded-xl">
+                        <img src={product.images[0]} alt={product.name} />
                       </div>
                     </div>
-                  </div>
 
-                  <div className="card-actions">
-                    <button
-                      className="btn btn-square btn-ghost"
-                      onClick={() => handleEdit(product)}
-                    >
-                      <PencilIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                      className="btn btn-square btn-ghost text-error"
-                      onClick={() => deleteProductMutation.mutate(product._id)}
-                    >
-                      {deleteProductMutation.isPending ? (
-                        <span className="loading loading-spinner"></span>
-                      ) : (
-                        <Trash2Icon className="w-5 h-5" />
-                      )}
-                    </button>
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="card-title">{product.name}</h3>
+                          <p className="text-base-content/70 text-sm">{product.category}</p>
+                        </div>
+                        <div className={`badge ${status.class}`}>{status.text}</div>
+                      </div>
+                      <div className="flex items-center gap-6 mt-4">
+                        <div>
+                          <p className="text-xs text-base-content/70">Price</p>
+                          <p className="font-bold text-lg">${product.price}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-base-content/70">Stock</p>
+                          <p className="font-bold text-lg">{product.stock} units</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="card-actions">
+                      <button
+                        className="btn btn-square btn-ghost"
+                        onClick={() => handleEdit(product)}
+                      >
+                        <PencilIcon className="w-5 h-5" />
+                      </button>
+                      <button
+                        className="btn btn-square btn-ghost text-error"
+                        onClick={() => deleteProductMutation.mutate(product._id)}
+                      >
+                        {deleteProductMutation.isPending ? (
+                          <span className="loading loading-spinner"></span>
+                        ) : (
+                          <Trash2Icon className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* ADD/EDIT PRODUCT MODAL */}
 
@@ -240,11 +296,7 @@ function ProductsPage() {
                   required
                 >
                   <option value="">Select category</option>
-                  {[
-                    "Smartphones", "Laptops", "Tablets", "Audio", "Headphones",
-                    "Speakers", "Gaming", "Accessories", "Smart Home", "Wearables",
-                    "Cameras", "Storage", "Networking", "Monitors", "Computer Components"
-                  ].map(cat => (
+                  {CATEGORIES.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
