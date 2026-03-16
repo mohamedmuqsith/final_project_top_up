@@ -156,15 +156,15 @@ import {
           <div className="card-body p-4 sm:p-6">
             <h2 className="card-title mb-4">Confirmed Revenue Over Time</h2>
             {isLoading ? (
-              <div className="h-[300px] flex items-center justify-center">
+              <div className="h-75 flex items-center justify-center">
                 <span className="loading loading-spinner text-primary"></span>
               </div>
             ) : chartData.length === 0 ? (
-              <div className="h-[300px] flex items-center justify-center text-base-content/60">
+              <div className="h-75 flex items-center justify-center text-base-content/60">
                 No revenue data available
               </div>
             ) : (
-              <div className="h-[300px] w-full min-h-[300px]">
+              <div className="h-75 w-full min-h-75">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
@@ -198,15 +198,15 @@ import {
           <div className="card-body p-4 sm:p-6">
             <h2 className="card-title mb-4">Orders Over Time</h2>
             {isLoading ? (
-              <div className="h-[300px] flex items-center justify-center">
+              <div className="h-75 flex items-center justify-center">
                 <span className="loading loading-spinner text-primary"></span>
               </div>
             ) : chartData.length === 0 ? (
-              <div className="h-[300px] flex items-center justify-center text-base-content/60">
+              <div className="h-75 flex items-center justify-center text-base-content/60">
                 No orders data available
               </div>
             ) : (
-              <div className="h-[300px] w-full min-h-[300px]">
+              <div className="h-75 w-full min-h-75">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <BarChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
@@ -235,7 +235,7 @@ import {
           <div className="card-body p-4 sm:p-6">
             <h2 className="card-title mb-4">Order Status Breakdown</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-              <div className="h-[300px]">
+              <div className="h-75">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <PieChart>
                     <Pie
@@ -318,14 +318,14 @@ import {
                           <span className="font-medium text-xs">#{order._id.slice(-8).toUpperCase()}</span>
                         </td>
                         <td>
-                          <div className="max-w-[120px] truncate">
+                          <div className="max-w-30 truncate">
                             <span className="font-medium">{order.shippingAddress?.fullName || "N/A"}</span>
                           </div>
                         </td>
                         <td>
                           <div className="text-sm">
                             {order.orderItems?.[0]?.name && (
-                              <span className="max-w-[120px] truncate inline-block align-bottom">
+                              <span className="max-w-30 truncate inline-block align-bottom">
                                 {order.orderItems[0].name}
                               </span>
                             )}

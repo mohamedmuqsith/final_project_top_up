@@ -262,9 +262,9 @@ const ProductDetailScreen = () => {
                         {new Date(review.createdAt).toLocaleDateString()}
                       </Text>
                     </View>
-                    {review.title ? (
+                    {!!review.title && (
                       <Text className="text-text-primary font-bold text-sm mb-1">{review.title}</Text>
-                    ) : null}
+                    )}
                     <Text className="text-text-secondary text-sm leading-5">
                       {review.comment || "No comment provided."}
                     </Text>
@@ -275,7 +275,8 @@ const ProductDetailScreen = () => {
               <View className="bg-surface p-6 rounded-2xl items-center border border-dashed border-white/10">
                 <View className="mb-2">
                   <Ionicons name="chatbubble-outline" size={32} color="#666" />
-                </View>                <Text className="text-text-secondary text-center">No reviews yet. Be the first to share your thoughts!</Text>
+                </View>
+                <Text className="text-text-secondary text-center">No reviews yet. Be the first to share your thoughts!</Text>
               </View>
             )}
 

@@ -108,7 +108,7 @@ const RatingModal = ({
                         ))}
                       </View>
 
-                      {currentRating > 0 && (
+                      {!!(currentRating > 0) && (
                         <View className="gap-3">
                           <View>
                             <Text className="text-text-secondary text-xs mb-1 font-semibold">Title (Optional)</Text>
