@@ -4,6 +4,7 @@ import { Order } from "../models/order.model.js";
 import { User } from "../models/user.model.js";
 import { Review } from "../models/review.model.js";
 import { createNotification, checkAndCreateInventoryNotifications } from "../services/notification.service.js";
+import { enrichProductsWithPrices } from "../services/pricing.service.js";
 
 export async function createProduct(req, res) {
   try {
@@ -78,7 +79,8 @@ export async function getAllProducts(_, res) {
       };
     });
 
-    res.status(200).json(productsWithStatus);
+    const enrichedProducts = await enrichProductsWithPrices(productsWithStatus);
+    res.status(200).json(enrichedProducts);
   } catch (error) {
     console.error("Error fetching products:", error);
     res.status(500).json({ message: "Internal server error" });

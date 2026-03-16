@@ -21,3 +21,47 @@
   --chart-base-100: #0f172a;
   --chart-base-300: #1e293b;
 }
+
+/* Global Dark Mode Contrast Fixes */
+@layer base {
+  input, select, textarea {
+    @apply text-base-content selection:bg-primary selection:text-primary-content;
+  }
+
+  /* Placeholder contrast */
+  ::placeholder {
+    @apply text-base-content/40 !important;
+  }
+
+  /* Label contrast */
+  .label-text {
+    @apply text-base-content font-semibold;
+  }
+
+  /* Date input specific fixes for dark theme */
+  input[type="date"] {
+    @apply text-base-content;
+    color-scheme: dark;
+  }
+
+  /* Ensure modal headers and bodies have correct content color */
+  .modal-box {
+    @apply text-base-content border border-base-300 shadow-2xl;
+  }
+
+  .modal-box h3 {
+    @apply text-primary-content font-bold;
+  }
+}
+
+@layer base {
+  input, select, textarea {
+    @apply text-base-content;
+  }
+
+  /* Date input specific fixes for dark theme */
+  input[type="date"] {
+    @apply text-base-content;
+    color-scheme: dark;
+  }
+}

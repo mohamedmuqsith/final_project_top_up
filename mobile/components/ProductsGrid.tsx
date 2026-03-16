@@ -57,6 +57,16 @@ const ProductsGrid = ({ products, isLoading, isError }: ProductsGridProps) => {
           resizeMode="cover"
         />
 
+        {product.discountedPrice && product.discountedPrice < product.price && (
+          <View className="absolute top-3 left-3 bg-primary px-2 py-1 rounded-lg">
+            <Text className="text-background text-[10px] font-bold">
+              {product.appliedOffer?.type === "percentage" 
+                ? `-${product.appliedOffer.value}%` 
+                : `SAVE $${(product.price - product.discountedPrice).toFixed(0)}`}
+            </Text>
+          </View>
+        )}
+
         <TouchableOpacity
           className="absolute top-3 right-3 bg-black/30 backdrop-blur-xl p-2 rounded-full"
           activeOpacity={0.7}
@@ -86,11 +96,20 @@ const ProductsGrid = ({ products, isLoading, isError }: ProductsGridProps) => {
           <Text className="text-text-primary text-xs font-semibold ml-1">
             {product.averageRating.toFixed(1)}
           </Text>
-          <Text className="text-text-secondary text-xs ml-1">({product.totalReviews})</Text>
+          <Text className="text-text-secondary text-xs ml-1">({product.reviewCount || 0})</Text>
         </View>
 
         <View className="flex-row items-center justify-between">
-          <Text className="text-primary font-bold text-lg">${product.price.toFixed(2)}</Text>
+          <View>
+            <Text className="text-primary font-bold text-lg">
+              ${(product.discountedPrice ?? product.price).toFixed(2)}
+            </Text>
+            {product.discountedPrice && product.discountedPrice < product.price && (
+              <Text className="text-text-secondary text-[10px] line-through">
+                ${product.price.toFixed(2)}
+              </Text>
+            )}
+          </View>
 
           <TouchableOpacity
             className="bg-primary rounded-full w-8 h-8 items-center justify-center"

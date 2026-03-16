@@ -17,6 +17,12 @@ import {
   LoaderIcon,
   SearchIcon,
   DownloadIcon,
+  ShoppingBagIcon,
+  FilterIcon,
+  CalendarDaysIcon,
+  UserIcon,
+  BadgeDollarSignIcon,
+  AlertTriangleIcon,
 } from "lucide-react";
 
 const STATUS_ICON_MAP = {
@@ -40,9 +46,8 @@ function OrderDetailModal({ order, onClose }) {
 
   const totalQuantity = order.orderItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  const timeline = [
-    { label: "Order Created", date: order.createdAt, status: "pending" },
-  ];
+  const timeline = [{ label: "Order Created", date: order.createdAt, status: "pending" }];
+
   if (["processing", "shipped", "delivered"].includes(order.status)) {
     timeline.push({ label: "Processing", date: order.updatedAt, status: "processing" });
   }
@@ -58,148 +63,209 @@ function OrderDetailModal({ order, onClose }) {
 
   return (
     <dialog className="modal modal-open">
-      <div className="modal-box max-w-2xl max-h-[90vh] overflow-y-auto">
-        <button
-          className="btn btn-sm btn-circle btn-ghost absolute right-3 top-3"
-          onClick={onClose}
-        >
-          <XIcon className="size-4" />
-        </button>
+      <div className="modal-box max-w-5xl p-0 bg-transparent shadow-none">
+        <div className="relative overflow-hidden rounded-[32px] border border-base-300/60 bg-base-100 shadow-2xl">
+          <div className="absolute inset-x-0 top-0 h-32 bg-linear-to-r from-primary/20 via-secondary/15 to-accent/20 pointer-events-none"></div>
 
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <PackageIcon className="size-6 text-primary" />
-          <div>
-            <h3 className="text-lg font-bold">
-              Order #{order._id.slice(-8).toUpperCase()}
-            </h3>
-            <p className="text-sm opacity-60">{formatDate(order.createdAt)}</p>
-          </div>
-          <div className={`badge ${STATUS_COLOR_MAP[order.status]} ml-auto`}>
-            {capitalizeText(order.status)}
-          </div>
-        </div>
+          <div className="relative px-6 sm:px-8 pt-8 pb-6 border-b border-base-200/80">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold mb-3">
+                  <ShoppingBagIcon className="size-3.5" />
+                  Order Details
+                </div>
 
-        {/* Order Items */}
-        <div className="mb-6">
-          <h4 className="font-semibold text-sm opacity-70 mb-3 uppercase tracking-wider">
-            Items ({totalQuantity})
-          </h4>
-          <div className="space-y-3">
-            {order.orderItems.map((item, idx) => (
-              <div key={idx} className="flex items-center gap-3 bg-base-200 rounded-xl p-3">
-                <div className="avatar">
-                  <div className="w-12 h-12 rounded-lg">
-                    <img
-                      src={item.image || item.product?.images?.[0] || "/placeholder.jpg"}
-                      alt={item.name}
-                    />
-                  </div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{item.name}</p>
-                  <p className="text-xs opacity-60">Qty: {item.quantity}</p>
-                </div>
-                <p className="font-semibold text-sm">
-                  ${(item.price * item.quantity).toFixed(2)}
+                <h3 className="text-2xl sm:text-3xl font-black tracking-tight">
+                  Order #{order._id.slice(-8).toUpperCase()}
+                </h3>
+
+                <p className="text-sm text-base-content/60 mt-2">
+                  Review customer info, products, payment, and order timeline
                 </p>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Total Breakdown */}
-        <div className="bg-base-200 rounded-xl p-4 mb-6">
-          <div className="flex justify-between text-sm mb-1">
-            <span className="opacity-70">Subtotal ({totalQuantity} items)</span>
-            <span className="font-semibold">${order.totalPrice.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="opacity-70">Shipping</span>
-            <span className="text-success font-medium">Free</span>
-          </div>
-          <div className="divider my-1"></div>
-          <div className="flex justify-between font-bold">
-            <span>Total</span>
-            <span className="text-primary">${order.totalPrice.toFixed(2)}</span>
-          </div>
-        </div>
-
-        {/* Payment & Shipping */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div className="bg-base-200 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <CreditCardIcon className="size-4 text-primary" />
-              <h4 className="font-semibold text-sm">Payment</h4>
+              <button
+                className="btn btn-sm btn-circle btn-ghost hover:bg-error/10 hover:text-error rounded-full"
+                onClick={onClose}
+              >
+                <XIcon className="size-5" />
+              </button>
             </div>
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span className="opacity-70">Status</span>
-                <span className={`badge badge-sm ${order.paymentResult?.status === "succeeded" ? "badge-success" : "badge-warning"}`}>
-                  {capitalizeText(order.paymentResult?.status || "unknown")}
-                </span>
+          </div>
+
+          <div className="px-6 sm:px-8 py-8 space-y-8">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+              <div className="xl:col-span-2 space-y-6">
+                <div className="rounded-3xl border border-base-300/60 bg-base-100 shadow-sm">
+                  <div className="px-5 py-4 border-b border-base-200/70">
+                    <h4 className="font-bold text-lg">Order Summary</h4>
+                    <p className="text-xs text-base-content/55 mt-1">
+                      Main order and payment details
+                    </p>
+                  </div>
+
+                  <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="rounded-2xl bg-base-200/40 p-4">
+                      <div className="flex items-center gap-2 mb-2 text-base-content/55">
+                        <CalendarDaysIcon className="size-4" />
+                        <p className="text-xs uppercase font-bold tracking-wide">Order Info</p>
+                      </div>
+                      <p className="text-sm font-semibold">Date: {formatDate(order.createdAt)}</p>
+                      <div className={`badge ${STATUS_COLOR_MAP[order.status]} badge-sm mt-3`}>
+                        {capitalizeText(order.status)}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl bg-base-200/40 p-4">
+                      <div className="flex items-center gap-2 mb-2 text-base-content/55">
+                        <CreditCardIcon className="size-4" />
+                        <p className="text-xs uppercase font-bold tracking-wide">Payment</p>
+                      </div>
+                      <p className="text-sm font-semibold">
+                        Status: {capitalizeText(order.paymentResult?.status || "unknown")}
+                      </p>
+                      {order.paymentResult?.id && (
+                        <p className="text-[10px] font-mono opacity-50 truncate mt-2">
+                          ID: {order.paymentResult.id}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="rounded-2xl bg-base-200/40 p-4">
+                      <div className="flex items-center gap-2 mb-2 text-base-content/55">
+                        <PackageIcon className="size-4" />
+                        <p className="text-xs uppercase font-bold tracking-wide">Items</p>
+                      </div>
+                      <p className="text-xl font-black">{totalQuantity}</p>
+                      <p className="text-xs text-base-content/50 mt-1">Total quantity ordered</p>
+                    </div>
+
+                    <div className="rounded-2xl bg-base-200/40 p-4">
+                      <div className="flex items-center gap-2 mb-2 text-base-content/55">
+                        <BadgeDollarSignIcon className="size-4" />
+                        <p className="text-xs uppercase font-bold tracking-wide">Total</p>
+                      </div>
+                      <p className="text-xl font-black text-primary">
+                        ${order.totalPrice.toFixed(2)}
+                      </p>
+                      <p className="text-xs text-base-content/50 mt-1">Final order amount</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-base-300/60 bg-base-100 shadow-sm">
+                  <div className="px-5 py-4 border-b border-base-200/70">
+                    <h4 className="font-bold text-lg">Shipping Address</h4>
+                    <p className="text-xs text-base-content/55 mt-1">
+                      Customer delivery information
+                    </p>
+                  </div>
+
+                  <div className="p-5">
+                    <div className="rounded-2xl bg-base-200/40 p-4">
+                      <div className="flex items-center gap-2 mb-3 text-base-content/55">
+                        <MapPinIcon className="size-4" />
+                        <p className="text-xs uppercase font-bold tracking-wide">Address</p>
+                      </div>
+
+                      <div className="text-sm space-y-1">
+                        <p className="font-bold">{order.shippingAddress?.fullName}</p>
+                        <p className="opacity-70">{order.shippingAddress?.streetAddress}</p>
+                        <p className="opacity-70">
+                          {order.shippingAddress?.city}, {order.shippingAddress?.province}{" "}
+                          {order.shippingAddress?.zipCode}
+                        </p>
+                        <p className="opacity-60 text-xs mt-3">
+                          {order.shippingAddress?.phoneNumber}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-base-300/60 bg-base-100 shadow-sm">
+                  <div className="px-5 py-4 border-b border-base-200/70">
+                    <h4 className="font-bold text-lg">Order Items</h4>
+                    <p className="text-xs text-base-content/55 mt-1">
+                      Purchased products and quantities
+                    </p>
+                  </div>
+
+                  <div className="p-5 space-y-3">
+                    {order.orderItems.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-4 rounded-2xl border border-base-300/50 bg-base-200/30 p-3"
+                      >
+                        <div className="shrink-0">
+                          <img
+                            src={item.image || "/placeholder.jpg"}
+                            alt={item.name}
+                            className="h-14 w-14 rounded-xl object-cover bg-base-300"
+                          />
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm truncate">{item.name}</p>
+                          <p className="text-xs opacity-50 mt-1">
+                            Qty: {item.quantity} × ${item.price}
+                          </p>
+                        </div>
+
+                        <p className="font-bold text-sm whitespace-nowrap">
+                          ${(item.price * item.quantity).toFixed(2)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-              {order.paymentResult?.id && (
-                <div className="flex justify-between">
-                  <span className="opacity-70">ID</span>
-                  <span className="font-mono text-xs opacity-60">
-                    {order.paymentResult.id.slice(-12)}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
 
-          <div className="bg-base-200 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <MapPinIcon className="size-4 text-primary" />
-              <h4 className="font-semibold text-sm">Shipping To</h4>
-            </div>
-            <div className="text-sm space-y-0.5">
-              <p className="font-medium">{order.shippingAddress?.fullName}</p>
-              <p className="opacity-70">{order.shippingAddress?.streetAddress}</p>
-              <p className="opacity-70">
-                {order.shippingAddress?.city}, {order.shippingAddress?.province}{" "}
-                {order.shippingAddress?.zipCode}
-              </p>
-              <p className="opacity-60 text-xs">{order.shippingAddress?.phoneNumber}</p>
+              <div className="space-y-6">
+                <div className="rounded-3xl border border-base-300/60 bg-base-100 shadow-sm">
+                  <div className="px-5 py-4 border-b border-base-200/70">
+                    <h4 className="font-bold text-lg">Timeline</h4>
+                    <p className="text-xs text-base-content/55 mt-1">
+                      Order progression by status
+                    </p>
+                  </div>
+
+                  <div className="p-5">
+                    <ul className="timeline timeline-vertical timeline-compact">
+                      {timeline.map((event, idx) => (
+                        <li key={idx}>
+                          {idx > 0 && <hr className="bg-primary/30" />}
+                          <div className="timeline-start text-[10px] font-bold opacity-40 uppercase tracking-tighter">
+                            {event.date ? formatDate(event.date).split(",")[0] : ""}
+                          </div>
+                          <div className="timeline-middle">
+                            <div className={`p-1.5 rounded-full ${event.status === order.status ? 'bg-primary text-primary-content shadow-lg shadow-primary/20' : 'bg-base-300 text-base-content/40'}`}>
+                              {STATUS_ICON_MAP[event.status] || <CircleDotIcon className="size-3.5" />}
+                            </div>
+                          </div>
+                          <div className={`timeline-end timeline-box text-xs font-bold py-2.5 px-4 rounded-2xl border-0 shadow-sm ${event.status === order.status ? 'bg-primary/10 text-primary' : 'bg-base-200/50 text-base-content/60'}`}>
+                            {event.label}
+                          </div>
+                          {idx < timeline.length - 1 && <hr className={["processing", "shipped", "delivered"].includes(timeline[idx+1]?.status) ? "bg-primary" : "bg-base-300"} />}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-primary/20 bg-linear-to-br from-primary/10 to-transparent p-5">
+                  <h4 className="font-bold text-base mb-2">Reality Check</h4>
+                  <p className="text-sm text-base-content/70 leading-6">
+                    Fancy order UI means nothing if status control is sloppy. The real value is
+                    correct workflow, not pretty badges.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Timeline */}
-        <div>
-          <h4 className="font-semibold text-sm opacity-70 mb-3 uppercase tracking-wider">
-            Order Timeline
-          </h4>
-          <ul className="timeline timeline-vertical timeline-compact">
-            {timeline.map((event, idx) => (
-              <li key={idx}>
-                {idx > 0 && <hr className={event.status === "cancelled" ? "bg-error" : "bg-primary"} />}
-                <div className="timeline-start text-xs opacity-60 min-w-[80px]">
-                  {event.date ? formatDate(event.date) : "—"}
-                </div>
-                <div className="timeline-middle px-1">
-                  {STATUS_ICON_MAP[event.status] || <CircleDotIcon className="size-4" />}
-                </div>
-                <div className="timeline-end timeline-box text-sm font-medium py-1.5 px-3">
-                  {event.label}
-                </div>
-                {idx < timeline.length - 1 && <hr className={event.status === "cancelled" ? "bg-error" : "bg-primary"} />}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {order.user && (
-          <div className="mt-6 pt-4 border-t border-base-300">
-            <p className="text-xs opacity-50">
-              Customer: <span className="font-medium opacity-80">{order.user.name || order.shippingAddress?.fullName}</span>
-              {order.user.email && <span className="ml-2">({order.user.email})</span>}
-            </p>
-          </div>
-        )}
       </div>
+
       <form method="dialog" className="modal-backdrop">
         <button onClick={onClose}>close</button>
       </form>
@@ -260,61 +326,109 @@ function OrdersPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 pb-10">
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Orders</h1>
-          <p className="text-base-content/70">Manage customer orders</p>
+      <div className="relative overflow-hidden rounded-[32px] border border-base-300/60 bg-base-100 shadow-xl">
+        <div className="absolute inset-x-0 top-0 h-32 bg-linear-to-r from-primary/20 via-secondary/15 to-accent/20 pointer-events-none"></div>
+
+        <div className="relative flex flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary">
+              <ShoppingBagIcon className="size-4" />
+              Order Management
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <PackageIcon className="size-6" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-black tracking-tight">Orders</h1>
+                <p className="mt-1 text-sm text-base-content/60">
+                  Manage customer orders, monitor status flow, and review full order details
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <button
+            className="btn btn-outline rounded-2xl gap-2 border-base-300 hover:border-primary hover:bg-primary/5"
+            onClick={handleExport}
+            disabled={filtered.length === 0}
+          >
+            <DownloadIcon className="size-4" />
+            Export CSV
+          </button>
         </div>
-        <button className="btn btn-sm btn-outline gap-2" onClick={handleExport} disabled={filtered.length === 0}>
-          <DownloadIcon className="size-4" />
-          Export CSV
-        </button>
       </div>
 
-      {/* SEARCH & FILTER */}
-      <div className="flex flex-col md:flex-row gap-4 bg-base-100 p-4 rounded-xl shadow-sm border border-base-200">
-        <div className="relative flex-1">
-          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search by order ID or customer name..."
-            className="input input-bordered pl-10 w-full"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+      {/* FILTERS */}
+      <div className="rounded-[28px] border border-base-300/60 bg-base-100 p-4 sm:p-5 shadow-sm">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
+          <div className="relative flex-1">
+            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/45 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search by order ID or customer name..."
+              className="input input-bordered w-full pl-12 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="relative w-full xl:w-[220px]">
+            <FilterIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/45 w-4 h-4 pointer-events-none" />
+            <select
+              className="select select-bordered w-full pl-11 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="All">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="processing">Processing</option>
+              <option value="shipped">Shipped</option>
+              <option value="delivered">Delivered</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
         </div>
-        <select
-          className="select select-bordered w-full max-w-[180px]"
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-        >
-          <option value="All">All Statuses</option>
-          <option value="pending">Pending</option>
-          <option value="processing">Processing</option>
-          <option value="shipped">Shipped</option>
-          <option value="delivered">Delivered</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
       </div>
 
-      {/* ORDERS TABLE */}
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body">
+      {/* TABLE */}
+      <div className="rounded-[30px] border border-base-300/60 bg-base-100 shadow-xl overflow-hidden min-w-0">
+        <div className="border-b border-base-200/70 px-5 py-4 sm:px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <ShoppingBagIcon className="size-5" />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-black tracking-tight">Order List</h2>
+              <p className="text-xs text-base-content/55 mt-1">
+                Customer orders with controlled forward-only status changes
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 sm:p-6">
           {isLoading ? (
-            <div className="flex justify-center py-12">
-              <span className="loading loading-spinner loading-lg" />
+            <div className="flex justify-center py-14">
+              <span className="loading loading-spinner loading-lg text-primary" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-12 text-base-content/60">
-              <p className="text-xl font-semibold mb-2">No orders found</p>
-              <p className="text-sm">Try adjusting your search or filter</p>
+            <div className="rounded-2xl bg-base-200/40 py-14 px-6 text-center">
+              <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-base-300/60 text-base-content/50">
+                <AlertTriangleIcon className="size-8" />
+              </div>
+              <p className="text-xl font-bold mb-2">No orders found</p>
+              <p className="text-sm text-base-content/60">
+                Your search or filter is blocking the results
+              </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-2xl border border-base-200">
               <table className="table">
-                <thead>
+                <thead className="bg-base-200/50">
                   <tr>
                     <th>Order ID</th>
                     <th>Customer</th>
@@ -345,42 +459,54 @@ function OrdersPage() {
                     const validNextStatuses = ALLOWED_TRANSITIONS[order.status] || [];
 
                     return (
-                      <tr key={order._id} className="hover:bg-base-200/50 transition-colors">
+                      <tr key={order._id} className="hover:bg-base-200/30 transition-colors">
                         <td>
-                          <span className="font-mono text-sm">#{order._id.slice(-8).toUpperCase()}</span>
+                          <span className="font-mono text-sm font-semibold">
+                            #{order._id.slice(-8).toUpperCase()}
+                          </span>
                         </td>
 
                         <td>
-                          <div className="font-medium">{order.shippingAddress.fullName}</div>
-                          <div className="text-xs opacity-60">
-                            {order.shippingAddress.city}
+                          <div className="min-w-[180px]">
+                            <div className="flex items-center gap-2 font-semibold">
+                              <UserIcon className="size-4 opacity-45" />
+                              {order.shippingAddress.fullName}
+                            </div>
+                            <div className="text-xs opacity-60 mt-1 pl-6">
+                              {order.shippingAddress.city}
+                            </div>
                           </div>
                         </td>
 
                         <td>
-                          <div className="text-sm">{totalQuantity} items</div>
-                          <div className="text-xs opacity-50 truncate max-w-[150px]">
+                          <div className="text-sm font-semibold">{totalQuantity} items</div>
+                          <div className="text-xs opacity-50 truncate max-w-[150px] mt-1">
                             {order.orderItems[0]?.name}
-                            {order.orderItems.length > 1 && ` +${order.orderItems.length - 1} more`}
+                            {order.orderItems.length > 1 &&
+                              ` +${order.orderItems.length - 1} more`}
                           </div>
                         </td>
 
                         <td>
-                          <span className="font-semibold">${order.totalPrice.toFixed(2)}</span>
+                          <span className="font-bold">${order.totalPrice.toFixed(2)}</span>
                         </td>
 
                         <td>
                           {isTerminal ? (
-                            <div className={`badge badge-sm font-semibold py-3 px-4 ${
-                              order.status === 'delivered' ? 'badge-success text-success-content' : 'badge-error text-error-content'
-                            }`}>
+                            <div
+                              className={`badge badge-sm font-semibold py-3 px-4 border-0 ${
+                                order.status === "delivered"
+                                  ? "badge-success text-success-content"
+                                  : "badge-error text-error-content"
+                              }`}
+                            >
                               {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                             </div>
                           ) : (
                             <select
                               value={order.status}
                               onChange={(e) => handleStatusChange(order._id, e.target.value)}
-                              className="select select-bordered select-xs w-full max-w-[130px] focus:outline-none"
+                              className="select select-bordered select-sm w-full max-w-[140px] rounded-xl bg-base-100 border-base-300 focus:outline-none focus:border-primary"
                               disabled={updateStatusMutation.isPending}
                             >
                               <option value={order.status}>
@@ -396,12 +522,14 @@ function OrdersPage() {
                         </td>
 
                         <td>
-                          <span className="text-xs opacity-60">{formatDate(order.createdAt)}</span>
+                          <span className="text-xs opacity-60 whitespace-nowrap">
+                            {formatDate(order.createdAt)}
+                          </span>
                         </td>
 
                         <td>
                           <button
-                            className="btn btn-ghost btn-xs"
+                            className="btn btn-ghost btn-sm rounded-xl hover:bg-primary/10 hover:text-primary"
                             onClick={() => setSelectedOrder(order)}
                           >
                             View
@@ -417,12 +545,9 @@ function OrdersPage() {
         </div>
       </div>
 
-      {/* ORDER DETAIL MODAL */}
-      <OrderDetailModal
-        order={selectedOrder}
-        onClose={() => setSelectedOrder(null)}
-      />
+      <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
     </div>
   );
 }
+
 export default OrdersPage;

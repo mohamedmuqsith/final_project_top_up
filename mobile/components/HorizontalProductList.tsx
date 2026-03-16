@@ -52,6 +52,15 @@ const HorizontalProductList = ({ products, isLoading, isError, title, aiEnhanced
           className="w-full h-40 bg-background-lighter"
           resizeMode="cover"
         />
+        {product.discountedPrice && product.discountedPrice < product.price && (
+          <View className="absolute top-3 left-3 bg-primary px-2 py-1 rounded-lg">
+            <Text className="text-background text-[10px] font-bold">
+              {product.appliedOffer?.type === "percentage" 
+                ? `-${product.appliedOffer.value}%` 
+                : `Deals`}
+            </Text>
+          </View>
+        )}
         <TouchableOpacity
           className="absolute top-3 right-3 bg-black/30 backdrop-blur-xl p-2 rounded-full"
           activeOpacity={0.7}
@@ -88,7 +97,16 @@ const HorizontalProductList = ({ products, isLoading, isError, title, aiEnhanced
         </View>
 
         <View className="flex-row items-center justify-between mt-auto pt-2">
-          <Text className="text-primary font-bold text-lg">${product.price.toFixed(2)}</Text>
+          <View>
+            <Text className="text-primary font-bold text-lg">
+              ${(product.discountedPrice ?? product.price).toFixed(2)}
+            </Text>
+            {product.discountedPrice && product.discountedPrice < product.price && (
+              <Text className="text-text-secondary text-[10px] line-through">
+                ${product.price.toFixed(2)}
+              </Text>
+            )}
+          </View>
           <TouchableOpacity
             className="bg-primary rounded-full w-8 h-8 items-center justify-center"
             activeOpacity={0.7}

@@ -8,6 +8,16 @@ export interface Product {
   images: string[];
   averageRating: number;
   reviewCount: number;
+  totalReviews?: number;
+  originalPrice?: number;
+  discountedPrice?: number;
+  appliedOffer?: {
+    _id: string;
+    title: string;
+    type: string;
+    value: number;
+    bannerText?: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }

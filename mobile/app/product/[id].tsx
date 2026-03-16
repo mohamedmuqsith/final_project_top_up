@@ -157,9 +157,40 @@ const ProductDetailScreen = () => {
           </View>
 
           {/* Price */}
-          <View className="flex-row items-center mb-6">
-            <Text className="text-primary text-4xl font-bold">${product.price.toFixed(2)}</Text>
+          <View className="flex-row items-center gap-4 mb-6">
+            <View>
+              <Text className="text-primary text-4xl font-bold">
+                ${(product.discountedPrice ?? product.price).toFixed(2)}
+              </Text>
+              {product.discountedPrice && product.discountedPrice < product.price && (
+                <Text className="text-text-secondary text-lg line-through">
+                  ${product.price.toFixed(2)}
+                </Text>
+              )}
+            </View>
+
+            {product.discountedPrice && product.discountedPrice < product.price && (
+               <View className="bg-primary/20 border border-primary/30 px-3 py-2 rounded-2xl">
+                 <Text className="text-primary font-bold text-sm">
+                    {product.appliedOffer?.type === "percentage" 
+                      ? `${product.appliedOffer.value}% OFF`
+                      : `SAVE $${(product.price - product.discountedPrice).toFixed(2)}`}
+                 </Text>
+               </View>
+            )}
           </View>
+
+          {product.appliedOffer && (
+            <View className="bg-surface p-4 rounded-3xl mb-6 border border-primary/20 flex-row items-center gap-4">
+              <View className="bg-primary/10 p-3 rounded-2xl">
+                <Ionicons name="pricetag" size={24} color="#00D9FF" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-text-primary font-bold text-lg">{product.appliedOffer.title}</Text>
+                <Text className="text-text-secondary text-xs mt-0.5">{product.appliedOffer.bannerText || "Limited time offer!"}</Text>
+              </View>
+            </View>
+          )}
 
           {/* Quantity */}
           <View className="mb-6">
