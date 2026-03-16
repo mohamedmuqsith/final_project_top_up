@@ -226,7 +226,7 @@ const ReviewsPage = () => {
                       </td>
                       <td>
                         <div className="flex flex-col gap-2 justify-center">
-                          {review.status !== "published" && (
+                          {review.status === "flagged" && (
                             <button
                               className="btn btn-success btn-xs gap-1 normal-case font-bold"
                               onClick={() => handleUpdateStatus(review._id, "published")}
@@ -268,10 +268,10 @@ const ReviewsPage = () => {
           </div>
 
           {/* Pagination */}
-          {reviewsData?.pages > 1 && (
+          {reviewsData?.totalPages > 1 && (
             <div className="p-6 flex justify-between items-center border-t border-base-200 bg-base-200/20">
               <div className="text-sm font-medium opacity-60">
-                Page <span className="text-primary">{page}</span> of {reviewsData.pages}
+                Page <span className="text-primary">{page}</span> of {reviewsData.totalPages}
               </div>
               <div className="flex gap-2">
                 <button 
@@ -282,7 +282,7 @@ const ReviewsPage = () => {
                   <ChevronLeft className="size-4" /> Previous
                 </button>
                 <div className="flex gap-1">
-                   {Array.from({ length: reviewsData.pages }, (_, i) => i + 1).map((p) => (
+                   {Array.from({ length: reviewsData.totalPages }, (_, i) => i + 1).map((p) => (
                      <button
                        key={p}
                        className={`btn btn-sm btn-square ${page === p ? "btn-primary" : "btn-ghost"}`}
@@ -294,7 +294,7 @@ const ReviewsPage = () => {
                 </div>
                 <button 
                   className="btn btn-sm btn-outline gap-1" 
-                  disabled={page === reviewsData.pages}
+                  disabled={page === reviewsData.totalPages}
                   onClick={() => { setPage(p => p + 1); window.scrollTo(0, 0); }}
                 >
                   Next <ChevronRight className="size-4" />
