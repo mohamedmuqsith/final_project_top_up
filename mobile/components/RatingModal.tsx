@@ -60,9 +60,10 @@ const RatingModal = ({
 
               <ScrollView className="mb-4">
                 {order?.orderItems?.map((item, index) => {
-                  const productId = (item.product?._id || item.product) as string;
-                  if (!productId) return null;
-                  
+                  const productId = typeof item.product === 'string' 
+                    ? item.product 
+                    : item.product?._id;
+                  if (!productId || typeof productId !== 'string') return null;                  
                   const currentRating = productRatings[productId] || 0;
 
                   return (

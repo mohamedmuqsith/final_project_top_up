@@ -73,8 +73,8 @@ export async function createReview(req, res) {
       { userId: user._id, productId },
       {
         rating,
-        comment: comment || "",
-        title: title || "",
+        comment: (comment || "").trim(),
+        title: (title || "").trim(),
         orderId,
         userId: user._id,
         productId,
@@ -122,8 +122,8 @@ export async function updateReview(req, res) {
       }
       review.rating = rating;
     }
-    if (comment !== undefined) review.comment = comment;
-    if (title !== undefined) review.title = title;
+    if (comment !== undefined) review.comment = comment.trim();
+    if (title !== undefined) review.title = title.trim();
 
     await review.save();
 

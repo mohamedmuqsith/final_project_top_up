@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { statsApi } from "../lib/api";
@@ -111,7 +111,7 @@ import {
     },
     {
       name: "Total Reviews",
-      value: isLoading ? "..." : reviewSummary.totalReviews,
+      value: isLoading ? "..." : (reviewSummary?.totalReviews ?? 0),
       icon: <MessageSquareIcon className="size-8 text-info" />,
       desc: "Customer feedback",
     },
@@ -120,8 +120,7 @@ import {
       value: isLoading ? "..." : `${(reviewSummary?.averageRating || 0).toFixed(1)}/5.0`,
       icon: <StarHalfIcon className="size-8 text-warning" />,
       desc: "Average across active products",
-    },
-  ];
+    },  ];
 
   return (
     <div className="space-y-6 pb-12">

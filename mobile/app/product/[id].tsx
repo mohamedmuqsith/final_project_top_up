@@ -30,8 +30,6 @@ const ProductDetailScreen = () => {
   const { data: boughtTogetherData, isLoading: boughtTogetherLoading, isError: boughtTogetherError } = useFrequentlyBoughtTogether(id);
   const { addToCart, isAddingToCart } = useCart();
   const { data: reviewsData, isLoading: reviewsLoading } = useProductReviews(id as string);
-  const { data: ordersData } = useOrders();
-
   const { isInWishlist, toggleWishlist, isAddingToWishlist, isRemovingFromWishlist } =
     useWishlist();
 
@@ -69,9 +67,8 @@ const ProductDetailScreen = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          className={`w-12 h-12 rounded-full items-center justify-center ${
-            isInWishlist(product._id) ? "bg-primary" : "bg-black/50 backdrop-blur-xl"
-          }`}
+          className={`w-12 h-12 rounded-full items-center justify-center ${isInWishlist(product._id) ? "bg-primary" : "bg-black/50 backdrop-blur-xl"
+            }`}
           onPress={() => toggleWishlist(product._id)}
           disabled={isAddingToWishlist || isRemovingFromWishlist}
           activeOpacity={0.7}
@@ -116,9 +113,8 @@ const ProductDetailScreen = () => {
             {product.images.map((_: any, index: number) => (
               <View
                 key={index}
-                className={`h-2 rounded-full ${
-                  index === selectedImageIndex ? "bg-primary w-6" : "bg-white/50 w-2"
-                }`}
+                className={`h-2 rounded-full ${index === selectedImageIndex ? "bg-primary w-6" : "bg-white/50 w-2"
+                  }`}
               />
             ))}
           </View>
@@ -229,8 +225,8 @@ const ProductDetailScreen = () => {
                       <View className="flex-row items-center">
                         <View className="w-10 h-10 rounded-full bg-primary/20 items-center justify-center overflow-hidden mr-3">
                           {typeof review.userId !== "string" && review.userId.imageUrl ? (
-                            <Image 
-                              source={review.userId.imageUrl} 
+                            <Image
+                              source={review.userId.imageUrl}
                               style={{ width: 40, height: 40 }}
                             />
                           ) : (
@@ -245,11 +241,11 @@ const ProductDetailScreen = () => {
                           </Text>
                           <View className="flex-row items-center mt-0.5">
                             {[1, 2, 3, 4, 5].map((s) => (
-                              <Ionicons 
-                                key={s} 
-                                name={s <= review.rating ? "star" : "star-outline"} 
-                                size={12} 
-                                color={s <= review.rating ? "#FFC107" : "#666"} 
+                              <Ionicons
+                                key={s}
+                                name={s <= review.rating ? "star" : "star-outline"}
+                                size={12}
+                                color={s <= review.rating ? "#FFC107" : "#666"}
                                 style={{ marginRight: 1 }}
                               />
                             ))}
@@ -277,8 +273,9 @@ const ProductDetailScreen = () => {
               </View>
             ) : (
               <View className="bg-surface p-6 rounded-2xl items-center border border-dashed border-white/10">
-                <Ionicons name="chatbubble-outline" size={32} color="#666" className="mb-2" />
-                <Text className="text-text-secondary text-center">No reviews yet. Be the first to share your thoughts!</Text>
+                <View className="mb-2">
+                  <Ionicons name="chatbubble-outline" size={32} color="#666" />
+                </View>                <Text className="text-text-secondary text-center">No reviews yet. Be the first to share your thoughts!</Text>
               </View>
             )}
 
@@ -287,7 +284,7 @@ const ProductDetailScreen = () => {
         </View>
 
         {/* Similar Products (Gemini Enhanced) */}
-        <HorizontalProductList 
+        <HorizontalProductList
           title="Similar Products"
           products={similarData?.recommendations}
           isLoading={similarLoading}
@@ -296,7 +293,7 @@ const ProductDetailScreen = () => {
         />
 
         {/* Frequently Bought Together */}
-        <HorizontalProductList 
+        <HorizontalProductList
           title="Frequently Bought Together"
           products={boughtTogetherData?.recommendations}
           isLoading={boughtTogetherLoading}
@@ -315,9 +312,8 @@ const ProductDetailScreen = () => {
             </Text>
           </View>
           <TouchableOpacity
-            className={`rounded-2xl px-8 py-4 flex-row items-center ${
-              !inStock ? "bg-surface" : "bg-primary"
-            }`}
+            className={`rounded-2xl px-8 py-4 flex-row items-center ${!inStock ? "bg-surface" : "bg-primary"
+              }`}
             activeOpacity={0.8}
             onPress={handleAddToCart}
             disabled={!inStock || isAddingToCart}
@@ -328,9 +324,8 @@ const ProductDetailScreen = () => {
               <>
                 <Ionicons name="cart" size={24} color={!inStock ? "#666" : "#121212"} />
                 <Text
-                  className={`font-bold text-lg ml-2 ${
-                    !inStock ? "text-text-secondary" : "text-background"
-                  }`}
+                  className={`font-bold text-lg ml-2 ${!inStock ? "text-text-secondary" : "text-background"
+                    }`}
                 >
                   {!inStock ? "Out of Stock" : "Add to Cart"}
                 </Text>

@@ -28,14 +28,13 @@ function OrdersScreen() {
     const initialRatings: { [key: string]: number } = {};
     const initialComments: { [key: string]: string } = {};
     const initialTitles: { [key: string]: string } = {};
-    
+
     order.orderItems.forEach((item) => {
-      const productId = item.product._id || (item.product as any);
+      const productId = item.product?._id ? item.product._id.toString() : (item.product as unknown as string);
       initialRatings[productId] = 0;
       initialComments[productId] = "";
       initialTitles[productId] = "";
     });
-    
     setProductRatings(initialRatings);
     setProductComments(initialComments);
     setProductTitles(initialTitles);
@@ -57,7 +56,7 @@ function OrdersScreen() {
         const pid = item.product?._id || item.product;
         return pid && productRatings[pid as string] > 0;
       });
-      
+
       await Promise.all(
         ratedItems.map((item) => {
           const pid = (item.product?._id || item.product) as string;
@@ -166,10 +165,9 @@ function OrdersScreen() {
                         {item.name} × {item.quantity}
                       </Text>
                       {item.hasReviewed && (
-                        <Ionicons name="checkmark-circle" size={14} color="#1DB954" className="ml-2" />
+                        <Ionicons name="checkmark-circle" size={14} color="#1DB954" style={{ marginLeft: 8 }} />
                       )}
-                    </View>
-                  ))}
+                    </View>))}
 
                   <View className="border-t border-background-lighter pt-3 flex-row justify-between items-center">
                     <View>

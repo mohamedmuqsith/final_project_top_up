@@ -13,6 +13,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import StatCard from "../components/StatCard";
 
 const ReviewsPage = () => {
@@ -178,25 +179,25 @@ const ReviewsPage = () => {
                     <tr key={review._id} className="hover:bg-base-200/50 transition-colors">
                       <td>
                         <div className="flex flex-col gap-1">
-                          <a 
-                            href={`/products?id=${review.productId?._id}`} 
-                            className="font-bold text-sm truncate max-w-[200px] text-primary hover:underline"
+                          <Link 
+                            to={`/products?id=${review.productId?._id}`} 
+                            className="font-bold text-sm truncate max-w-[200px] text-primary hover:underline hover:text-primary-focus transition-colors"
                             title={review.productId?.name}
                           >
                             {review.productId?.name}
-                          </a>
+                          </Link>
                           <div className="flex items-center gap-2">
                              <div className="avatar">
                                <div className="size-6 rounded-full ring ring-primary ring-offset-base-100 ring-offset-1">
-                                 <img src={review.userId?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${review.userId?.name}`} alt="User" />
+                                 <img src={review.userId?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${review.userId?.name}`} alt={review.userId?.name || "Customer"} />
                                </div>
                              </div>
-                             <a 
-                               href={`/customers?search=${review.userId?.email}`}
-                               className="text-xs opacity-70 hover:text-primary hover:underline"
+                             <Link 
+                               to={`/customers?search=${review.userId?.email}`}
+                               className="text-xs opacity-70 hover:text-primary hover:underline transition-colors"
                              >
                                {review.userId?.name}
-                             </a>
+                             </Link>
                           </div>
                         </div>
                       </td>

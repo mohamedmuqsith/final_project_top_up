@@ -55,7 +55,9 @@ export async function getUserOrders(req, res) {
     const userReviews = await Review.find({ userId: req.user._id });
     const reviewsByProduct = {};
     userReviews.forEach((review) => {
-      reviewsByProduct[review.productId.toString()] = review;
+      if (review.productId) {
+        reviewsByProduct[review.productId.toString()] = review;
+      }
     });
 
     const ordersWithReviewStatus = orders.map((order) => {
