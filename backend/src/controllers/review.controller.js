@@ -34,9 +34,9 @@ export async function createReview(req, res) {
       return res.status(400).json({ error: "Product not found in this order" });
     }
 
-    // atomic update or create
+    // atomic update or create - unique per (user, order, product)
     const review = await Review.findOneAndUpdate(
-      { productId, userId: user._id },
+      { productId, orderId, userId: user._id },
       { rating, orderId, productId, userId: user._id },
       { new: true, returnDocument: 'after', upsert: true, runValidators: true }
     );

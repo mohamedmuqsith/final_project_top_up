@@ -1,9 +1,9 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ENV } from '../config/env.js';
 
 let aiInstance = null;
 if (ENV.GEMINI_API_KEY) {
-  aiInstance = new GoogleGenAI({ apiKey: ENV.GEMINI_API_KEY });
+  aiInstance = new GoogleGenerativeAI(ENV.GEMINI_API_KEY);
 }
 
 /**
