@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import LoginPage from "./pages/LoginPage";
 import { useAuth } from "@clerk/clerk-react";
@@ -11,11 +12,30 @@ import SalesReportsPage from "./pages/SalesReportsPage";
 import InventoryReportsPage from "./pages/InventoryReportsPage";
 import RestockSuggestionsPage from "./pages/RestockSuggestionsPage";
 import PageLoader from "./components/PageLoader";
+import axiosInstance from "./lib/axios";
 
 function App() {
-  const { isSignedIn,isLoaded } = useAuth();
+  const { isSignedIn, isLoaded, getToken } = useAuth();
 
-  if(!isLoaded) return <PageLoader />; // to prevent the app from rendering before the auth state is loaded, which can cause a flash of the login page for a split second, even if the user is already signed in
+  useEffect(() => {
+    const interceptor = axiosInstance.interceptors.request.use(async (config) => {
+      try {
+        const token = await getToken();
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      } catch (error) {
+        console.error("Error getting auth token:", error);
+      }
+      return config;
+    });
+
+    return () => {
+      axiosInstance.interceptors.request.eject(interceptor);
+    };
+  }, [getToken]);
+
+  if (!isLoaded) return <PageLoader />;
   
   return (
     <Routes>
