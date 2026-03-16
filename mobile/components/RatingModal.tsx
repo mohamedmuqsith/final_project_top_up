@@ -9,14 +9,19 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  TextInput,
 } from "react-native";
 
 interface RatingModalProps {
   visible: boolean;
   onClose: () => void;
   order: Order | null;
-  productRatings: { [key: string]: number };
-  onRatingChange: (productId: string, rating: number) => void;
+  productRatings?: { [key: string]: number };
+  productComments?: { [key: string]: string };
+  productTitles?: { [key: string]: string };
+  onRatingChange?: (productId: string, rating: number) => void;
+  onCommentChange?: (productId: string, comment: string) => void;
+  onTitleChange?: (productId: string, title: string) => void;
   onSubmit: () => void;
   isSubmitting: boolean;
 }
@@ -25,8 +30,12 @@ const RatingModal = ({
   visible,
   onClose,
   order,
-  productRatings,
-  onRatingChange,
+  productRatings = {},
+  productComments = {},
+  productTitles = {},
+  onRatingChange = () => {},
+  onCommentChange = () => {},
+  onTitleChange = () => {},
   onSubmit,
   isSubmitting,
 }: RatingModalProps) => {
@@ -50,8 +59,11 @@ const RatingModal = ({
               </View>
 
               <ScrollView className="mb-4">
-                {order?.orderItems.map((item, index) => {
-                  const productId = item.product._id;
+                {order?.orderItems?.map((item, index) => {
+                  const productId = typeof item.product === 'string' 
+                    ? item.product 
+                    : item.product?._id;
+                  if (!productId || typeof productId !== 'string') return null;                  
                   const currentRating = productRatings[productId] || 0;
 
                   return (
@@ -79,22 +91,50 @@ const RatingModal = ({
                         </View>
                       </View>
 
-                      <View className="flex-row justify-center">
+                      <View className="flex-row justify-center mb-4">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <TouchableOpacity
                             key={star}
-                            onPress={() => onRatingChange(productId, star)}
+                            onPress={() => onRatingChange(productId as string, star)}
                             activeOpacity={0.7}
                             className="mx-1.5"
                           >
                             <Ionicons
-                              name={star <= currentRating ? "star" : "star-outline"}
-                              size={32}
-                              color={star <= currentRating ? "#1DB954" : "#666"}
+                               name={star <= currentRating ? "star" : "star-outline"}
+                               size={32}
+                               color={star <= currentRating ? "#1DB954" : "#666"}
                             />
                           </TouchableOpacity>
                         ))}
                       </View>
+
+                      {!!(currentRating > 0) && (
+                        <View className="gap-3">
+                          <View>
+                            <Text className="text-text-secondary text-xs mb-1 font-semibold">Title (Optional)</Text>
+                            <TextInput
+                              className="bg-background border border-white/10 rounded-xl px-4 py-2 text-text-primary text-sm"
+                              placeholder="Great product!"
+                              placeholderTextColor="#666"
+                              value={productTitles[productId] || ""}
+                              onChangeText={(text) => onTitleChange(productId, text)}
+                            />
+                          </View>
+                          <View>
+                            <Text className="text-text-secondary text-xs mb-1 font-semibold">Comment</Text>
+                            <TextInput
+                              className="bg-background border border-white/10 rounded-xl px-4 py-3 text-text-primary text-sm"
+                              placeholder="Tell us what you liked..."
+                              placeholderTextColor="#666"
+                              multiline
+                              numberOfLines={3}
+                              textAlignVertical="top"
+                              value={productComments[productId] || ""}
+                              onChangeText={(text) => onCommentChange(productId, text)}
+                            />
+                          </View>
+                        </View>
+                      )}
                     </View>
                   );
                 })}

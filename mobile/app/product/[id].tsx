@@ -1,6 +1,8 @@
 import SafeScreen from "@/components/SafeScreen";
-import useCart from "@/hooks/useCart";
 import { useProduct } from "@/hooks/useProduct";
+import useCart from "@/hooks/useCart";
+import { useReviews, useProductReviews } from "@/hooks/useReviews";
+import { useOrders } from "@/hooks/useOrders";
 import useWishlist from "@/hooks/useWishlist";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -8,6 +10,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import HorizontalProductList from "@/components/HorizontalProductList";
 import { useSimilarProducts, useFrequentlyBoughtTogether } from "@/hooks/useRecommendations";
+import { Product, Review } from "@/types";
 import {
   View,
   Text,
@@ -26,7 +29,7 @@ const ProductDetailScreen = () => {
   const { data: similarData, isLoading: similarLoading, isError: similarError } = useSimilarProducts(id);
   const { data: boughtTogetherData, isLoading: boughtTogetherLoading, isError: boughtTogetherError } = useFrequentlyBoughtTogether(id);
   const { addToCart, isAddingToCart } = useCart();
-
+  const { data: reviewsData, isLoading: reviewsLoading } = useProductReviews(id as string);
   const { isInWishlist, toggleWishlist, isAddingToWishlist, isRemovingFromWishlist } =
     useWishlist();
 
@@ -64,9 +67,8 @@ const ProductDetailScreen = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          className={`w-12 h-12 rounded-full items-center justify-center ${
-            isInWishlist(product._id) ? "bg-primary" : "bg-black/50 backdrop-blur-xl"
-          }`}
+          className={`w-12 h-12 rounded-full items-center justify-center ${isInWishlist(product._id) ? "bg-primary" : "bg-black/50 backdrop-blur-xl"
+            }`}
           onPress={() => toggleWishlist(product._id)}
           disabled={isAddingToWishlist || isRemovingFromWishlist}
           activeOpacity={0.7}
@@ -111,9 +113,8 @@ const ProductDetailScreen = () => {
             {product.images.map((_: any, index: number) => (
               <View
                 key={index}
-                className={`h-2 rounded-full ${
-                  index === selectedImageIndex ? "bg-primary w-6" : "bg-white/50 w-2"
-                }`}
+                className={`h-2 rounded-full ${index === selectedImageIndex ? "bg-primary w-6" : "bg-white/50 w-2"
+                  }`}
               />
             ))}
           </View>
@@ -138,7 +139,7 @@ const ProductDetailScreen = () => {
               <Text className="text-text-primary font-bold ml-1 mr-2">
                 {product.averageRating.toFixed(1)}
               </Text>
-              <Text className="text-text-secondary text-sm">({product.totalReviews} reviews)</Text>
+              <Text className="text-text-secondary text-sm">({product.reviewCount} reviews)</Text>
             </View>
             {inStock ? (
               <View className="ml-3 flex-row items-center">
@@ -200,10 +201,91 @@ const ProductDetailScreen = () => {
             <Text className="text-text-primary text-lg font-bold mb-3">Description</Text>
             <Text className="text-text-secondary text-base leading-6">{product.description}</Text>
           </View>
+
+          {/* REVIEWS SECTION */}
+          <View className="mb-8">
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-text-primary text-xl font-bold">Customer Reviews</Text>
+              <View className="flex-row items-center">
+                <Ionicons name="star" size={18} color="#FFC107" />
+                <Text className="text-text-primary font-bold ml-1 text-lg">
+                  {product.averageRating.toFixed(1)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Review List */}
+            {reviewsLoading ? (
+              <ActivityIndicator color="#1DB954" className="my-4" />
+            ) : reviewsData?.reviews && reviewsData.reviews.length > 0 ? (
+              <View className="gap-4">
+                {reviewsData.reviews.map((review) => (
+                  <View key={review._id} className="bg-surface p-4 rounded-2xl border border-white/5">
+                    <View className="flex-row justify-between items-start mb-2">
+                      <View className="flex-row items-center">
+                        <View className="w-10 h-10 rounded-full bg-primary/20 items-center justify-center overflow-hidden mr-3">
+                          {typeof review.userId !== "string" && review.userId.imageUrl ? (
+                            <Image
+                              source={review.userId.imageUrl}
+                              style={{ width: 40, height: 40 }}
+                            />
+                          ) : (
+                            <Text className="text-primary font-bold">
+                              {typeof review.userId !== "string" ? review.userId.name.charAt(0) : "U"}
+                            </Text>
+                          )}
+                        </View>
+                        <View>
+                          <Text className="text-text-primary font-bold">
+                            {typeof review.userId !== "string" ? review.userId.name : "Customer"}
+                          </Text>
+                          <View className="flex-row items-center mt-0.5">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Ionicons
+                                key={s}
+                                name={s <= review.rating ? "star" : "star-outline"}
+                                size={12}
+                                color={s <= review.rating ? "#FFC107" : "#666"}
+                                style={{ marginRight: 1 }}
+                              />
+                            ))}
+                            {review.isVerifiedPurchase && (
+                              <View className="flex-row items-center ml-2 bg-green-500/10 px-1.5 py-0.5 rounded">
+                                <Ionicons name="checkmark-circle" size={10} color="#10B981" />
+                                <Text className="text-[10px] text-green-500 font-bold ml-0.5">Verified</Text>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+                      </View>
+                      <Text className="text-text-secondary text-[10px]">
+                        {new Date(review.createdAt).toLocaleDateString()}
+                      </Text>
+                    </View>
+                    {!!review.title && (
+                      <Text className="text-text-primary font-bold text-sm mb-1">{review.title}</Text>
+                    )}
+                    <Text className="text-text-secondary text-sm leading-5">
+                      {review.comment || "No comment provided."}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View className="bg-surface p-6 rounded-2xl items-center border border-dashed border-white/10">
+                <View className="mb-2">
+                  <Ionicons name="chatbubble-outline" size={32} color="#666" />
+                </View>
+                <Text className="text-text-secondary text-center">No reviews yet. Be the first to share your thoughts!</Text>
+              </View>
+            )}
+
+            {/* Eligibility Note for reviews is handled by the "Write Review" button visibility if we had orders context here */}
+          </View>
         </View>
 
         {/* Similar Products (Gemini Enhanced) */}
-        <HorizontalProductList 
+        <HorizontalProductList
           title="Similar Products"
           products={similarData?.recommendations}
           isLoading={similarLoading}
@@ -212,7 +294,7 @@ const ProductDetailScreen = () => {
         />
 
         {/* Frequently Bought Together */}
-        <HorizontalProductList 
+        <HorizontalProductList
           title="Frequently Bought Together"
           products={boughtTogetherData?.recommendations}
           isLoading={boughtTogetherLoading}
@@ -231,9 +313,8 @@ const ProductDetailScreen = () => {
             </Text>
           </View>
           <TouchableOpacity
-            className={`rounded-2xl px-8 py-4 flex-row items-center ${
-              !inStock ? "bg-surface" : "bg-primary"
-            }`}
+            className={`rounded-2xl px-8 py-4 flex-row items-center ${!inStock ? "bg-surface" : "bg-primary"
+              }`}
             activeOpacity={0.8}
             onPress={handleAddToCart}
             disabled={!inStock || isAddingToCart}
@@ -244,9 +325,8 @@ const ProductDetailScreen = () => {
               <>
                 <Ionicons name="cart" size={24} color={!inStock ? "#666" : "#121212"} />
                 <Text
-                  className={`font-bold text-lg ml-2 ${
-                    !inStock ? "text-text-secondary" : "text-background"
-                  }`}
+                  className={`font-bold text-lg ml-2 ${!inStock ? "text-text-secondary" : "text-background"
+                    }`}
                 >
                   {!inStock ? "Out of Stock" : "Add to Cart"}
                 </Text>

@@ -7,7 +7,7 @@ export interface Product {
   category: string;
   images: string[];
   averageRating: number;
-  totalReviews: number;
+  reviewCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -69,6 +69,8 @@ export interface OrderItem {
   price: number;
   quantity: number;
   image: string;
+  hasReviewed?: boolean;
+  reviewId?: string;
 }
 
 export interface Review {
@@ -77,6 +79,10 @@ export interface Review {
   userId: string | User;
   orderId: string;
   rating: number;
+  comment?: string;
+  title?: string;
+  status: "published" | "hidden" | "flagged";
+  isVerifiedPurchase: boolean;
   createdAt: string;
   updatedAt: string;
 }

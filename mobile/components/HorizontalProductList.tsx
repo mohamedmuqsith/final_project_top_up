@@ -71,7 +71,7 @@ const HorizontalProductList = ({ products, isLoading, isError, title, aiEnhanced
       </View>
 
       <View className="p-3">
-        {(product as any).recommendationReason && (
+        {!!(product as any).recommendationReason && (
           <Text className="text-primary/80 text-xs mb-2 italic" numberOfLines={2}>
             {(product as any).recommendationReason}
           </Text>
@@ -121,7 +121,7 @@ const HorizontalProductList = ({ products, isLoading, isError, title, aiEnhanced
     <View className="mb-8 font-primary">
       <View className="flex-row items-center px-6 mb-4 gap-2">
         <Text className="text-text-primary text-xl font-bold">{title}</Text>
-        {aiEnhanced && <Ionicons name="sparkles" size={18} color="#00D9FF" />}
+        {!!aiEnhanced && <Ionicons name="sparkles" size={18} color="#00D9FF" />}
       </View>
       <FlatList
         data={products}

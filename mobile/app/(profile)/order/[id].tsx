@@ -21,6 +21,8 @@ export default function OrderDetailsScreen() {
 
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [productRatings, setProductRatings] = useState<{ [key: string]: number }>({});
+  const [productComments, setProductComments] = useState<{ [key: string]: string }>({});
+  const [productTitles, setProductTitles] = useState<{ [key: string]: string }>({});
 
   const order = orders?.find((o) => o._id === id);
 
@@ -76,29 +78,44 @@ export default function OrderDetailsScreen() {
   const handleOpenRating = () => {
     // init ratings for all products to 0
     const initialRatings: { [key: string]: number } = {};
+    const initialComments: { [key: string]: string } = {};
+    const initialTitles: { [key: string]: string } = {};
+
     order.orderItems.forEach((item) => {
-      const productId = item.product._id || (item.product as any);
+      const productId = (item.product?._id || item.product) as string;
       initialRatings[productId] = 0;
+      initialComments[productId] = "";
+      initialTitles[productId] = "";
     });
     setProductRatings(initialRatings);
+    setProductComments(initialComments);
+    setProductTitles(initialTitles);
     setShowRatingModal(true);
   };
 
   const handleSubmitRating = async () => {
-    // check if all products have been rated
-    const allRated = Object.values(productRatings).every((rating) => rating > 0);
-    if (!allRated) {
-      Alert.alert("Error", "Please rate all products");
+    // check if any product has been rated
+    const hasAnyRating = Object.values(productRatings).some((rating) => rating > 0);
+    if (!hasAnyRating) {
+      Alert.alert("Error", "Please rate at least one product");
       return;
     }
 
     try {
+      const ratedItems = order.orderItems.filter(item => {
+        const pid = (item.product?._id || item.product) as string;
+        return pid && productRatings[pid] > 0;
+      });
+
       await Promise.all(
-        order.orderItems.map((item) => {
+        ratedItems.map((item) => {
+          const pid = (item.product?._id || item.product) as string;
           return createReviewAsync({
-            productId: item.product._id || (item.product as any),
+            productId: pid,
             orderId: order._id,
-            rating: productRatings[item.product._id || (item.product as any)],
+            rating: productRatings[pid],
+            comment: productComments[pid],
+            title: productTitles[pid],
           });
         })
       );
@@ -115,6 +132,8 @@ export default function OrderDetailsScreen() {
       Alert.alert("Success", "Thank you for rating your order!");
       setShowRatingModal(false);
       setProductRatings({});
+      setProductComments({});
+      setProductTitles({});
     } catch (error: any) {
       Alert.alert("Error", error?.response?.data?.error || "Failed to submit rating");
     }
@@ -277,10 +296,18 @@ export default function OrderDetailsScreen() {
         onClose={() => setShowRatingModal(false)}
         order={order}
         productRatings={productRatings}
+        productComments={productComments}
+        productTitles={productTitles}
         onSubmit={handleSubmitRating}
         isSubmitting={isCreatingReview}
         onRatingChange={(productId, rating) =>
           setProductRatings((prev) => ({ ...prev, [productId]: rating }))
+        }
+        onCommentChange={(productId, comment) =>
+          setProductComments((prev) => ({ ...prev, [productId]: comment }))
+        }
+        onTitleChange={(productId, title) =>
+          setProductTitles((prev) => ({ ...prev, [productId]: title }))
         }
       />
     </SafeScreen>

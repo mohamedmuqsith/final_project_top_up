@@ -1,37 +1,51 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { reviewApi } from "../lib/api";
-import { Eye, EyeOff, Search, Star, MessageSquareOff, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { 
+  Eye, 
+  EyeOff, 
+  Search, 
+  Star, 
+  MessageSquare, 
+  Flag,
+  CheckCircle,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight
+} from "lucide-react";
+import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import StatCard from "../components/StatCard";
 
 const ReviewsPage = () => {
   const queryClient = useQueryClient();
   const [filterStatus, setFilterStatus] = useState("");
   const [filterRating, setFilterRating] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  
-  // Debounce search ideally, but keeping it direct for MVP
-  const [queryParams, setQueryParams] = useState({ page: 1, limit: 20 });
+  const [page, setPage] = useState(1);
+  const limit = 10;
 
-  const { data: analytics } = useQuery({
+  const { data: analytics, isLoading: analyticsLoading } = useQuery({
     queryKey: ["reviewAnalytics"],
     queryFn: reviewApi.getAnalytics,
   });
 
   const { data: reviewsData, isLoading: reviewsLoading } = useQuery({
-    queryKey: ["reviews", queryParams],
-    queryFn: () => reviewApi.getAll(queryParams),
+    queryKey: ["reviews", { status: filterStatus, rating: filterRating, page, limit }],
+    queryFn: () => reviewApi.getAll({ 
+      status: filterStatus, 
+      rating: filterRating, 
+      page, 
+      limit 
+    }),
   });
 
   const updateStatusMutation = useMutation({
     mutationFn: reviewApi.updateStatus,
     onSuccess: () => {
-      alert("Review visibility updated");
       queryClient.invalidateQueries(["reviews"]);
       queryClient.invalidateQueries(["reviewAnalytics"]);
     },
     onError: (err) => {
-      alert(err.response?.data?.error || "Failed to update review");
+      alert(err.response?.data?.error || "Failed to update review status");
     },
   });
 
@@ -39,187 +53,256 @@ const ReviewsPage = () => {
     updateStatusMutation.mutate({ reviewId, status: newStatus });
   };
 
-  const applyFilters = () => {
-    const params = { page: 1, limit: 20 };
-    if (filterStatus) params.status = filterStatus;
-    if (filterRating) params.rating = filterRating;
-    // Just searching by product ID or User ID directly if requested, or passing raw string
-    if (searchTerm) {
-      // simplified mapping for admin table search implementation
-      // for a full search, the backend would need text indexes
-      alert("Filters applied");
-    }
-    setQueryParams(params);
-  };
-
   const renderStars = (rating) => {
-    return Array(rating).fill(0).map((_, i) => (
-      <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+    return Array(5).fill(0).map((_, i) => (
+      <Star 
+        key={i} 
+        className={`w-4 h-4 ${i < rating ? "fill-yellow-400 text-yellow-400" : "text-base-300"}`} 
+      />
     ));
   };
 
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case "published": return "badge-success";
+      case "hidden": return "badge-ghost opacity-50";
+      case "flagged": return "badge-warning";
+      default: return "badge-ghost";
+    }
+  };
+
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Reviews Management</h1>
+    <div className="p-6 space-y-8">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Reviews & Ratings</h1>
+          <p className="text-base-content/60">Manage customer feedback and moderate content</p>
+        </div>
       </div>
 
       {/* Analytics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Reviews"
-          value={analytics?.totalReviews || 0}
-          icon={MessageSquareOff}
+          value={analytics?.summary?.totalReviews || 0}
+          icon={MessageSquare}
           color="bg-primary"
         />
         <StatCard
           title="Store Average"
-          value={analytics?.storeAverage ? analytics.storeAverage.toFixed(1) : "0.0"}
+          value={analytics?.summary?.averageRating?.toFixed(1) || "0.0"}
           icon={Star}
           color="bg-secondary"
         />
         <StatCard
-          title="Top Rated Prod"
-          value={analytics?.topReviewedProducts?.[0]?.name || "N/A"}
-          icon={Eye}
+          title="Flagged Reviews"
+          value={analytics?.summary?.flaggedCount || 0}
+          icon={Flag}
+          color="bg-warning"
+        />
+        <StatCard
+          title="Top Rated Product"
+          value={analytics?.topRatedProducts?.[0]?.name ? analytics.topRatedProducts[0].name.slice(0, 15) + "..." : "N/A"}
+          icon={CheckCircle}
           color="bg-accent"
         />
       </div>
 
-      {/* Filters Bar */}
-      <div className="bg-base-200 p-4 rounded-xl flex flex-wrap gap-4 items-end mb-6">
-        <div className="form-control w-full max-w-xs">
-          <label className="label"><span className="label-text">Filter by Status</span></label>
-          <select 
-            className="select select-bordered"
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-          >
-            <option value="">All</option>
-            <option value="visible">Visible</option>
-            <option value="hidden">Hidden</option>
-          </select>
-        </div>
+      {/* Main Content Area */}
+      <div className="card bg-base-100 shadow-xl border border-base-200">
+        <div className="card-body p-0">
+          {/* Filters Bar */}
+          <div className="p-4 border-b border-base-200 bg-base-200/50 flex flex-wrap gap-4 items-center justify-between">
+            <div className="flex flex-wrap gap-4">
+              <div className="form-control">
+                <select 
+                  className="select select-bordered select-sm"
+                  value={filterStatus}
+                  onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+                >
+                  <option value="">All Statuses</option>
+                  <option value="published">Published</option>
+                  <option value="hidden">Hidden</option>
+                  <option value="flagged">Flagged</option>
+                </select>
+              </div>
 
-        <div className="form-control w-full max-w-xs">
-          <label className="label"><span className="label-text">Filter by Rating</span></label>
-          <select 
-            className="select select-bordered"
-            value={filterRating}
-            onChange={(e) => setFilterRating(e.target.value)}
-          >
-            <option value="">All Ratings</option>
-            <option value="5">5 Stars</option>
-            <option value="4">4 Stars</option>
-            <option value="3">3 Stars</option>
-            <option value="2">2 Stars</option>
-            <option value="1">1 Star</option>
-          </select>
-        </div>
-        
-        <button className="btn btn-primary" onClick={applyFilters}>
-          <Search className="w-5 h-5" /> Filter
-        </button>
-      </div>
+              <div className="form-control">
+                <select 
+                  className="select select-bordered select-sm"
+                  value={filterRating}
+                  onChange={(e) => { setFilterRating(e.target.value); setPage(1); }}
+                >
+                  <option value="">All Ratings</option>
+                  {[5, 4, 3, 2, 1].map(r => (
+                    <option key={r} value={r}>{r} Stars</option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
-      {/* Reviews Table */}
-      <div className="bg-base-100 rounded-xl shadow-sm border border-base-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="table w-full">
-            <thead>
-              <tr className="bg-base-200">
-                <th>Product</th>
-                <th>Customer</th>
-                <th>Rating</th>
-                <th>Comment</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reviewsLoading ? (
-                <tr>
-                  <td colSpan="7" className="text-center py-8">
-                    <span className="loading loading-spinner loading-lg text-primary"></span>
-                  </td>
+            <div className="text-sm opacity-60">
+              Showing {reviewsData?.reviews?.length || 0} of {reviewsData?.total || 0} reviews
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="table w-full">
+              <thead>
+                <tr className="bg-base-200/30">
+                  <th className="w-1/4">Product / Customer</th>
+                  <th>Rating</th>
+                  <th className="w-1/3">Review Content</th>
+                  <th>Status</th>
+                  <th className="text-center">Moderation Actions</th>
                 </tr>
-              ) : reviewsData?.reviews?.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="text-center py-8 text-base-content/60">
-                    No reviews found.
-                  </td>
-                </tr>
-              ) : (
-                reviewsData?.reviews?.map((review) => (
-                  <tr key={review._id} className="hover">
-                    <td>
-                      <div className="font-medium max-w-[200px] truncate" title={review.productId?.name}>
-                        {review.productId?.name || "Unknown Product"}
-                      </div>
+              </thead>
+              <tbody>
+                {reviewsLoading ? (
+                  <tr>
+                    <td colSpan="5" className="text-center py-20">
+                      <span className="loading loading-spinner loading-lg text-primary"></span>
                     </td>
-                    <td>
-                      <div className="flex items-center gap-3">
-                        <div className="avatar">
-                          <div className="mask mask-squircle w-10 h-10">
-                            <img src={review.userId?.imageUrl || "https://api.dicebear.com/7.x/initials/svg?seed="+review.userId?.firstName} alt="Avatar" />
-                          </div>
-                        </div>
-                        <div>
-                          <div className="font-bold">{review.userId?.firstName} {review.userId?.lastName}</div>
-                          <div className="text-sm opacity-50">{review.userId?.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="flex">
-                        {renderStars(review.rating)}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="max-w-[250px] truncate text-sm" title={review.comment}>
-                        {review.comment || <span className="opacity-40 italic">No comment</span>}
-                      </div>
-                    </td>
-                    <td className="text-sm">
-                      {new Date(review.createdAt).toLocaleDateString()}
-                    </td>
-                    <td>
-                      <div className={`badge ${review.status === "visible" ? "badge-success" : "badge-error"}`}>
-                        {review.status}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="flex gap-2">
-                        {review.status === "visible" ? (
-                          <button
-                            className="btn btn-sm btn-ghost text-error"
-                            onClick={() => handleUpdateStatus(review._id, "hidden")}
-                            disabled={updateStatusMutation.isPending}
-                            title="Hide Review"
-                          >
-                            <EyeOff className="w-4 h-4" />
-                          </button>
-                        ) : (
-                          <button
-                            className="btn btn-sm btn-ghost text-success"
-                            onClick={() => handleUpdateStatus(review._id, "visible")}
-                            disabled={updateStatusMutation.isPending}
-                            title="Show Review"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                        )}
-                        {/* We hide actual deletion logic from average admins occasionally, but can include it if needed. 
-                            The instructions asked for hide/show which correctly manipulates aggregates. We omit hard delete 
-                            from the UI to prevent orphans unless strictly requested. Hide is safer. */}
+                  </tr>
+                ) : reviewsData?.reviews?.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="text-center py-20 text-base-content/60">
+                      <div className="flex flex-col items-center gap-2">
+                        <AlertTriangle className="size-8 opacity-20" />
+                        <p>No reviews matching your filters</p>
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  reviewsData?.reviews?.map((review) => (
+                    <tr key={review._id} className="hover:bg-base-200/50 transition-colors">
+                      <td>
+                        <div className="flex flex-col gap-1">
+                          <Link 
+                            to={`/products?id=${review.productId?._id}`} 
+                            className="font-bold text-sm truncate max-w-[200px] text-primary hover:underline hover:text-primary-focus transition-colors"
+                            title={review.productId?.name}
+                          >
+                            {review.productId?.name}
+                          </Link>
+                          <div className="flex items-center gap-2">
+                             <div className="avatar">
+                               <div className="size-6 rounded-full ring ring-primary ring-offset-base-100 ring-offset-1">
+                                 <img src={review.userId?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${review.userId?.name}`} alt={review.userId?.name || "Customer"} />
+                               </div>
+                             </div>
+                             <Link 
+                               to={`/customers?search=${review.userId?.email}`}
+                               className="text-xs opacity-70 hover:text-primary hover:underline transition-colors"
+                             >
+                               {review.userId?.name}
+                             </Link>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex gap-0.5">{renderStars(review.rating)}</div>
+                          {review.isVerifiedPurchase && (
+                            <span className="text-[10px] text-success font-bold flex items-center gap-0.5">
+                              <CheckCircle className="size-2.5" /> Verified
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex flex-col gap-1 pr-4">
+                          {review.title && <span className="font-bold text-sm text-text-primary">"{review.title}"</span>}
+                          <p className="text-sm line-clamp-3 opacity-90 leading-relaxed" title={review.comment}>
+                            {review.comment || <span className="opacity-30 italic">No comment provided</span>}
+                          </p>
+                          <span className="text-[10px] opacity-40 font-medium">{new Date(review.createdAt).toLocaleDateString()} at {new Date(review.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className={`badge ${getStatusBadgeClass(review.status)} badge-sm font-semibold uppercase tracking-wider`}>
+                          {review.status}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex flex-col gap-2 justify-center">
+                          {review.status === "flagged" && (
+                            <button
+                              className="btn btn-success btn-xs gap-1 normal-case font-bold"
+                              onClick={() => handleUpdateStatus(review._id, "published")}
+                            >
+                              <CheckCircle className="size-3" /> Approve
+                            </button>
+                          )}
+                          {review.status !== "hidden" && (
+                            <button
+                              className="btn btn-outline btn-error btn-xs gap-1 normal-case font-bold"
+                              onClick={() => handleUpdateStatus(review._id, "hidden")}
+                            >
+                              <EyeOff className="size-3" /> Hide Review
+                            </button>
+                          )}
+                          {review.status === "hidden" && (
+                             <button
+                               className="btn btn-info btn-xs gap-1 normal-case font-bold"
+                               onClick={() => handleUpdateStatus(review._id, "published")}
+                             >
+                               <Eye className="size-3" /> Restore
+                             </button>
+                          )}
+                          {review.status !== "flagged" && review.status !== "hidden" && (
+                             <button
+                               className="btn btn-ghost btn-xs text-warning gap-1 normal-case font-bold border border-warning/20"
+                               onClick={() => handleUpdateStatus(review._id, "flagged")}
+                             >
+                               <Flag className="size-3" /> Flag
+                             </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {reviewsData?.totalPages > 1 && (
+            <div className="p-6 flex justify-between items-center border-t border-base-200 bg-base-200/20">
+              <div className="text-sm font-medium opacity-60">
+                Page <span className="text-primary">{page}</span> of {reviewsData.totalPages}
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  className="btn btn-sm btn-outline gap-1" 
+                  disabled={page === 1}
+                  onClick={() => { setPage(p => p - 1); window.scrollTo(0, 0); }}
+                >
+                  <ChevronLeft className="size-4" /> Previous
+                </button>
+                <div className="flex gap-1">
+                   {Array.from({ length: reviewsData.totalPages }, (_, i) => i + 1).map((p) => (
+                     <button
+                       key={p}
+                       className={`btn btn-sm btn-square ${page === p ? "btn-primary" : "btn-ghost"}`}
+                       onClick={() => { setPage(p); window.scrollTo(0, 0); }}
+                     >
+                       {p}
+                     </button>
+                   ))}
+                </div>
+                <button 
+                  className="btn btn-sm btn-outline gap-1" 
+                  disabled={page === reviewsData.totalPages}
+                  onClick={() => { setPage(p => p + 1); window.scrollTo(0, 0); }}
+                >
+                  Next <ChevronRight className="size-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

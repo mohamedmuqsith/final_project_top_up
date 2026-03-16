@@ -2,6 +2,7 @@ import cloudinary from "../config/cloudinary.js";
 import { Product } from "../models/product.model.js";
 import { Order } from "../models/order.model.js";
 import { User } from "../models/user.model.js";
+import { Review } from "../models/review.model.js";
 import { createNotification, checkAndCreateInventoryNotifications } from "../services/notification.service.js";
 
 export async function createProduct(req, res) {
@@ -506,6 +507,22 @@ export async function getDashboardStats(req, res) {
       orders: stat.orders,
     }));
 
+    // Review summary for dashboard
+    const reviewSummaryAgg = await Review.aggregate([
+      { $match: { status: "published" } },
+      {
+        $group: {
+          _id: null,
+          totalReviews: { $sum: 1 },
+          averageRating: { $avg: "$rating" },
+        },
+      },
+    ]);
+    const reviewSummary = {
+      totalReviews: reviewSummaryAgg[0]?.totalReviews || 0,
+      averageRating: reviewSummaryAgg[0]?.averageRating || 0,
+    };
+
     res.status(200).json({
       totalRevenue,
       totalOrders,
@@ -519,6 +536,7 @@ export async function getDashboardStats(req, res) {
       lowStockProducts,
       predictedStockouts,
       chartData,
+      reviewSummary,
     });
   } catch (error) {
     console.error("Error fetching dashboard stats:", error);
@@ -1050,6 +1068,251 @@ export async function getRestockSuggestions(req, res) {
     res.status(200).json({ suggestions, summary });
   } catch (error) {
     console.error("Error fetching restock suggestions:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+// ==========================================
+// REVIEW MANAGEMENT
+// ==========================================
+
+// GET /api/admin/reviews
+export async function getAdminReviews(req, res) {
+  try {
+    const { status, rating, page = 1, limit = 20 } = req.query;
+
+    const filter = {};
+    if (status) filter.status = status;
+    if (rating) filter.rating = parseInt(rating);
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const [reviews, total] = await Promise.all([
+      Review.find(filter)
+        .populate("userId", "name email imageUrl")
+        .populate("productId", "name images price")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit)),
+      Review.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      reviews,
+      total,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / parseInt(limit)),
+    });
+  } catch (error) {
+    console.error("Error in getAdminReviews:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+// PATCH /api/admin/reviews/:id/status
+export async function updateReviewStatus(req, res) {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status || !["published", "hidden", "flagged"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status. Must be published, hidden, or flagged" });
+    }
+
+    const review = await Review.findById(id);
+    if (!review) {
+      return res.status(404).json({ error: "Review not found" });
+    }
+
+    const oldStatus = review.status;
+    review.status = status;
+    await review.save();
+
+    // Populate for frontend refresh
+    const updatedReview = await Review.findById(review._id)
+      .populate("userId", "name email imageUrl")
+      .populate("productId", "name images price");
+
+    // Recalculate product rating if visibility changed
+    const wasPublic = oldStatus === "published";
+    const isNowPublic = status === "published";
+    if (wasPublic !== isNowPublic) {
+      const stats = await Review.aggregate([
+        { $match: { productId: review.productId, status: "published" } },
+        {
+          $group: {
+            _id: null,
+            averageRating: { $avg: "$rating" },
+            reviewCount: { $sum: 1 },
+          },
+        },
+      ]);
+      const averageRating = stats[0]?.averageRating || 0;
+      const reviewCount = stats[0]?.reviewCount || 0;
+      await Product.findByIdAndUpdate(review.productId, { averageRating, reviewCount });
+    }
+
+    res.status(200).json({ message: "Review status updated", review: updatedReview });
+  } catch (error) {
+    console.error("Error in updateReviewStatus:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+// GET /api/admin/review-analytics
+export async function getReviewAnalytics(req, res) {
+  try {
+    // Overall summary (from published reviews only for public average)
+    const reviewSummaryAgg = await Review.aggregate([
+      { $match: { status: "published" } },
+      {
+        $group: {
+          _id: null,
+          totalReviews: { $sum: 1 },
+          averageRating: { $avg: "$rating" },
+        },
+      },
+    ]);
+    const totalReviews = await Review.countDocuments();
+    const flaggedCount = await Review.countDocuments({ status: "flagged" });
+
+    // Rating distribution
+    const distributionAgg = await Review.aggregate([
+      {
+        $group: {
+          _id: "$rating",
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: -1 } },
+    ]);
+    const ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    distributionAgg.forEach((d) => {
+      ratingDistribution[d._id] = d.count;
+    });
+
+    // Top reviewed products (by published review count)
+    const topReviewedProducts = await Review.aggregate([
+      { $match: { status: "published" } },
+      {
+        $group: {
+          _id: "$productId",
+          reviewCount: { $sum: 1 },
+          avgRating: { $avg: "$rating" },
+        },
+      },
+      { $sort: { reviewCount: -1, avgRating: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "product",
+        },
+      },
+      { $unwind: "$product" },
+      {
+        $project: {
+          name: "$product.name",
+          image: { $arrayElemAt: ["$product.images", 0] },
+          reviewCount: 1,
+          avgRating: { $round: ["$avgRating", 1] },
+        },
+      },
+    ]);
+
+    // Top rated products (by average rating, min 3 reviews)
+    const topRatedProducts = await Review.aggregate([
+      { $match: { status: "published" } },
+      {
+        $group: {
+          _id: "$productId",
+          reviewCount: { $sum: 1 },
+          avgRating: { $avg: "$rating" },
+        },
+      },
+      { $match: { reviewCount: { $gte: 1 } } }, // In dev, 1 is fine
+      { $sort: { avgRating: -1, reviewCount: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "product",
+        },
+      },
+      { $unwind: "$product" },
+      {
+        $project: {
+          name: "$product.name",
+          image: { $arrayElemAt: ["$product.images", 0] },
+          reviewCount: 1,
+          avgRating: { $round: ["$avgRating", 1] },
+        },
+      },
+    ]);
+
+    // Low rated products
+    const lowRatedProducts = await Review.aggregate([
+      { $match: { status: "published" } },
+      {
+        $group: {
+          _id: "$productId",
+          reviewCount: { $sum: 1 },
+          avgRating: { $avg: "$rating" },
+        },
+      },
+      { $match: { avgRating: { $lte: 2.5 } } },
+      { $sort: { avgRating: 1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "product",
+        },
+      },
+      { $unwind: "$product" },
+      {
+        $project: {
+          name: "$product.name",
+          image: { $arrayElemAt: ["$product.images", 0] },
+          reviewCount: 1,
+          avgRating: { $round: ["$avgRating", 1] },
+        },
+      },
+    ]);
+
+    // Products with no reviews
+    const reviewedProductIds = await Review.distinct("productId");
+    const noReviewProducts = await Product.find(
+      { _id: { $nin: reviewedProductIds } },
+      "name images"
+    )
+      .limit(10)
+      .lean();
+
+    res.status(200).json({
+      summary: {
+        totalReviews: reviewSummaryAgg[0]?.totalReviews || 0,
+        averageRating: parseFloat((reviewSummaryAgg[0]?.averageRating || 0).toFixed(1)),
+        flaggedCount,
+      },
+      ratingDistribution,
+      topReviewedProducts,
+      topRatedProducts,
+      lowRatedProducts,
+      noReviewProducts: noReviewProducts.map((p) => ({
+        _id: p._id,
+        name: p.name,
+        image: p.images?.[0],
+      })),
+    });
+  } catch (error) {
+    console.error("Error in getReviewAnalytics:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 }

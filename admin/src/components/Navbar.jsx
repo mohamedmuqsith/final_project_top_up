@@ -11,6 +11,7 @@ import {
   AlertCircleIcon,
   BarChart3Icon,
   RefreshCwIcon,
+  MessageSquareIcon,
 } from "lucide-react";
 
 // eslint-disable-next-line
@@ -21,6 +22,7 @@ export const NAVIGATION = [
   { name: "Customers", path: "/customers", icon: <UsersIcon className="size-5" /> },
   { name: "Inventory Alerts", path: "/inventory-alerts", icon: <AlertCircleIcon className="size-5" /> },
   { name: "Restock Suggestions", path: "/restock-suggestions", icon: <RefreshCwIcon className="size-5" /> },
+  { name: "Reviews", path: "/reviews", icon: <MessageSquareIcon className="size-5" /> },
   { name: "Sales Reports", path: "/sales-reports", icon: <BarChart3Icon className="size-5" /> },
   { name: "Inventory Reports", path: "/inventory-reports", icon: <ClipboardListIcon className="size-5" /> },
 ];

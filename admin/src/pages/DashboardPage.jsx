@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { statsApi } from "../lib/api";
@@ -11,6 +11,8 @@ import {
   TrendingDownIcon,
   CheckCircleIcon,
   XCircleIcon,
+  MessageSquareIcon,
+  StarHalfIcon,
 } from "lucide-react";
 import { capitalizeText, formatDate, getOrderStatusBadge } from "../lib/utils";
 import { Link, useNavigate } from "react-router";
@@ -67,6 +69,7 @@ import {
     predictedStockouts = [],
     chartData = [],
     statusMap = {},
+    reviewSummary = { totalReviews: 0, averageRating: 0 },
   } = statsData || {};
 
   const statsCards = [
@@ -106,7 +109,18 @@ import {
       icon: <PackageIcon className="size-8" />,
       desc: "Active catalog",
     },
-  ];
+    {
+      name: "Total Reviews",
+      value: isLoading ? "..." : (reviewSummary?.totalReviews ?? 0),
+      icon: <MessageSquareIcon className="size-8 text-info" />,
+      desc: "Customer feedback",
+    },
+    {
+      name: "Store Rating",
+      value: isLoading ? "..." : `${(reviewSummary?.averageRating || 0).toFixed(1)}/5.0`,
+      icon: <StarHalfIcon className="size-8 text-warning" />,
+      desc: "Average across active products",
+    },  ];
 
   return (
     <div className="space-y-6 pb-12">
@@ -142,16 +156,16 @@ import {
           <div className="card-body p-4 sm:p-6">
             <h2 className="card-title mb-4">Confirmed Revenue Over Time</h2>
             {isLoading ? (
-              <div className="h-[300px] flex items-center justify-center">
+              <div className="h-75 flex items-center justify-center">
                 <span className="loading loading-spinner text-primary"></span>
               </div>
             ) : chartData.length === 0 ? (
-              <div className="h-[300px] flex items-center justify-center text-base-content/60">
+              <div className="h-75 flex items-center justify-center text-base-content/60">
                 No revenue data available
               </div>
             ) : (
-              <div className="h-[300px] w-full min-h-[300px]">
-                <ResponsiveContainer width="99%" height="100%">
+              <div className="h-75 w-full min-h-75">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
@@ -184,16 +198,16 @@ import {
           <div className="card-body p-4 sm:p-6">
             <h2 className="card-title mb-4">Orders Over Time</h2>
             {isLoading ? (
-              <div className="h-[300px] flex items-center justify-center">
+              <div className="h-75 flex items-center justify-center">
                 <span className="loading loading-spinner text-primary"></span>
               </div>
             ) : chartData.length === 0 ? (
-              <div className="h-[300px] flex items-center justify-center text-base-content/60">
+              <div className="h-75 flex items-center justify-center text-base-content/60">
                 No orders data available
               </div>
             ) : (
-              <div className="h-[300px] w-full min-h-[300px]">
-                <ResponsiveContainer width="99%" height="100%">
+              <div className="h-75 w-full min-h-75">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <BarChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
@@ -221,8 +235,8 @@ import {
           <div className="card-body p-4 sm:p-6">
             <h2 className="card-title mb-4">Order Status Breakdown</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-75">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <PieChart>
                     <Pie
                       data={Object.entries(statusMap).map(([name, value]) => ({ name: capitalizeText(name), value }))}
@@ -304,14 +318,14 @@ import {
                           <span className="font-medium text-xs">#{order._id.slice(-8).toUpperCase()}</span>
                         </td>
                         <td>
-                          <div className="max-w-[120px] truncate">
+                          <div className="max-w-30 truncate">
                             <span className="font-medium">{order.shippingAddress?.fullName || "N/A"}</span>
                           </div>
                         </td>
                         <td>
                           <div className="text-sm">
                             {order.orderItems?.[0]?.name && (
-                              <span className="max-w-[120px] truncate inline-block align-bottom">
+                              <span className="max-w-30 truncate inline-block align-bottom">
                                 {order.orderItems[0].name}
                               </span>
                             )}
