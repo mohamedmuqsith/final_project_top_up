@@ -20,7 +20,7 @@ export const useOffers = () => {
     queryKey: ["activeOffers"],
     queryFn: async () => {
       const { data } = await api.get<{ offers: Offer[] }>("/offers/active");
-      return data.offers;
+      return data?.offers ?? [];
     },
   });
 

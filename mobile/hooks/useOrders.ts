@@ -9,7 +9,7 @@ export const useOrders = () => {
     queryKey: ["orders"],
     queryFn: async () => {
       const { data } = await api.get("/orders");
-      return data.orders;
+      return data?.orders ?? [];
     },
   });
 };

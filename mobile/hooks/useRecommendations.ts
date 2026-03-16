@@ -14,7 +14,7 @@ export const useRecommendedProducts = () => {
     queryKey: ["personalizedRecommendations"],
     queryFn: async () => {
       const { data } = await api.get<RecommendationsResponse>("/recommendations/personalized");
-      return data;
+      return data ?? { recommendations: [], aiEnhanced: false };
     },
   });
 };
@@ -26,7 +26,7 @@ export const useSimilarProducts = (productId: string | undefined) => {
     queryKey: ["similarProducts", productId],
     queryFn: async () => {
       const { data } = await api.get<RecommendationsResponse>(`/recommendations/similar/${productId}`);
-      return data;
+      return data ?? { recommendations: [], aiEnhanced: false };
     },
     enabled: !!productId,
   });
@@ -38,7 +38,7 @@ export const useTrendingProducts = () => {
     queryKey: ["trendingProducts"],
     queryFn: async () => {
       const { data } = await api.get<RecommendationsResponse>("/recommendations/trending");
-      return data;
+      return data ?? { recommendations: [], aiEnhanced: false };
     },
   });
 };
@@ -50,7 +50,7 @@ export const useFrequentlyBoughtTogether = (productId: string | undefined) => {
     queryKey: ["frequentlyBoughtTogether", productId],
     queryFn: async () => {
       const { data } = await api.get<RecommendationsResponse>(`/recommendations/bought-together/${productId}`);
-      return data;
+      return data ?? { recommendations: [], aiEnhanced: false };
     },
     enabled: !!productId,
   });

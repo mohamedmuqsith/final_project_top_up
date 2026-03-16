@@ -80,7 +80,7 @@ export const useUserReviews = () => {
     queryKey: ["user-reviews"],
     queryFn: async () => {
       const response = await api.get("/reviews/me");
-      return response.data.reviews as Review[];
+      return (response.data?.reviews as Review[]) ?? [];
     },
   });
 };
