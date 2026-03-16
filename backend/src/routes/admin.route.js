@@ -12,6 +12,9 @@ import {
   getSalesReport,
   getInventoryReport,
   getRestockSuggestions,
+  getAdminReviews,
+  updateReviewStatus,
+  getReviewAnalytics,
 } from "../controllers/admin.controller.js";
 import { adminOnly, protectRoute } from "../middleware/auth.middleware.js";
 import { upload } from "../middleware/multer.middleware.js";
@@ -37,7 +40,12 @@ router.get("/sales-report", getSalesReport);
 router.get("/inventory-report", getInventoryReport);
 router.get("/restock-suggestions", getRestockSuggestions);
 
+// Review management
+router.get("/reviews", getAdminReviews);
+router.patch("/reviews/:id/status", updateReviewStatus);
+router.get("/reviews/analytics", getReviewAnalytics);
+
 // PUT: Used for full resource replacement, updating the entire resource
 // PATCH: Used for partial resource updates, updating a specific part of the resource
 
-export default router;
+export default router;

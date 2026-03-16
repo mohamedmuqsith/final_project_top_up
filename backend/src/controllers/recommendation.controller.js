@@ -143,7 +143,7 @@ export const getTrendingProducts = async (req, res) => {
   try {
     // Stage 1: Shortlist (Higher ratings and total reviews = trending)
     const candidates = await Product.find({ stock: { $gt: 0 } })
-      .sort({ totalReviews: -1, averageRating: -1 })
+      .sort({ reviewCount: -1, averageRating: -1 })
       .limit(10);
 
     if (candidates.length === 0) {

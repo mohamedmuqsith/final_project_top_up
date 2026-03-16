@@ -96,4 +96,19 @@ export const restockApi = {
     return data;
   },
 };
+
+export const reviewApi = {
+  getAll: async (params = {}) => {
+    const { data } = await axiosInstance.get("/admin/reviews", { params });
+    return data;
+  },
+  updateStatus: async ({ reviewId, status }) => {
+    const { data } = await axiosInstance.patch(`/admin/reviews/${reviewId}/status`, { status });
+    return data;
+  },
+  getAnalytics: async () => {
+    const { data } = await axiosInstance.get("/admin/reviews/analytics");
+    return data;
+  },
+};
 

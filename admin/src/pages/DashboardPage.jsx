@@ -11,6 +11,8 @@ import {
   TrendingDownIcon,
   CheckCircleIcon,
   XCircleIcon,
+  MessageSquareIcon,
+  StarHalfIcon,
 } from "lucide-react";
 import { capitalizeText, formatDate, getOrderStatusBadge } from "../lib/utils";
 import { Link, useNavigate } from "react-router";
@@ -67,6 +69,7 @@ import {
     predictedStockouts = [],
     chartData = [],
     statusMap = {},
+    reviewSummary = { totalReviews: 0, averageRating: 0 },
   } = statsData || {};
 
   const statsCards = [
@@ -105,6 +108,18 @@ import {
       value: isLoading ? "..." : totalProducts,
       icon: <PackageIcon className="size-8" />,
       desc: "Active catalog",
+    },
+    {
+      name: "Total Reviews",
+      value: isLoading ? "..." : reviewSummary.totalReviews,
+      icon: <MessageSquareIcon className="size-8 text-info" />,
+      desc: "Customer feedback",
+    },
+    {
+      name: "Store Rating",
+      value: isLoading ? "..." : `${(reviewSummary?.averageRating || 0).toFixed(1)}/5.0`,
+      icon: <StarHalfIcon className="size-8 text-warning" />,
+      desc: "Average across active products",
     },
   ];
 
@@ -151,7 +166,7 @@ import {
               </div>
             ) : (
               <div className="h-[300px] w-full min-h-[300px]">
-                <ResponsiveContainer width="99%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
@@ -193,7 +208,7 @@ import {
               </div>
             ) : (
               <div className="h-[300px] w-full min-h-[300px]">
-                <ResponsiveContainer width="99%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <BarChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
@@ -222,7 +237,7 @@ import {
             <h2 className="card-title mb-4">Order Status Breakdown</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
               <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <PieChart>
                     <Pie
                       data={Object.entries(statusMap).map(([name, value]) => ({ name: capitalizeText(name), value }))}

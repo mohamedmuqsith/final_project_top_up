@@ -1,12 +1,22 @@
 import { Router } from "express";
 import { protectRoute } from "../middleware/auth.middleware.js";
-import { createReview, deleteReview } from "../controllers/review.controller.js";
+import {
+  createReview,
+  updateReview,
+  deleteReview,
+  getProductReviews,
+  getUserReviews,
+} from "../controllers/review.controller.js";
 
 const router = Router();
 
+// Public — no auth required
+router.get("/product/:productId", getProductReviews);
+
+// Protected — auth required
 router.post("/", protectRoute, createReview);
-// we did not implement this function in the mobile app - in the frontend
-// but just in case you'd like to see the backend code here it is - i provided
+router.patch("/:reviewId", protectRoute, updateReview);
 router.delete("/:reviewId", protectRoute, deleteReview);
+router.get("/me", protectRoute, getUserReviews);
 
 export default router;

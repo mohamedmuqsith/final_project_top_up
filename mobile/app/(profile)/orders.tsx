@@ -17,46 +17,68 @@ function OrdersScreen() {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [productRatings, setProductRatings] = useState<{ [key: string]: number }>({});
+  const [productComments, setProductComments] = useState<{ [key: string]: string }>({});
+  const [productTitles, setProductTitles] = useState<{ [key: string]: string }>({});
 
   const handleOpenRating = (order: Order) => {
     setShowRatingModal(true);
     setSelectedOrder(order);
 
-    // init ratings for all product to 0 - resettin the state for each product
+    // init states for each product
     const initialRatings: { [key: string]: number } = {};
+    const initialComments: { [key: string]: string } = {};
+    const initialTitles: { [key: string]: string } = {};
+    
     order.orderItems.forEach((item) => {
-      const productId = item.product._id;
+      const productId = item.product._id || (item.product as any);
       initialRatings[productId] = 0;
+      initialComments[productId] = "";
+      initialTitles[productId] = "";
     });
+    
     setProductRatings(initialRatings);
+    setProductComments(initialComments);
+    setProductTitles(initialTitles);
   };
 
   const handleSubmitRating = async () => {
     if (!selectedOrder) return;
 
-    // check if all products have been rated
-    const allRated = Object.values(productRatings).every((rating) => rating > 0);
-    if (!allRated) {
-      Alert.alert("Error", "Please rate all products");
+    // check if any product has been rated
+    const hasAnyRating = Object.values(productRatings).some((rating) => rating > 0);
+    if (!hasAnyRating) {
+      Alert.alert("Error", "Please rate at least one product");
       return;
     }
 
     try {
+      // Filter items that actually have a rating selected
+      const ratedItems = selectedOrder.orderItems.filter(item => {
+        const pid = item.product?._id || item.product;
+        return pid && productRatings[pid as string] > 0;
+      });
+      
       await Promise.all(
-        selectedOrder.orderItems.map((item) => {
-          createReviewAsync({
-            productId: item.product._id,
+        ratedItems.map((item) => {
+          const pid = (item.product?._id || item.product) as string;
+          return createReviewAsync({
+            productId: pid,
             orderId: selectedOrder._id,
-            rating: productRatings[item.product._id],
+            rating: productRatings[pid],
+            comment: productComments[pid],
+            title: productTitles[pid],
           });
         })
       );
 
-      Alert.alert("Success", "Thank you for rating all products!");
+      Alert.alert("Success", "Reviews submitted successfully!");
       setShowRatingModal(false);
       setSelectedOrder(null);
       setProductRatings({});
+      setProductComments({});
+      setProductTitles({});
     } catch (error: any) {
+      console.error("Error submitting reviews:", error);
       Alert.alert("Error", error?.response?.data?.error || "Failed to submit rating");
     }
   };
@@ -136,13 +158,17 @@ function OrdersScreen() {
 
                   {/* ORDER ITEMS SUMMARY */}
                   {order.orderItems.map((item, index) => (
-                    <Text
-                      key={item._id}
-                      className="text-text-secondary text-sm flex-1"
-                      numberOfLines={1}
-                    >
-                      {item.name} × {item.quantity}
-                    </Text>
+                    <View key={item._id} className="flex-row items-center justify-between">
+                      <Text
+                        className="text-text-secondary text-sm flex-1"
+                        numberOfLines={1}
+                      >
+                        {item.name} × {item.quantity}
+                      </Text>
+                      {item.hasReviewed && (
+                        <Ionicons name="checkmark-circle" size={14} color="#1DB954" className="ml-2" />
+                      )}
+                    </View>
                   ))}
 
                   <View className="border-t border-background-lighter pt-3 flex-row justify-between items-center">
@@ -190,10 +216,18 @@ function OrdersScreen() {
         onClose={() => setShowRatingModal(false)}
         order={selectedOrder}
         productRatings={productRatings}
+        productComments={productComments}
+        productTitles={productTitles}
         onSubmit={handleSubmitRating}
         isSubmitting={isCreatingReview}
         onRatingChange={(productId, rating) =>
           setProductRatings((prev) => ({ ...prev, [productId]: rating }))
+        }
+        onCommentChange={(productId, comment) =>
+          setProductComments((prev) => ({ ...prev, [productId]: comment }))
+        }
+        onTitleChange={(productId, title) =>
+          setProductTitles((prev) => ({ ...prev, [productId]: title }))
         }
       />
     </SafeScreen>

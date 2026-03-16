@@ -60,7 +60,7 @@ const productSchema = new mongoose.Schema(
       max: 5,
       default: 0,
     },
-    totalReviews: {
+    reviewCount: {
       type: Number,
       default: 0,
     },

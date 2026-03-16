@@ -51,20 +51,35 @@ export async function getUserOrders(req, res) {
       .populate("orderItems.product")
       .sort({ createdAt: -1 });
 
-    // check if each order has been reviewed
+    // Get all reviews by this user, keyed by productId
+    const userReviews = await Review.find({ userId: req.user._id });
+    const reviewsByProduct = {};
+    userReviews.forEach((review) => {
+      reviewsByProduct[review.productId.toString()] = review;
+    });
 
-    const orderIds = orders.map((order) => order._id);
-    const reviews = await Review.find({ orderId: { $in: orderIds } });
-    const reviewedOrderIds = new Set(reviews.map((review) => review.orderId.toString()));
+    const ordersWithReviewStatus = orders.map((order) => {
+      const orderObj = order.toObject();
 
-    const ordersWithReviewStatus = await Promise.all(
-      orders.map(async (order) => {
+      // Enrich each order item with review status
+      orderObj.orderItems = orderObj.orderItems.map((item) => {
+        const productId = item.product?._id?.toString() || item.product?.toString();
+        const review = productId ? reviewsByProduct[productId] : null;
         return {
-          ...order.toObject(),
-          hasReviewed: reviewedOrderIds.has(order._id.toString()),
+          ...item,
+          hasReviewed: !!review,
+          reviewId: review?._id || null,
         };
-      })
-    );
+      });
+
+      // Order-level hasReviewed: true only if ALL items reviewed AND order is delivered
+      orderObj.hasReviewed =
+        orderObj.status === "delivered" &&
+        orderObj.orderItems.length > 0 &&
+        orderObj.orderItems.every((item) => item.hasReviewed);
+
+      return orderObj;
+    });
 
     res.status(200).json({ orders: ordersWithReviewStatus });
   } catch (error) {
