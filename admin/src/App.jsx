@@ -12,6 +12,7 @@ import SalesReportsPage from "./pages/SalesReportsPage";
 import InventoryReportsPage from "./pages/InventoryReportsPage";
 import RestockSuggestionsPage from "./pages/RestockSuggestionsPage";
 import ReviewsPage from "./pages/ReviewsPage";
+import OffersPage from "./pages/OffersPage";
 import PageLoader from "./components/PageLoader";
 import axiosInstance from "./lib/axios";
 
@@ -58,6 +59,7 @@ function App() {
         <Route path="inventory-reports" element={<InventoryReportsPage />} />
         <Route path="restock-suggestions" element={<RestockSuggestionsPage />} />
         <Route path="reviews" element={<ReviewsPage />} />
+        <Route path="offers" element={<OffersPage />} />
       </Route>
     </Routes>
   );

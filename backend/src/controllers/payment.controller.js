@@ -5,6 +5,7 @@ import { Product } from "../models/product.model.js";
 import { Order } from "../models/order.model.js";
 import { Cart } from "../models/cart.model.js";
 import { createNotification, checkAndCreateInventoryNotifications } from "../services/notification.service.js";
+import { getEffectivePrice } from "../services/pricing.service.js";
 
 const stripe = new Stripe(ENV.STRIPE_SECRET_KEY);
 
@@ -37,11 +38,15 @@ export async function createPaymentIntent(req, res) {
         return res.status(400).json({ error: `Insufficient stock for ${product.name}` });
       }
 
-      subtotal += product.price * item.quantity;
+      // -- DISCOUNTS: calculate effective price server-side --
+      const pricing = await getEffectivePrice(product);
+      const effectivePrice = pricing.discountedPrice;
+
+      subtotal += effectivePrice * item.quantity;
       validatedItems.push({
         product: product._id.toString(),
         name: product.name,
-        price: product.price,
+        price: effectivePrice, // Store the price paid
         quantity: item.quantity,
         image: product.images[0],
       });

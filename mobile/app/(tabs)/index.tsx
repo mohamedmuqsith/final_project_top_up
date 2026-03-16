@@ -2,12 +2,15 @@ import ProductsGrid from "@/components/ProductsGrid";
 import SafeScreen from "@/components/SafeScreen";
 import useProducts from "@/hooks/useProducts";
 import { useRecommendedProducts, useTrendingProducts } from "@/hooks/useRecommendations";
+import { useOffers } from "@/hooks/useOffers";
 import HorizontalProductList from "@/components/HorizontalProductList";
 
 
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Image } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Image, Dimensions } from "react-native";
+
+const { width } = Dimensions.get("window");
 
 const CATEGORIES: { name: string; icon?: any; image?: any }[] = [
   { name: "All", icon: "grid-outline" as const },
@@ -35,6 +38,7 @@ const ShopScreen = () => {
   const { data: products, isLoading, isError } = useProducts();
   const { data: recommendations, isLoading: recLoading, isError: recError } = useRecommendedProducts();
   const { data: trending, isLoading: trendLoading, isError: trendError } = useTrendingProducts();
+  const { offers, isLoading: offersLoading } = useOffers();
 
   const filteredProducts = useMemo(() => {
     if (!products) return [];
@@ -84,6 +88,37 @@ const ShopScreen = () => {
             />
           </View>
         </View>
+
+        {/* OFFERS BANNER */}
+        {offers.length > 0 && (
+          <View className="mb-6">
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 20 }}
+            >
+              {offers.map((offer) => (
+                <View 
+                  key={offer._id}
+                  style={{ width: width - 40 }}
+                  className="bg-primary p-6 rounded-[32px] flex-row items-center justify-between mr-4"
+                >
+                  <View className="flex-1 pr-4">
+                    <Text className="text-background/60 text-xs font-bold uppercase tracking-widest mb-1">{offer.bannerText || "Exclusive Deal"}</Text>
+                    <Text className="text-background text-2xl font-bold leading-tight mb-2">{offer.title}</Text>
+                    <TouchableOpacity className="bg-background self-start px-4 py-2 rounded-full">
+                      <Text className="text-primary font-bold text-xs">Shop Now</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View className="bg-background/20 p-4 rounded-full">
+                     <Ionicons name="pricetag" size={40} color="#121212" />
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* CATEGORY FILTER */}
         <View className="mb-6">

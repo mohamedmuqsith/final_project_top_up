@@ -111,4 +111,23 @@ export const reviewApi = {
     return data;
   },
 };
+
+export const offerApi = {
+  getAll: async () => {
+    const { data } = await axiosInstance.get("/offers");
+    return data;
+  },
+  create: async (data) => {
+    const { data: response } = await axiosInstance.post("/offers", data);
+    return response;
+  },
+  update: async ({ id, data }) => {
+    const { data: response } = await axiosInstance.put(`/offers/${id}`, data);
+    return response;
+  },
+  delete: async (id) => {
+    const { data: response } = await axiosInstance.delete(`/offers/${id}`);
+    return response;
+  },
+};
 
