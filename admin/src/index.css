@@ -25,12 +25,18 @@
 /* Global Dark Mode Contrast Fixes */
 @layer base {
   input, select, textarea {
-    @apply text-base-content selection:bg-primary selection:text-primary-content;
+    @apply text-base-content;
   }
 
-  /* Placeholder contrast */
+  /* Standard CSS for selection to avoid v4 @apply crashes with pseudo-variants */
+  ::selection {
+    background-color: var(--color-primary);
+    color: var(--color-primary-content);
+  }
+
+  /* Placeholder contrast - use ! prefix for important in v4 @apply */
   ::placeholder {
-    @apply text-base-content/40 !important;
+    @apply !text-base-content/40;
   }
 
   /* Label contrast */
@@ -51,17 +57,5 @@
 
   .modal-box h3 {
     @apply text-primary-content font-bold;
-  }
-}
-
-@layer base {
-  input, select, textarea {
-    @apply text-base-content;
-  }
-
-  /* Date input specific fixes for dark theme */
-  input[type="date"] {
-    @apply text-base-content;
-    color-scheme: dark;
   }
 }
