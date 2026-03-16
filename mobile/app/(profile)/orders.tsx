@@ -89,7 +89,12 @@ function OrdersScreen() {
               const firstImage = order.orderItems[0]?.image || "";
 
               return (
-                <View key={order._id} className="bg-surface rounded-3xl p-5 mb-4">
+                <TouchableOpacity
+                  key={order._id}
+                  className="bg-surface rounded-3xl p-5 mb-4"
+                  activeOpacity={0.7}
+                  onPress={() => router.push(`/(profile)/order/${order._id}`)}
+                >
                   <View className="flex-row mb-4">
                     <View className="relative">
                       <Image
@@ -167,7 +172,13 @@ function OrdersScreen() {
                         </TouchableOpacity>
                       ))}
                   </View>
-                </View>
+
+                  {/* Tap to view details hint */}
+                  <View className="flex-row items-center justify-center mt-3 pt-3 border-t border-background-lighter">
+                    <Text className="text-text-secondary text-xs mr-1">Tap for details</Text>
+                    <Ionicons name="chevron-forward" size={14} color="#666" />
+                  </View>
+                </TouchableOpacity>
               );
             })}
           </View>

@@ -49,7 +49,7 @@ No markdown wrappers, no conversational text, strictly JSON array.
 
   try {
     const model = aiInstance.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash',
       generationConfig: {
         responseMimeType: "application/json",
       }

@@ -70,10 +70,6 @@ const ShopScreen = () => {
               <Text className="text-text-primary text-3xl font-bold tracking-tight">Shop</Text>
               <Text className="text-text-secondary text-sm mt-1">Browse all products</Text>
             </View>
-
-            <TouchableOpacity className="bg-surface/50 p-3 rounded-full" activeOpacity={0.7}>
-              <Ionicons name="options-outline" size={22} color={"#fff"} />
-            </TouchableOpacity>
           </View>
             
           {/* SEARCH BAR */}
@@ -102,17 +98,23 @@ const ShopScreen = () => {
                 <TouchableOpacity
                   key={category.name}
                   onPress={() => setSelectedCategory(category.name)}
-                  className={`mr-3 rounded-2xl size-20 overflow-hidden items-center justify-center ${isSelected ? "bg-primary" : "bg-surface"}`}
+                  className={`mr-3 rounded-2xl w-20 overflow-hidden items-center justify-center py-3 ${isSelected ? "bg-primary" : "bg-surface"}`}
                 >
                   {category.icon ? (
                     <Ionicons
                       name={category.icon as any}
-                      size={36}
+                      size={28}
                       color={isSelected ? "#121212" : "#fff"}
                     />
                   ) : (
-                    <Image source={category.image} className="size-12" resizeMode="contain" />
+                    <Image source={category.image} className="size-7" resizeMode="contain" />
                   )}
+                  <Text
+                    className={`text-[10px] font-semibold mt-1.5 text-center px-1 ${isSelected ? "text-background" : "text-text-secondary"}`}
+                    numberOfLines={1}
+                  >
+                    {category.name}
+                  </Text>
                 </TouchableOpacity>
               );
             })}

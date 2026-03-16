@@ -54,8 +54,10 @@ export interface Order {
     status: string;
   };
   totalPrice: number;
-  status: "pending" | "shipped" | "delivered";
+  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
   hasReviewed: boolean;
+  shippedAt?: string;
+  deliveredAt?: string;
   createdAt: string;
   updatedAt: string;
 }

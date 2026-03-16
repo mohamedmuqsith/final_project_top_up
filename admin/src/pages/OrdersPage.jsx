@@ -44,7 +44,7 @@ function OrderDetailModal({ order, onClose }) {
     { label: "Order Created", date: order.createdAt, status: "pending" },
   ];
   if (["processing", "shipped", "delivered"].includes(order.status)) {
-    timeline.push({ label: "Processing", date: null, status: "processing" });
+    timeline.push({ label: "Processing", date: order.updatedAt, status: "processing" });
   }
   if (order.shippedAt) {
     timeline.push({ label: "Shipped", date: order.shippedAt, status: "shipped" });
