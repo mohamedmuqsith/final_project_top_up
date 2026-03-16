@@ -275,7 +275,7 @@ import {
           <div className="card-body p-4 sm:p-6">
             <div className="flex items-center justify-between mb-2 hover:bg-base-200/50 rounded-lg p-1 -mx-1 transition-colors">
               <h2 className="card-title px-1">Recent Orders</h2>
-              <button className="btn btn-sm btn-ghost">View All</button>
+              <button onClick={() => navigate("/orders")} className="btn btn-sm btn-ghost">View All</button>
             </div>
 
             {isLoading ? (

@@ -21,7 +21,6 @@ export default function OrderDetailsScreen() {
 
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [productRatings, setProductRatings] = useState<{ [key: string]: number }>({});
-  const [productComments, setProductComments] = useState<{ [key: string]: string }>({});
 
   const order = orders?.find((o) => o._id === id);
 
@@ -54,12 +53,12 @@ export default function OrderDetailsScreen() {
 
   const timelineEvents: { label: string; date: string | null | undefined; active: boolean; isError?: boolean }[] = [
     { label: "Order Placed", date: order.createdAt, active: true },
-    { label: "Processing", date: null, active: ["processing", "shipped", "delivered"].includes(order.status as any) },
-    { label: "Shipped", date: (order as any).shippedAt, active: ["shipped", "delivered"].includes(order.status as any) },
-    { label: "Delivered", date: (order as any).deliveredAt, active: order.status === "delivered" },
+    { label: "Processing", date: null, active: ["processing", "shipped", "delivered"].includes(order.status) },
+    { label: "Shipped", date: order.shippedAt, active: ["shipped", "delivered"].includes(order.status) },
+    { label: "Delivered", date: order.deliveredAt, active: order.status === "delivered" },
   ];
 
-  if ((order.status as any) === "cancelled") {
+  if (order.status === "cancelled") {
     timelineEvents.push({ label: "Cancelled", date: order.updatedAt, active: true, isError: true });
   }
 
@@ -75,17 +74,13 @@ export default function OrderDetailsScreen() {
   };
 
   const handleOpenRating = () => {
-    // init ratings for all product to 0
+    // init ratings for all products to 0
     const initialRatings: { [key: string]: number } = {};
-    const initialComments: { [key: string]: string } = {};
-    
     order.orderItems.forEach((item) => {
       const productId = item.product._id || (item.product as any);
       initialRatings[productId] = 0;
-      initialComments[productId] = "";
     });
     setProductRatings(initialRatings);
-    setProductComments(initialComments);
     setShowRatingModal(true);
   };
 
@@ -104,7 +99,6 @@ export default function OrderDetailsScreen() {
             productId: item.product._id || (item.product as any),
             orderId: order._id,
             rating: productRatings[item.product._id || (item.product as any)],
-            comment: productComments[item.product._id || (item.product as any)] || "",
           });
         })
       );
@@ -121,7 +115,6 @@ export default function OrderDetailsScreen() {
       Alert.alert("Success", "Thank you for rating your order!");
       setShowRatingModal(false);
       setProductRatings({});
-      setProductComments({});
     } catch (error: any) {
       Alert.alert("Error", error?.response?.data?.error || "Failed to submit rating");
     }
@@ -261,9 +254,7 @@ export default function OrderDetailsScreen() {
                 >
                   <Ionicons name="star" size={20} color="#121212" />
                   <Text className="text-background font-bold text-base ml-2">
-                    {order.reviewedProductIds?.length === order.orderItems.length 
-                      ? "Edit Rating" 
-                      : "Leave Rating"}
+                    {order.hasReviewed ? "Edit Rating" : "Leave Rating"}
                   </Text>
                 </TouchableOpacity>
 
@@ -286,14 +277,10 @@ export default function OrderDetailsScreen() {
         onClose={() => setShowRatingModal(false)}
         order={order}
         productRatings={productRatings}
-        productComments={productComments}
         onSubmit={handleSubmitRating}
         isSubmitting={isCreatingReview}
         onRatingChange={(productId, rating) =>
           setProductRatings((prev) => ({ ...prev, [productId]: rating }))
-        }
-        onCommentChange={(productId, comment) =>
-          setProductComments((prev) => ({ ...prev, [productId]: comment }))
         }
       />
     </SafeScreen>
