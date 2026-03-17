@@ -25,23 +25,32 @@ const DOC_STATUS_RULES = {
  */
 export async function getOrderDocumentData(req, res) {
   try {
+    const user = req.user;
     const { docType } = req.query;
 
-    const order = await Order.findById(req.params.id).populate(
-      "orderItems.product",
-      "name price"
-    );
+    const order = await Order.findById(req.params.id);
 
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    // Validate docType + status combination if docType is provided
+    // Authorization: Admin OR Order Owner (Clerk ID must match)
+    const isOwner = user.clerkId === order.clerkId;
+    const isAdmin = user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: "Unauthorized: You do not have permission to access these documents" });
+    }
+
+    // Populate products for invoice/packing slip details
+    await order.populate("orderItems.product", "name price category");
+
+    // Validate docType + status combination
     if (docType && DOC_STATUS_RULES[docType]) {
       const allowedStatuses = DOC_STATUS_RULES[docType];
       if (!allowedStatuses.includes(order.status)) {
-        return res.status(403).json({
-          error: `Cannot generate ${docType} for an order with status "${order.status}"`,
+        return res.status(400).json({
+          error: `Cannot generate ${docType} for an order with status: ${order.status}`,
         });
       }
     }

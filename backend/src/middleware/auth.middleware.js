@@ -9,7 +9,7 @@ export const protectRoute = [
       const auth = typeof req.auth === "function" ? req.auth() : req.auth;
       const clerkId = auth?.userId;
       
-      if (!clerkId) return res.status(401).json({ message: "Unauthorized - invalid token" });
+      if (!clerkId) return res.status(401).json({ error: "Unauthorized - invalid token" });
 
       let user = await User.findOne({ clerkId });
 
@@ -36,7 +36,7 @@ export const protectRoute = [
           console.log(`[Auth] JIT provisioning successful for ${user.email}`);
         } catch (clerkError) {
           console.error("[Auth] JIT provisioning failed:", clerkError.message);
-          return res.status(404).json({ message: `User sync failed: ${clerkError.message}` });
+          return res.status(404).json({ error: `User sync failed: ${clerkError.message}` });
         }
       }
 
@@ -54,18 +54,18 @@ export const protectRoute = [
       next();
     } catch (error) {
       console.error("Error in protectRoute middleware", error);
-      res.status(500).json({ message: "Internal server error" });
+      res.status(500).json({ error: "Internal server error" });
     }
   },
 ];
 
 export const adminOnly = (req, res, next) => {
   if (!req.user) {
-    return res.status(401).json({ message: "Unauthorized - user not found" });
+    return res.status(401).json({ error: "Unauthorized - user not found" });
   }
 
   if (req.user.role !== "admin") {
-    return res.status(403).json({ message: "Forbidden - admin access only" });
+    return res.status(403).json({ error: "Forbidden - admin access only" });
   }
 
   next();

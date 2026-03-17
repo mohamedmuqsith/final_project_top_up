@@ -34,7 +34,28 @@ export const createOffer = async (req, res) => {
 
 export const getOffers = async (req, res) => {
   try {
-    const offers = await Offer.find().sort({ createdAt: -1 });
+    const { search, status } = req.query;
+    let query = {};
+
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    if (status === "active") {
+      const now = new Date();
+      query.isActive = true;
+      query.startDate = { $lte: now };
+      query.endDate = { $gte: now };
+    } else if (status === "inactive") {
+      query.isActive = false;
+    } else if (status === "expired") {
+      query.endDate = { $lt: new Date() };
+    }
+
+    const offers = await Offer.find(query).sort({ createdAt: -1 });
     res.status(200).json({ offers });
   } catch (error) {
     console.error("Error in getOffers:", error);

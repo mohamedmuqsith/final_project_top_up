@@ -80,14 +80,34 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "processing", "shipped", "delivered", "cancelled"],
+      enum: ["pending", "processing", "shipped", "delivered", "cancelled", "return-requested", "approved", "refunded", "denied"],
       default: "pending",
     },
+    statusHistory: [
+      {
+        status: String,
+        timestamp: { type: Date, default: Date.now },
+        comment: String,
+        changedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        changedByType: { type: String, enum: ["customer", "admin", "system"] },
+      },
+    ],
     deliveredAt: {
       type: Date,
     },
     shippedAt: {
       type: Date,
+    },
+    returnReason: {
+      type: String,
+    },
+    returnStatus: {
+      type: String,
+      enum: ["none", "requested", "approved", "refunded", "denied"],
+      default: "none",
+    },
+    returnNotes: {
+      type: String,
     },
   },
   { timestamps: true }

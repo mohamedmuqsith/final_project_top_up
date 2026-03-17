@@ -9,6 +9,7 @@ const ADMIN_ALLOWED_TYPES = [
   "ORDER_MARKED_SHIPPED",
   "ORDER_MARKED_DELIVERED",
   "LOW_STOCK",
+  "NEAR_STOCKOUT",
   "PREDICTED_STOCKOUT",
   "PAYMENT_FAILED",
   "OUT_OF_STOCK",
@@ -52,6 +53,11 @@ function NotificationDropdown() {
   const handleNotificationClick = (notification) => {
     if (!notification.isRead) {
       markAsReadMutation.mutate(notification._id);
+    }
+
+    // Force blur to close daisyUI dropdown
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
     }
 
     if (notification.actionUrl) {

@@ -36,6 +36,10 @@ const STATUS_ICON_MAP = {
   shipped: <TruckIcon className="size-4 text-info" />,
   delivered: <CheckCircle2Icon className="size-4 text-success" />,
   cancelled: <XCircleIcon className="size-4 text-error" />,
+  "return-requested": <AlertTriangleIcon className="size-4 text-warning" />,
+  approved: <CheckCircle2Icon className="size-4 text-primary" />,
+  refunded: <BadgeDollarSignIcon className="size-4 text-success" />,
+  denied: <XCircleIcon className="size-4 text-error" />,
 };
 
 const STATUS_COLOR_MAP = {
@@ -44,6 +48,10 @@ const STATUS_COLOR_MAP = {
   shipped: "badge-info",
   delivered: "badge-success",
   cancelled: "badge-error",
+  "return-requested": "badge-warning text-warning-content",
+  approved: "badge-primary text-primary-content",
+  refunded: "badge-success text-success-content",
+  denied: "badge-error text-error-content",
 };
 
 // ─── Document Actions Component ──────────────────────────────────
@@ -158,20 +166,19 @@ function OrderDetailModal({ order, onClose }) {
 
   const totalQuantity = order.orderItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  const timeline = [{ label: "Order Created", date: order.createdAt, status: "pending" }];
-
-  if (["processing", "shipped", "delivered"].includes(order.status)) {
-    timeline.push({ label: "Processing", date: order.updatedAt, status: "processing" });
-  }
-  if (order.shippedAt) {
-    timeline.push({ label: "Shipped", date: order.shippedAt, status: "shipped" });
-  }
-  if (order.deliveredAt) {
-    timeline.push({ label: "Delivered", date: order.deliveredAt, status: "delivered" });
-  }
-  if (order.status === "cancelled") {
-    timeline.push({ label: "Cancelled", date: order.updatedAt, status: "cancelled" });
-  }
+  // Use real statusHistory from backend, or fallback to seeded timeline
+  const timeline = order.statusHistory && order.statusHistory.length > 0
+    ? order.statusHistory.map(h => ({
+        label: capitalizeText(h.status),
+        date: h.timestamp,
+        status: h.status,
+        comment: h.comment,
+        by: h.changedBy?.name || h.changedByType || "system"
+      }))
+    : [
+        { label: "Order Created", date: order.createdAt, status: "pending", by: "customer" },
+        ...(order.status !== "pending" ? [{ label: capitalizeText(order.status), date: order.updatedAt, status: order.status, by: "system" }] : [])
+      ];
 
   return (
     <dialog className="modal modal-open">
@@ -262,6 +269,33 @@ function OrderDetailModal({ order, onClose }) {
                       </p>
                       <p className="text-xs text-base-content/50 mt-1">Final order amount</p>
                     </div>
+
+                    {order.returnStatus !== "none" && (
+                      <div className="md:col-span-2 rounded-2xl bg-warning/5 border border-warning/20 p-4">
+                        <div className="flex items-center gap-2 mb-2 text-warning font-bold">
+                          <AlertTriangleIcon className="size-4" />
+                          <p className="text-xs uppercase tracking-wide">Return Details</p>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-[10px] uppercase opacity-50 font-bold">Reason</p>
+                            <p className="text-sm font-semibold">{order.returnReason || "N/A"}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase opacity-50 font-bold">Status</p>
+                            <div className={`badge ${STATUS_COLOR_MAP[order.returnStatus]} badge-xs font-bold`}>
+                              {order.returnStatus.toUpperCase()}
+                            </div>
+                          </div>
+                          {order.returnNotes && (
+                            <div className="sm:col-span-2">
+                              <p className="text-[10px] uppercase opacity-50 font-bold">Admin Notes</p>
+                              <p className="text-sm italic">"{order.returnNotes}"</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -347,18 +381,27 @@ function OrderDetailModal({ order, onClose }) {
                       {timeline.map((event, idx) => (
                         <li key={idx}>
                           {idx > 0 && <hr className="bg-primary/30" />}
-                          <div className="timeline-start text-[10px] font-bold opacity-40 uppercase tracking-tighter">
+                          <div className="timeline-start text-[10px] font-bold opacity-40 uppercase tracking-tighter text-right pr-2">
                             {event.date ? formatDate(event.date).split(",")[0] : ""}
+                            <div className="text-[8px] opacity-70 leading-none mt-1">{event.date ? formatDate(event.date).split(",")[1] : ""}</div>
                           </div>
                           <div className="timeline-middle">
                             <div className={`p-1.5 rounded-full ${event.status === order.status ? 'bg-primary text-primary-content shadow-lg shadow-primary/20' : 'bg-base-300 text-base-content/40'}`}>
                               {STATUS_ICON_MAP[event.status] || <CircleDotIcon className="size-3.5" />}
                             </div>
                           </div>
-                          <div className={`timeline-end timeline-box text-xs font-bold py-2.5 px-4 rounded-2xl border-0 shadow-sm ${event.status === order.status ? 'bg-primary/10 text-primary' : 'bg-base-200/50 text-base-content/60'}`}>
-                            {event.label}
+                          <div className={`timeline-end timeline-box py-2.5 px-4 rounded-2xl border-0 shadow-sm ${event.status === order.status ? 'bg-primary/10 text-primary' : 'bg-base-200/50 text-base-content/60'}`}>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-xs font-bold leading-none">{event.label}</span>
+                              <span className="text-[10px] opacity-50 font-normal">By: {capitalizeText(event.by)}</span>
+                              {event.comment && (
+                                <span className="text-[10px] italic opacity-70 mt-1 border-t border-base-content/5 pt-1">
+                                  "{event.comment}"
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          {idx < timeline.length - 1 && <hr className={["processing", "shipped", "delivered"].includes(timeline[idx+1]?.status) ? "bg-primary" : "bg-base-300"} />}
+                          {idx < timeline.length - 1 && <hr className="bg-primary" />}
                         </li>
                       ))}
                     </ul>
@@ -405,10 +448,20 @@ function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
 
   const { data: ordersData, isLoading } = useQuery({
-    queryKey: ["orders"],
-    queryFn: orderApi.getAll,
+    queryKey: ["orders", filterStatus, startDate, endDate, minPrice, maxPrice],
+    queryFn: () => orderApi.getAll({ 
+      status: filterStatus, 
+      startDate, 
+      endDate, 
+      minPrice, 
+      maxPrice 
+    }),
   });
 
   const updateStatusMutation = useMutation({
@@ -524,33 +577,98 @@ function OrdersPage() {
 
       {/* FILTERS */}
       <div className="rounded-[28px] border border-base-300/60 bg-base-100 p-4 sm:p-5 shadow-sm">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
-          <div className="relative flex-1">
-            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/45 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search by order ID or customer name..."
-              className="input input-bordered w-full pl-12 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
+            <div className="relative flex-1">
+              <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/45 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search local results by order ID or customer name..."
+                className="input input-bordered w-full pl-12 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <div className="relative w-full xl:w-55">
+              <FilterIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/45 w-4 h-4 pointer-events-none" />
+              <select
+                className="select select-bordered w-full pl-11 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <option value="All">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="processing">Processing</option>
+                <option value="shipped">Shipped</option>
+                <option value="delivered">Delivered</option>
+                <option value="return-requested">Return Requested</option>
+                <option value="approved">Return Approved</option>
+                <option value="refunded">Refunded</option>
+                <option value="denied">Return Denied</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
           </div>
 
-          <div className="relative w-full xl:w-55">
-            <FilterIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/45 w-4 h-4 pointer-events-none" />
-            <select
-              className="select select-bordered w-full pl-11 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-            >
-              <option value="All">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="processing">Processing</option>
-              <option value="shipped">Shipped</option>
-              <option value="delivered">Delivered</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-2 border-t border-base-200/60 mt-2">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-base-content/40 pl-1">Min Date</label>
+              <input 
+                type="date" 
+                className="input input-bordered input-sm rounded-xl bg-base-200/40 border-base-300"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-base-content/40 pl-1">Max Date</label>
+              <input 
+                type="date" 
+                className="input input-bordered input-sm rounded-xl bg-base-200/40 border-base-300"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-base-content/40 pl-1">Min Price ($)</label>
+              <input 
+                type="number" 
+                placeholder="0"
+                className="input input-bordered input-sm rounded-xl bg-base-200/40 border-base-300"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-base-content/40 pl-1">Max Price ($)</label>
+              <input 
+                type="number" 
+                placeholder="Any"
+                className="input input-bordered input-sm rounded-xl bg-base-200/40 border-base-300"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+              />
+            </div>
           </div>
+          
+          {(startDate || endDate || minPrice || maxPrice || filterStatus !== "All") && (
+            <div className="flex justify-end mt-1">
+              <button 
+                className="btn btn-ghost btn-xs text-error gap-1 hover:bg-error/10"
+                onClick={() => {
+                  setFilterStatus("All");
+                  setStartDate("");
+                  setEndDate("");
+                  setMinPrice("");
+                  setMaxPrice("");
+                }}
+              >
+                <XIcon className="size-3" />
+                Clear Filters
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -611,11 +729,15 @@ function OrdersPage() {
                       pending: ["processing", "cancelled"],
                       processing: ["shipped", "cancelled"],
                       shipped: ["delivered"],
-                      delivered: [],
+                      delivered: ["return-requested"],
+                      "return-requested": ["approved", "denied"],
+                      approved: ["refunded"],
+                      refunded: [],
+                      denied: ["delivered"],
                       cancelled: [],
                     };
 
-                    const isTerminal = ["delivered", "cancelled"].includes(order.status);
+                    const isTerminal = ["refunded", "cancelled"].includes(order.status);
                     const validNextStatuses = ALLOWED_TRANSITIONS[order.status] || [];
 
                     return (

@@ -37,12 +37,19 @@ function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("All");
   const [filterStock, setFilterStock] = useState("All");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
 
   const queryClient = useQueryClient();
 
   const { data: products = [] } = useQuery({
-    queryKey: ["products"],
-    queryFn: productApi.getAll,
+    queryKey: ["products", filterCategory, filterStock, minPrice, maxPrice],
+    queryFn: () => productApi.getAll({
+      category: filterCategory,
+      stockStatus: filterStock,
+      minPrice: minPrice || undefined,
+      maxPrice: maxPrice || undefined
+    }),
   });
 
   const createProductMutation = useMutation({
@@ -149,15 +156,8 @@ function ProductsPage() {
       !product.name.toLowerCase().includes(searchQuery.toLowerCase())
     )
       return false;
-    if (filterCategory !== "All" && product.category !== filterCategory)
-      return false;
-    if (filterStock === "In Stock" && product.stock <= 0) return false;
-    if (
-      filterStock === "Low Stock" &&
-      (product.stock <= 0 || !product.isLowStock)
-    )
-      return false;
-    if (filterStock === "Out of Stock" && product.stock > 0) return false;
+    // Note: Backend handles category, stockStatus, minPrice, maxPrice.
+    // We only filter by searchQuery on the client for instant UX.
     return true;
   });
 
@@ -234,6 +234,30 @@ function ProductsPage() {
             <option value="Low Stock">Low Stock</option>
             <option value="Out of Stock">Out of Stock</option>
           </select>
+
+          <div className="flex items-center gap-2 w-full xl:w-auto">
+            <div className="relative flex-1 xl:w-32">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 text-xs font-bold">$</span>
+              <input
+                type="number"
+                placeholder="Min"
+                className="input input-bordered w-full pl-7 pr-2 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+              />
+            </div>
+            <span className="text-base-content/30">-</span>
+            <div className="relative flex-1 xl:w-32">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 text-xs font-bold">$</span>
+              <input
+                type="number"
+                placeholder="Max"
+                className="input input-bordered w-full pl-7 pr-2 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+              />
+            </div>
+          </div>
         </div>
       </div>
 

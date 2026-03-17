@@ -32,13 +32,32 @@ const SEGMENT_CONFIG = {
   "At-Risk": { badge: "badge-error", icon: <AlertTriangleIcon className="size-3" /> },
 };
 
-function CustomerDetailModal({ customer, onClose, orders }) {
+function CustomerDetailModal({ customerId, onClose }) {
   const navigate = useNavigate();
+
+  const { data: statsData, isLoading } = useQuery({
+    queryKey: ["customerStats", customerId],
+    queryFn: () => customerApi.getStats(customerId),
+    enabled: !!customerId,
+  });
+
+  if (!customerId) return null;
+
+  if (isLoading) {
+    return (
+      <dialog className="modal modal-open">
+        <div className="modal-box max-w-lg p-10 flex flex-col items-center justify-center">
+          <span className="loading loading-spinner loading-lg text-primary mb-4" />
+          <p className="text-sm opacity-60">Loading customer profile...</p>
+        </div>
+      </dialog>
+    );
+  }
+
+  const { customer, stats } = statsData || {};
   if (!customer) return null;
 
-  const sortedOrders = [...orders]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 3);
+  const sortedOrders = stats?.orderHistory || [];
 
   return (
     <dialog className="modal modal-open">
@@ -130,10 +149,10 @@ function CustomerDetailModal({ customer, onClose, orders }) {
                   <div className="p-5">
                     <div className="flex items-center justify-between mb-4">
                       <p className="text-sm font-semibold text-base-content/60">
-                        Last 3 orders
+                        Recent Activity (Last {sortedOrders.length})
                       </p>
 
-                      {orders.length > 3 && (
+                      {stats?.totalOrders > 10 && (
                         <button
                           onClick={() => navigate("/orders")}
                           className="btn btn-sm btn-ghost rounded-xl hover:bg-primary/10 hover:text-primary"
@@ -187,36 +206,46 @@ function CustomerDetailModal({ customer, onClose, orders }) {
                     </p>
                   </div>
 
-                  <div className="p-5 grid grid-cols-1 gap-4">
-                    <div className="rounded-2xl bg-base-200/40 p-4 text-center">
-                      <ShoppingBagIcon className="size-5 mx-auto mb-2 opacity-50" />
+                  <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-2xl bg-base-200/40 p-4 text-center border border-base-300/30">
+                      <ShoppingBagIcon className="size-5 mx-auto mb-2 opacity-50 text-primary" />
                       <p className="text-2xl font-black">
-                        {customer.orderStats?.totalOrders || 0}
+                        {stats?.totalOrders || 0}
                       </p>
                       <p className="text-xs uppercase opacity-40 font-semibold mt-1">
-                        Orders
+                        Total Orders
                       </p>
                     </div>
 
-                    <div className="rounded-2xl bg-base-200/40 p-4 text-center">
+                    <div className="rounded-2xl bg-base-200/40 p-4 text-center border border-base-300/30">
                       <DollarSignIcon className="size-5 mx-auto mb-2 opacity-60 text-success" />
                       <p className="text-2xl font-black">
-                        ${(customer.orderStats?.totalSpend || 0).toFixed(0)}
+                        ${(stats?.totalSpend || 0).toFixed(0)}
                       </p>
                       <p className="text-xs uppercase opacity-40 font-semibold mt-1">
-                        Spent
+                        Total Revenue
                       </p>
                     </div>
 
-                    <div className="rounded-2xl bg-base-200/40 p-4 text-center">
-                      <CalendarIcon className="size-5 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm font-black truncate">
-                        {customer.orderStats?.lastOrderDate
-                          ? formatDate(customer.orderStats.lastOrderDate).split(",")[0]
+                    <div className="rounded-2xl bg-base-200/40 p-4 text-center border border-base-300/30">
+                      <SparklesIcon className="size-5 mx-auto mb-2 opacity-60 text-secondary" />
+                      <p className="text-lg font-black truncate">
+                        {stats?.topCategory || "None"}
+                      </p>
+                      <p className="text-xs uppercase opacity-40 font-semibold mt-1">
+                        Top Category
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-base-200/40 p-4 text-center border border-base-300/30">
+                      <CalendarIcon className="size-5 mx-auto mb-2 opacity-50 text-accent" />
+                      <p className="text-sm font-black">
+                        {stats?.lastOrderDate
+                          ? formatDate(stats.lastOrderDate).split(",")[0]
                           : "—"}
                       </p>
                       <p className="text-xs uppercase opacity-40 font-semibold mt-1">
-                        Last Order
+                        Last Active
                       </p>
                     </div>
                   </div>
@@ -281,10 +310,19 @@ function CustomersPage() {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSegment, setFilterSegment] = useState("All");
+  const [minSpend, setMinSpend] = useState("");
+  const [maxSpend, setMaxSpend] = useState("");
+  const [minOrders, setMinOrders] = useState("");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["customers"],
-    queryFn: customerApi.getAll,
+    queryKey: ["customers", filterSegment, searchQuery, minSpend, maxSpend, minOrders],
+    queryFn: () => customerApi.getAll({
+      segment: filterSegment,
+      search: searchQuery,
+      minSpend: minSpend || undefined,
+      maxSpend: maxSpend || undefined,
+      minOrders: minOrders || undefined
+    }),
   });
 
   const { data: ordersData } = useQuery({
@@ -295,15 +333,7 @@ function CustomersPage() {
   const customers = data?.customers || [];
   const allOrders = ordersData?.orders || [];
 
-  const filtered = customers.filter((c) => {
-    if (filterSegment !== "All" && c.segment !== filterSegment) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      if (!c.name.toLowerCase().includes(q) && !c.email.toLowerCase().includes(q))
-        return false;
-    }
-    return true;
-  });
+  const filtered = customers;
 
   const segmentCounts = {
     New: customers.filter((c) => c.segment === "New").length,
@@ -468,6 +498,39 @@ function CustomersPage() {
               <option value="At-Risk">⚠️ At-Risk Users</option>
             </select>
           </div>
+
+          <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+            <div className="relative flex-1 xl:w-32">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 text-xs font-bold">$</span>
+              <input
+                type="number"
+                placeholder="Min Spend"
+                className="input input-bordered w-full pl-7 pr-2 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none h-11 text-sm font-medium"
+                value={minSpend}
+                onChange={(e) => setMinSpend(e.target.value)}
+              />
+            </div>
+            <div className="relative flex-1 xl:w-32">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 text-xs font-bold">$</span>
+              <input
+                type="number"
+                placeholder="Max Spend"
+                className="input input-bordered w-full pl-7 pr-2 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none h-11 text-sm font-medium"
+                value={maxSpend}
+                onChange={(e) => setMaxSpend(e.target.value)}
+              />
+            </div>
+            <div className="relative flex-1 xl:w-32">
+              <PackageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 size-3.5" />
+              <input
+                type="number"
+                placeholder="Min Orders"
+                className="input input-bordered w-full pl-9 pr-2 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none h-11 text-sm font-medium"
+                value={minOrders}
+                onChange={(e) => setMinOrders(e.target.value)}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -597,9 +660,8 @@ function CustomersPage() {
       {/* CUSTOMER DETAIL MODAL */}
       {selectedCustomer && (
         <CustomerDetailModal
-          customer={selectedCustomer}
+          customerId={selectedCustomer._id}
           onClose={() => setSelectedCustomer(null)}
-          orders={allOrders.filter((o) => o.user?._id === selectedCustomer._id)}
         />
       )}
     </div>

@@ -1,8 +1,8 @@
 import axiosInstance from "./axios";
 
 export const productApi = {
-  getAll: async () => {
-    const { data } = await axiosInstance.get("/admin/products");
+  getAll: async (params = {}) => {
+    const { data } = await axiosInstance.get("/admin/products", { params });
     return data;
   },
 
@@ -23,8 +23,8 @@ export const productApi = {
 };
 
 export const orderApi = {
-  getAll: async () => {
-    const { data } = await axiosInstance.get("/admin/orders");
+  getAll: async (params = {}) => {
+    const { data } = await axiosInstance.get("/admin/orders", { params });
     return data;
   },
 
@@ -39,6 +39,10 @@ export const orderApi = {
     });
     return data;
   },
+  requestReturn: async (orderId, returnData) => {
+    const { data } = await axiosInstance.post(`/orders/${orderId}/return`, returnData);
+    return data;
+  },
 };
 
 export const statsApi = {
@@ -49,8 +53,12 @@ export const statsApi = {
 };
 
 export const customerApi = {
-  getAll: async () => {
-    const { data } = await axiosInstance.get("/admin/customers");
+  getAll: async (params = {}) => {
+    const { data } = await axiosInstance.get("/admin/customers", { params });
+    return data;
+  },
+  getStats: async (id) => {
+    const { data } = await axiosInstance.get(`/admin/customers/${id}/stats`);
     return data;
   },
 };
@@ -120,8 +128,8 @@ export const reviewApi = {
 };
 
 export const offerApi = {
-  getAll: async () => {
-    const { data } = await axiosInstance.get("/offers");
+  getAll: async (params = {}) => {
+    const { data } = await axiosInstance.get("/offers", { params });
     return data;
   },
   create: async (data) => {

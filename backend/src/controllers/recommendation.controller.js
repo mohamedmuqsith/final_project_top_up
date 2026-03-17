@@ -96,9 +96,13 @@ export const getPersonalizedRecommendations = async (req, res) => {
 
     let candidates = [];
     if (categoryArray.length > 0) {
-      // Find in-stock items in their favourite categories (exclude what they bought if needed, keeping simple for now)
+      // Find in-stock items in their favourite categories (exclude what they bought if needed)
+      // Exclude items currently in their most recent order to provide fresh recommendations
+      const recentProductIds = userOrders[0]?.orderItems.map(i => i.product?._id.toString()) || [];
+      
       candidates = await Product.find({
         category: { $in: categoryArray },
+        _id: { $nin: recentProductIds },
         stock: { $gt: 0 }
       }).limit(20);
     } else {
@@ -141,17 +145,55 @@ export const getPersonalizedRecommendations = async (req, res) => {
 // GET /api/recommendations/trending
 export const getTrendingProducts = async (req, res) => {
   try {
-    // Stage 1: Shortlist (Higher ratings and total reviews = trending)
-    const candidates = await Product.find({ stock: { $gt: 0 } })
-      .sort({ reviewCount: -1, averageRating: -1 })
-      .limit(10);
+    // Stage 1: Get sales velocity for the last 14 days
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+    const salesStats = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: fourteenDaysAgo },
+          "paymentResult.status": "succeeded",
+          status: { $ne: "cancelled" }
+        }
+      },
+      { $unwind: "$orderItems" },
+      {
+        $group: {
+          _id: "$orderItems.product",
+          salesCount: { $sum: "$orderItems.quantity" }
+        }
+      },
+      { $sort: { salesCount: -1 } },
+      { $limit: 15 }
+    ]);
+
+    const trendingProductIds = salesStats.map(s => s._id);
+
+    let candidates = await Product.find({
+      _id: { $in: trendingProductIds },
+      stock: { $gt: 0 }
+    });
+
+    // If no sales in 14 days, fallback to highest review count
+    if (candidates.length < 5) {
+      const fallbackCandidates = await Product.find({ stock: { $gt: 0 } })
+        .sort({ reviewCount: -1, averageRating: -1 })
+        .limit(10);
+      
+      // Merge while avoiding duplicates
+      const candidateIds = new Set(candidates.map(c => c._id.toString()));
+      fallbackCandidates.forEach(f => {
+        if (!candidateIds.has(f._id.toString())) candidates.push(f);
+      });
+    }
 
     if (candidates.length === 0) {
       return res.status(200).json({ recommendations: [] });
     }
 
     // Stage 2: Gemini Reranking
-    const context = { type: "trending", store: "Premium Electronics" };
+    const context = { type: "trending", store: "Premium Electronics", timeframe: "Last 14 days" };
     const aiRanking = await rankProductsWithGemini(context, candidates, "trending");
     const enhancedRecommendations = mapGeminiOutputToProducts(aiRanking, candidates);
 
@@ -205,10 +247,16 @@ export const getFrequentlyBoughtTogether = async (req, res) => {
     const enhancedRecommendations = mapGeminiOutputToProducts(aiRanking, candidates);
 
     if (enhancedRecommendations) {
-      return res.status(200).json({ recommendations: enhancedRecommendations, aiEnhanced: true });
+      // Deduplicate: filter out product itself again just in case AI returned it
+      const final = enhancedRecommendations.filter(p => p._id.toString() !== productId);
+      return res.status(200).json({ recommendations: final.slice(0, 5), aiEnhanced: true });
     }
 
-    return res.status(200).json({ recommendations: candidates.slice(0, 5), aiEnhanced: false });
+    const finalFallback = candidates
+      .filter(p => p._id.toString() !== productId)
+      .slice(0, 5);
+
+    return res.status(200).json({ recommendations: finalFallback, aiEnhanced: false });
   } catch (error) {
     console.error("Error in getFrequentlyBoughtTogether:", error);
     res.status(500).json({ error: "Internal server error" });

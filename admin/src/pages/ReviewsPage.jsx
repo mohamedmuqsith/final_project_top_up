@@ -20,6 +20,7 @@ const ReviewsPage = () => {
   const queryClient = useQueryClient();
   const [filterStatus, setFilterStatus] = useState("");
   const [filterRating, setFilterRating] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const limit = 10;
 
@@ -29,11 +30,12 @@ const ReviewsPage = () => {
   });
 
   const { data: reviewsData, isLoading: reviewsLoading } = useQuery({
-    queryKey: ["reviews", { status: filterStatus, rating: filterRating, page, limit }],
+    queryKey: ["reviews", { status: filterStatus, rating: filterRating, search: searchQuery, page, limit }],
     queryFn: () =>
       reviewApi.getAll({
         status: filterStatus,
         rating: filterRating,
+        search: searchQuery,
         page,
         limit,
       }),
@@ -169,9 +171,23 @@ const ReviewsPage = () => {
         {/* FILTER BAR */}
         <div className="border-b border-base-200/70 px-5 py-4 sm:px-6 bg-base-100">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 flex-1">
+              <div className="relative flex-1">
+                <MessageSquare className="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/45 w-5 h-5 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search reviewer or comment..."
+                  className="input input-bordered w-full pl-12 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
+
               <select
-                className="select select-bordered rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
+                className="select select-bordered rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium sm:w-48"
                 value={filterStatus}
                 onChange={(e) => {
                   setFilterStatus(e.target.value);
@@ -185,7 +201,7 @@ const ReviewsPage = () => {
               </select>
 
               <select
-                className="select select-bordered rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="select select-bordered rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 sm:w-40"
                 value={filterRating}
                 onChange={(e) => {
                   setFilterRating(e.target.value);

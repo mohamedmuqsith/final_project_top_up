@@ -27,10 +27,15 @@ const OffersPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOffer, setEditingOffer] = useState(null);
   const [selectedAppliesTo, setSelectedAppliesTo] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
 
   const { data: offersData, isLoading } = useQuery({
-    queryKey: ["offers"],
-    queryFn: offerApi.getAll,
+    queryKey: ["offers", searchQuery, filterStatus],
+    queryFn: () => offerApi.getAll({
+      search: searchQuery,
+      status: filterStatus === "all" ? undefined : filterStatus
+    }),
   });
 
   const { data: productsData } = useQuery({
@@ -114,21 +119,50 @@ const OffersPage = () => {
 
   return (
     <div className="p-6 space-y-8 text-base-content">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight">Offers & Promotions</h1>
-          <p className="text-base-content/60 mt-1">
-            Manage store-wide, category-specific, and product-specific discounts
-          </p>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight">Offers & Promotions</h1>
+            <p className="text-base-content/60 mt-1">
+              Manage store-wide, category-specific, and product-specific discounts
+            </p>
+          </div>
+
+          <button
+            className="btn btn-primary gap-2 rounded-2xl shadow-lg shadow-primary/20"
+            onClick={() => handleOpenModal()}
+          >
+            <Plus className="size-5" />
+            Create Offer
+          </button>
         </div>
 
-        <button
-          className="btn btn-primary gap-2 rounded-2xl shadow-lg shadow-primary/20"
-          onClick={() => handleOpenModal()}
-        >
-          <Plus className="size-5" />
-          Create Offer
-        </button>
+        <div className="flex flex-col sm:flex-row items-center gap-4 bg-base-100 p-4 rounded-3xl border border-base-200 shadow-sm">
+          <div className="relative flex-1 w-full">
+            <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/40 size-5" />
+            <input
+              type="text"
+              placeholder="Search offers by title or description..."
+              className="input input-bordered w-full pl-12 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="relative w-full sm:w-60">
+            <Layers className="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/40 size-4 pointer-events-none" />
+            <select
+              className="select select-bordered w-full pl-11 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">All Offers Statuses</option>
+              <option value="active">🟢 Active Now</option>
+              <option value="inactive">⚪ Inactive / Paused</option>
+              <option value="expired">🔴 Expired Deals</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
