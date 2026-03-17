@@ -15,6 +15,7 @@ import {
   getAdminReviews,
   updateReviewStatus,
   getReviewAnalytics,
+  getCustomerStats,
 } from "../controllers/admin.controller.js";
 import { getOrderDocumentData } from "../controllers/orderDocument.controller.js";
 import { adminOnly, protectRoute } from "../middleware/auth.middleware.js";
@@ -35,6 +36,7 @@ router.patch("/orders/:orderId/status", updateOrderStatus);
 router.get("/orders/:id/document-data", getOrderDocumentData);
 
 router.get("/customers", getAllCustomers);
+router.get("/customers/:id/stats", getCustomerStats);
 
 router.get("/stats", getDashboardStats);
 router.get("/alerts", getInventoryAlerts);

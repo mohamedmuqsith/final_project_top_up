@@ -3,11 +3,32 @@ import { Product } from "../models/product.model.js";
 import { Order } from "../models/order.model.js";
 
 /**
- * Core notification creation wrapper that allows optional deduplication 
- * or broadcast logic.
+ * Core notification creation wrapper with optional deduplication.
+ * Prevents spamming the same unread notification for the same entity.
  */
 export async function createNotification(data) {
   try {
+    const { recipientId, recipientType, type, entityId, shouldDeduplicate = true } = data;
+
+    if (shouldDeduplicate && entityId && type) {
+      // Check if an identical unread notification already exists
+      const existing = await Notification.findOne({
+        recipientType,
+        ...(recipientId && { recipientId }),
+        type,
+        entityId,
+        isRead: false
+      });
+
+      if (existing) {
+        // Update timestamp instead of creating a new one to keep it at the top
+        // This effectively deduplicates while keeping the notification "fresh"
+        existing.createdAt = new Date();
+        await existing.save();
+        return existing;
+      }
+    }
+
     const notification = await Notification.create(data);
     return notification;
   } catch (error) {

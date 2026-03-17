@@ -64,7 +64,17 @@ export interface Order {
     status: string;
   };
   totalPrice: number;
-  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled" | "return-requested" | "approved" | "refunded" | "denied";
+  statusHistory?: {
+    status: string;
+    timestamp: string;
+    comment?: string;
+    changedBy?: string;
+    source?: string;
+  }[];
+  returnStatus?: "none" | "requested" | "approved" | "refunded" | "denied";
+  returnReason?: string;
+  returnNotes?: string;
   hasReviewed: boolean;
   shippedAt?: string;
   deliveredAt?: string;
@@ -110,4 +120,49 @@ export interface Cart {
   items: CartItem[];
   createdAt: string;
   updatedAt: string;
-}   
+}
+
+export interface OrderDocumentData {
+  orderId: string;
+  orderShortId: string;
+  invoiceNumber: string;
+  orderDate: string;
+  shippedAt?: string;
+  deliveredAt?: string;
+  status: string;
+  customer: {
+    fullName: string;
+    streetAddress: string;
+    city: string;
+    province: string;
+    zipCode: string;
+    phoneNumber: string;
+  };
+  items: {
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    subtotal: number;
+    image: string;
+    productId: string | null;
+  }[];
+  pricing: {
+    subtotal: number;
+    shipping: number;
+    tax: number;
+    total: number;
+  };
+  payment: {
+    status: string;
+    transactionId: string | null;
+  };
+  store: {
+    name: string;
+    streetAddress: string;
+    city: string;
+    province: string;
+    zipCode: string;
+    email: string;
+    phone: string;
+  };
+}

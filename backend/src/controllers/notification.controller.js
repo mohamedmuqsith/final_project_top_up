@@ -15,7 +15,7 @@ export const getNotifications = async (req, res) => {
     if (requestedRecipientType === "admin") {
       // Security: Only real admins can fetch "admin" notifications
       if (!isAdmin) {
-        return res.status(403).json({ message: "Forbidden: Admin access required" });
+        return res.status(403).json({ error: "Forbidden: Admin access required" });
       }
       query.recipientType = "admin";
     } else if (requestedRecipientType === "customer") {
@@ -62,7 +62,7 @@ export const getNotifications = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in getNotifications:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -92,13 +92,13 @@ export const markAsRead = async (req, res) => {
     );
 
     if (!notification) {
-      return res.status(404).json({ message: "Notification not found" });
+      return res.status(404).json({ error: "Notification not found" });
     }
 
     res.status(200).json(notification);
   } catch (error) {
     console.error("Error in markAsRead:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -111,7 +111,7 @@ export const markAllAsRead = async (req, res) => {
     const requestedRecipientType = req.query.recipientType;
 
     if (requestedRecipientType === "admin") {
-      if (!isAdmin) return res.status(403).json({ message: "Forbidden" });
+      if (!isAdmin) return res.status(403).json({ error: "Forbidden" });
       query.recipientType = "admin";
     } else if (requestedRecipientType === "customer") {
       query.recipientType = "customer";
@@ -135,7 +135,7 @@ export const markAllAsRead = async (req, res) => {
     res.status(200).json({ message: "All notifications marked as read" });
   } catch (error) {
     console.error("Error in markAllAsRead:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -148,7 +148,7 @@ export const getUnreadCount = async (req, res) => {
     const requestedRecipientType = req.query.recipientType;
 
     if (requestedRecipientType === "admin") {
-      if (!isAdmin) return res.status(403).json({ message: "Forbidden" });
+      if (!isAdmin) return res.status(403).json({ error: "Forbidden" });
       query.recipientType = "admin";
     } else if (requestedRecipientType === "customer") {
       query.recipientType = "customer";
@@ -170,6 +170,6 @@ export const getUnreadCount = async (req, res) => {
     res.status(200).json({ unreadCount });
   } catch (error) {
     console.error("Error in getUnreadCount:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ error: "Internal server error" });
   }
 };

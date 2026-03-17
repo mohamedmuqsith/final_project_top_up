@@ -11,15 +11,15 @@ export async function createProduct(req, res) {
     const { name, description, price, stock, category, lowStockThreshold } = req.body;
 
     if (!name || !description || !price || !stock || !category) {
-      return res.status(400).json({ message: "All fields are required" });
+      return res.status(400).json({ error: "All fields are required" });
     }
 
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ message: "At least one image is required" });
+      return res.status(400).json({ error: "At least one image is required" });
     }
 
     if (req.files.length > 3) {
-      return res.status(400).json({ message: "Maximum 3 images allowed" });
+      return res.status(400).json({ error: "Maximum 3 images allowed" });
     }
 
     const uploadPromises = req.files.map((file) => {
@@ -37,7 +37,7 @@ export async function createProduct(req, res) {
     const parsedThreshold = lowStockThreshold !== undefined ? parseInt(lowStockThreshold) : 10;
 
     if (isNaN(parsedPrice) || isNaN(parsedStock)) {
-      return res.status(400).json({ message: "Invalid price or stock value" });
+      return res.status(400).json({ error: "Invalid price or stock value" });
     }
 
     const product = await Product.create({
@@ -56,19 +56,32 @@ export async function createProduct(req, res) {
     res.status(201).json(product);
   } catch (error) {
     console.error("Error creating product:", error);
-    res.status(500).json({ 
-      message: "Internal server error", 
-      error: error.message,
-      details: error.errors
-    });
+    res.status(500).json({ error: "Internal server error" });
   }
 }
 
-export async function getAllProducts(_, res) {
+export async function getAllProducts(req, res) {
   try {
-    // -1 means in desc order: most recent products first
-    // Note: Use lean to modify the objects dynamically
-    const products = await Product.find().sort({ createdAt: -1 }).lean();
+    const { minPrice, maxPrice, category, stockStatus } = req.query;
+    const query = {};
+
+    if (category && category !== "All") {
+      query.category = category;
+    }
+
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = parseFloat(minPrice);
+      if (maxPrice) query.price.$lte = parseFloat(maxPrice);
+    }
+
+    if (stockStatus) {
+      if (stockStatus === "Out of Stock") query.stock = 0;
+      if (stockStatus === "Low Stock") query.stock = { $gt: 0, $lte: 10 };
+      if (stockStatus === "In Stock") query.stock = { $gt: 10 };
+    }
+
+    const products = await Product.find(query).sort({ createdAt: -1 }).lean();
     
     // Determine isLowStock exactly here
     const productsWithStatus = products.map(product => {
@@ -83,7 +96,7 @@ export async function getAllProducts(_, res) {
     res.status(200).json(enrichedProducts);
   } catch (error) {
     console.error("Error fetching products:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ error: "Internal server error" });
   }
 }
 
@@ -94,7 +107,7 @@ export async function updateProduct(req, res) {
 
     const product = await Product.findById(id);
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({ error: "Product not found" });
     }
 
     if (name) product.name = name;
@@ -127,7 +140,7 @@ export async function updateProduct(req, res) {
     // handle image updates if new images are uploaded
     if (req.files && req.files.length > 0) {
       if (req.files.length > 3) {
-        return res.status(400).json({ message: "Maximum 3 images allowed" });
+        return res.status(400).json({ error: "Maximum 3 images allowed" });
       }
 
       const uploadPromises = req.files.map((file) => {
@@ -150,17 +163,42 @@ export async function updateProduct(req, res) {
     res.status(200).json(product);
   } catch (error) {
     console.error("Error updating product:", error);
-    res.status(500).json({ 
-      message: "Internal server error", 
-      error: error.message,
-      details: error.errors // Mongoose validation details
-    });
+    res.status(500).json({ error: "Internal server error" });
   }
 }
 
-export async function getAllOrders(_, res) {
+export async function getAllOrders(req, res) {
   try {
-    const orders = await Order.find()
+    const { status, startDate, endDate, minPrice, maxPrice, category, stockStatus } = req.query;
+    const query = {};
+
+    if (status && status !== "All") {
+      query.status = status.toLowerCase();
+    }
+
+    if (category && category !== "All") {
+      query.category = category;
+    }
+
+    if (stockStatus) {
+      if (stockStatus === "Out of Stock") query.stock = 0;
+      if (stockStatus === "Low Stock") query.stock = { $gt: 0, $lte: 10 }; // Default threshold
+      if (stockStatus === "In Stock") query.stock = { $gt: 10 };
+    }
+
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) query.createdAt.$lte = new Date(endDate);
+    }
+
+    if (minPrice || maxPrice) {
+      query.totalPrice = {};
+      if (minPrice) query.totalPrice.$gte = parseFloat(minPrice);
+      if (maxPrice) query.totalPrice.$lte = parseFloat(maxPrice);
+    }
+
+    const orders = await Order.find(query)
       .populate("user", "name email")
       .populate("orderItems.product")
       .sort({ createdAt: -1 });
@@ -181,7 +219,11 @@ export async function updateOrderStatus(req, res) {
       pending: ["processing", "cancelled"],
       processing: ["shipped", "cancelled"],
       shipped: ["delivered"],
-      delivered: [], // Terminal
+      delivered: ["return-requested"], // Customer usually starts this, but admin might force manual
+      "return-requested": ["approved", "denied"],
+      approved: ["refunded"],
+      refunded: [], // Terminal
+      denied: ["delivered"], // Rollback to delivered if denied
       cancelled: [], // Terminal
     };
 
@@ -191,6 +233,19 @@ export async function updateOrderStatus(req, res) {
     }
 
     const currentStatus = order.status;
+
+    // ─── Legacy Migration / Fallback Seeding ──────────────────
+    // If order has no history yet, seed it with the current actual status
+    if (!order.statusHistory || order.statusHistory.length === 0) {
+      order.statusHistory = [
+        {
+          status: currentStatus,
+          timestamp: order.createdAt || new Date(),
+          comment: "Initial status record (Legacy Migration)",
+          changedByType: "system"
+        }
+      ];
+    }
 
     // Validate transition
     if (currentStatus !== newStatus) {
@@ -205,6 +260,26 @@ export async function updateOrderStatus(req, res) {
     }
 
     order.status = newStatus;
+
+    // Record History
+    const adminId = req.user?._id;
+    const { comment: adminComment } = req.body;
+    
+    order.statusHistory.push({
+      status: newStatus,
+      timestamp: new Date(),
+      comment: adminComment || `Status updated to ${newStatus} via Admin Panel`,
+      changedBy: adminId,
+      changedByType: "admin"
+    });
+
+    if (newStatus === "approved") {
+      order.returnStatus = "approved";
+    } else if (newStatus === "denied") {
+      order.returnStatus = "denied";
+    } else if (newStatus === "refunded") {
+      order.returnStatus = "refunded";
+    }
 
     if (newStatus === "shipped" && !order.shippedAt) {
       order.shippedAt = new Date();
@@ -262,6 +337,12 @@ export async function updateOrderStatus(req, res) {
       } else if (newStatus === "cancelled") {
         adminType = "ORDER_CANCELLED";
         adminMessage = `Operational Alert: Order #${idStr} marked as CANCELLED.`;
+      } else if (newStatus === "return-requested") {
+        adminType = "RETURN_REQUESTED";
+        adminMessage = `Attention Needed: Return requested for Order #${idStr}.`;
+      } else if (newStatus === "refunded") {
+        adminType = "ORDER_REFUNDED";
+        adminMessage = `Operational Alert: Order #${idStr} has been REFUNDED.`;
       }
 
       if (adminType) {
@@ -284,11 +365,20 @@ export async function updateOrderStatus(req, res) {
   }
 }
 
-export async function getAllCustomers(_, res) {
+export async function getAllCustomers(req, res) {
   try {
-    const customers = await User.find().sort({ createdAt: -1 }).lean();
+    const { segment, minSpend, maxSpend, minOrders, search } = req.query;
+    const userQuery = {};
+    if (search) {
+      userQuery.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
 
-    // Aggregate order stats per customer
+    const customers = await User.find(userQuery).sort({ createdAt: -1 }).lean();
+
+    // Aggregate order stats per customer with revenue-based top category
     const orderStats = await Order.aggregate([
       {
         $group: {
@@ -313,6 +403,39 @@ export async function getAllCustomers(_, res) {
       },
     ]);
 
+    // NEW: Deeper aggregation for Top Category PER CUSTOMER (by Revenue)
+    const categoryStats = await Order.aggregate([
+      { $match: { "paymentResult.status": "succeeded", status: { $ne: "cancelled" } } },
+      { $unwind: "$orderItems" },
+      // Note: We need to populate category which is on Product, but in aggregate we likely have the ID or string if stored.
+      // Assuming orderItems.product has category or we join with Products.
+      // Looking at order.model.js, orderItems has name, price, quantity, img. 
+      // It DOES NOT have category. We must join with Product.
+      {
+        $lookup: {
+          from: "products",
+          localField: "orderItems.product",
+          foreignField: "_id",
+          as: "productDetails"
+        }
+      },
+      { $unwind: "$productDetails" },
+      {
+        $group: {
+          _id: { user: "$user", category: "$productDetails.category" },
+          categoryRevenue: { $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] } }
+        }
+      },
+      { $sort: { categoryRevenue: -1 } },
+      {
+        $group: {
+          _id: "$_id.user",
+          topCategory: { $first: "$_id.category" },
+          topCategoryRevenue: { $first: "$categoryRevenue" }
+        }
+      }
+    ]);
+
     const statsMap = {};
     orderStats.forEach((stat) => {
       statsMap[stat._id.toString()] = {
@@ -322,6 +445,12 @@ export async function getAllCustomers(_, res) {
       };
     });
 
+    categoryStats.forEach((cat) => {
+      if (statsMap[cat._id.toString()]) {
+        statsMap[cat._id.toString()].topCategory = cat.topCategory;
+      }
+    });
+
     const now = new Date();
 
     const enrichedCustomers = customers.map((customer) => {
@@ -329,6 +458,7 @@ export async function getAllCustomers(_, res) {
         totalOrders: 0,
         totalSpend: 0,
         lastOrderDate: null,
+        topCategory: "None",
       };
 
       // Compute customer segment
@@ -357,9 +487,81 @@ export async function getAllCustomers(_, res) {
       };
     });
 
-    res.status(200).json({ customers: enrichedCustomers });
+    // Apply deeper filters to enriched customers
+    let filteredCustomers = enrichedCustomers;
+
+    if (segment && segment !== "All") {
+      filteredCustomers = filteredCustomers.filter(c => c.segment === segment);
+    }
+
+    if (minSpend) {
+      filteredCustomers = filteredCustomers.filter(c => c.orderStats.totalSpend >= parseFloat(minSpend));
+    }
+    if (maxSpend) {
+      filteredCustomers = filteredCustomers.filter(c => c.orderStats.totalSpend <= parseFloat(maxSpend));
+    }
+    if (minOrders) {
+      filteredCustomers = filteredCustomers.filter(c => c.orderStats.totalOrders >= parseInt(minOrders));
+    }
+
+    res.status(200).json({ customers: filteredCustomers });
   } catch (error) {
     console.error("Error fetching customers:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function getCustomerStats(req, res) {
+  try {
+    const { id } = req.params;
+    const customer = await User.findById(id).lean();
+    if (!customer) {
+      return res.status(404).json({ error: "Customer not found" });
+    }
+
+    const orders = await Order.find({ user: id })
+      .sort({ createdAt: -1 })
+      .populate("orderItems.product");
+
+    const successfulOrders = orders.filter(
+      (o) => o.paymentResult?.status === "succeeded" && o.status !== "cancelled"
+    );
+
+    const totalOrders = orders.length;
+    const totalSpend = successfulOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+    const avgOrderValue = totalOrders > 0 ? totalSpend / totalOrders : 0;
+
+    // Calculate top category by revenue
+    const catRevenue = {};
+    successfulOrders.forEach((order) => {
+      order.orderItems.forEach((item) => {
+        const cat = item.product?.category || "Unknown";
+        catRevenue[cat] = (catRevenue[cat] || 0) + item.price * item.quantity;
+      });
+    });
+
+    let topCategory = "None";
+    let maxRev = 0;
+    Object.entries(catRevenue).forEach(([cat, rev]) => {
+      if (rev > maxRev) {
+        maxRev = rev;
+        topCategory = cat;
+      }
+    });
+
+    const stats = {
+      totalOrders,
+      totalSpend: parseFloat(totalSpend.toFixed(2)),
+      avgOrderValue: parseFloat(avgOrderValue.toFixed(2)),
+      topCategory,
+      lastOrderDate: orders[0]?.createdAt || null,
+      latestOrderItems: orders[0]?.orderItems.map((i) => i.name).slice(0, 3) || [],
+      orderHistory: orders.slice(0, 10), // Return last 10 for the detail view
+    };
+
+    res.status(200).json({ customer, stats });
+  } catch (error) {
+    console.error("Error fetching customer stats:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 }
@@ -552,7 +754,7 @@ export const deleteProduct = async (req, res) => {
 
     const product = await Product.findById(id);
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({ error: "Product not found" });
     }
 
     // Delete images from Cloudinary
@@ -569,7 +771,7 @@ export const deleteProduct = async (req, res) => {
     res.status(200).json({ message: "Product deleted successfully" });
   } catch (error) {
     console.error("Error deleting product:", error);
-    res.status(500).json({ message: "Failed to delete product" });
+    res.status(500).json({ error: "Failed to delete product" });
   }
 };
 
@@ -1135,11 +1337,28 @@ export async function getRestockSuggestions(req, res) {
 // GET /api/admin/reviews
 export async function getAdminReviews(req, res) {
   try {
-    const { status, rating, page = 1, limit = 20 } = req.query;
+    const { status, rating, page = 1, limit = 20, search } = req.query;
 
     const filter = {};
-    if (status) filter.status = status;
-    if (rating) filter.rating = parseInt(rating);
+    if (status && status !== "All") filter.status = status;
+    if (rating && rating !== "All") filter.rating = parseInt(rating);
+    
+    if (search) {
+      // Search by product name or user name/email
+      const productIds = await Product.find({ name: { $regex: search, $options: "i" } }).distinct("_id");
+      const userIds = await User.find({ 
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } }
+        ]
+      }).distinct("_id");
+
+      filter.$or = [
+        { productId: { $in: productIds } },
+        { userId: { $in: userIds } },
+        { comment: { $regex: search, $options: "i" } }
+      ];
+    }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
