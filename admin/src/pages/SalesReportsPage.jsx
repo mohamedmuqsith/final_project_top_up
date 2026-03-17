@@ -26,7 +26,7 @@ import {
   Bar,
   Legend,
 } from "recharts";
-import { exportToCSV } from "../lib/exportUtils";
+import { exportToCSV, exportToPDF } from "../lib/exportUtils";
 
 const RANGE_OPTIONS = [
   { value: "30d", label: "Last 30 Days" },
@@ -81,12 +81,33 @@ function SalesReportsPage() {
     exportToCSV(
       chartData,
       [
-        { label: "Date", accessor: (d) => d.name },
-        { label: "Revenue", accessor: (d) => d.revenue },
+        { label: "Date", accessor: (d) => d.date },
+        { label: "Revenue", accessor: (d) => `$${d.revenue.toFixed(2)}` },
         { label: "Orders", accessor: (d) => d.orders },
       ],
       `sales_report_${range}.csv`
     );
+  };
+
+  const handlePDFExport = () => {
+    exportToPDF({
+      title: "Sales Report",
+      subtitle: `Range: ${RANGE_OPTIONS.find((o) => o.value === range)?.label} | Date: ${new Date().toLocaleDateString()}`,
+      summary: {
+        "Total Revenue": `$${summary.totalRevenue.toLocaleString()}`,
+        "Total Orders": summary.totalOrders,
+        "Confirmed Sales": summary.totalConfirmedSales,
+        "Avg Order Value": `$${summary.avgOrderValue.toFixed(2)}`,
+        "Cancellation Rate": `${summary.cancellationRate}%`,
+      },
+      data: chartData,
+      columns: [
+        { label: "Date", accessor: (d) => d.date },
+        { label: "Revenue", accessor: (d) => `$${d.revenue.toLocaleString()}` },
+        { label: "Orders", accessor: (d) => d.orders },
+      ],
+      filename: `sales_report_${range}.pdf`,
+    });
   };
 
   const statsCards = [
@@ -164,7 +185,16 @@ function SalesReportsPage() {
               disabled={isLoading || chartData.length === 0}
             >
               <DownloadIcon className="size-4" />
-              Export CSV
+              CSV
+            </button>
+
+            <button
+              className="btn btn-outline rounded-2xl gap-2 border-base-300 hover:border-secondary hover:bg-secondary/5"
+              onClick={handlePDFExport}
+              disabled={isLoading || chartData.length === 0}
+            >
+              <DownloadIcon className="size-4" />
+              PDF
             </button>
 
             <select

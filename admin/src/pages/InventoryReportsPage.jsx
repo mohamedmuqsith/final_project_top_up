@@ -26,7 +26,7 @@ import {
 } from "recharts";
 
 import { getCategoryColor } from "../lib/utils";
-import { exportToCSV } from "../lib/exportUtils";
+import { exportToCSV, exportToPDF } from "../lib/exportUtils";
 
 const CustomPieTooltip = ({ active, payload, totalValue }) => {
   if (active && payload && payload.length) {
@@ -109,13 +109,33 @@ function InventoryReportsPage() {
     exportToCSV(
       stockByCategory,
       [
-        { label: "Category", accessor: (c) => c._id },
-        { label: "Value", accessor: (c) => c.totalValue },
-        { label: "Units", accessor: (c) => c.totalUnits },
-        { label: "Products", accessor: (c) => c.productsCount },
+        { label: "Category", accessor: (c) => c.name },
+        { label: "Value ($)", accessor: (c) => c.value.toFixed(2) },
+        { label: "Units", accessor: (c) => c.units },
+        { label: "Products", accessor: (c) => c.productCount },
       ],
       "inventory_report.csv"
     );
+  };
+
+  const handlePDFExport = () => {
+    exportToPDF({
+      title: "Inventory Report",
+      subtitle: `Date: ${new Date().toLocaleDateString()}`,
+      summary: {
+        "Total Value": `$${summary.totalInventoryValue.toLocaleString()}`,
+        "Total Units": summary.totalUnitsInStock.toLocaleString(),
+        "Out of Stock": summary.outOfStockCount,
+      },
+      data: stockByCategory,
+      columns: [
+        { label: "Category", accessor: (c) => c.name },
+        { label: "Units in Stock", accessor: (c) => c.units },
+        { label: "Total Value", accessor: (c) => `$${c.value.toLocaleString()}` },
+        { label: "Product Count", accessor: (c) => c.productCount },
+      ],
+      filename: "inventory_report.pdf",
+    });
   };
 
   const statsCards = [
@@ -184,14 +204,25 @@ function InventoryReportsPage() {
             </div>
           </div>
 
-          <button
-            className="btn btn-outline rounded-2xl gap-2 border-base-300 hover:border-primary hover:bg-primary/5"
-            onClick={handleExport}
-            disabled={isLoading || !stockByCategory?.length}
-          >
-            <DownloadIcon className="size-4" />
-            Export CSV
-          </button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <button
+              className="btn btn-outline rounded-2xl gap-2 border-base-300 hover:border-primary hover:bg-primary/5"
+              onClick={handleExport}
+              disabled={isLoading || !stockByCategory?.length}
+            >
+              <DownloadIcon className="size-4" />
+              CSV
+            </button>
+
+            <button
+              className="btn btn-outline rounded-2xl gap-2 border-base-300 hover:border-secondary hover:bg-secondary/5"
+              onClick={handlePDFExport}
+              disabled={isLoading || !stockByCategory?.length}
+            >
+              <DownloadIcon className="size-4" />
+              PDF
+            </button>
+          </div>
         </div>
       </div>
 

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { orderApi } from "../lib/api";
 import { formatDate, capitalizeText } from "../lib/utils";
-import { exportToCSV } from "../lib/exportUtils";
+import { exportToCSV, exportToPDF } from "../lib/exportUtils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   XIcon,
@@ -316,13 +316,35 @@ function OrdersPage() {
         { label: "Order ID", accessor: (o) => o._id },
         { label: "Customer", accessor: (o) => o.shippingAddress?.fullName || "" },
         { label: "Items", accessor: (o) => o.orderItems.reduce((s, i) => s + i.quantity, 0) },
-        { label: "Total", accessor: (o) => o.totalPrice.toFixed(2) },
+        { label: "Total Price", accessor: (o) => `$${o.totalPrice.toFixed(2)}` },
         { label: "Status", accessor: (o) => o.status },
-        { label: "Payment", accessor: (o) => o.paymentResult?.status || "" },
+        { label: "Payment Status", accessor: (o) => o.paymentResult?.status || "" },
         { label: "Date", accessor: (o) => formatDate(o.createdAt) },
       ],
       "orders_export.csv"
     );
+  };
+
+  const handlePDFExport = () => {
+    exportToPDF({
+      title: "Order List Report",
+      subtitle: `Filtered Status: ${filterStatus} | Date: ${new Date().toLocaleDateString()}`,
+      summary: {
+        "Total Count": filtered.length,
+        "Total Revenue": `$${filtered.reduce((sum, o) => sum + (o.status !== "cancelled" ? o.totalPrice : 0), 0).toLocaleString()}`,
+        "Avg Order Value": `$${(filtered.length > 0 ? filtered.reduce((sum, o) => sum + o.totalPrice, 0) / filtered.length : 0).toFixed(2)}`,
+      },
+      data: filtered,
+      columns: [
+        { label: "Order ID", accessor: (o) => o._id.slice(-8).toUpperCase() },
+        { label: "Customer", accessor: (o) => o.shippingAddress?.fullName || "—" },
+        { label: "Items", accessor: (o) => o.orderItems.reduce((s, i) => s + i.quantity, 0) },
+        { label: "Total", accessor: (o) => `$${o.totalPrice.toFixed(2)}` },
+        { label: "Status", accessor: (o) => o.status.toUpperCase() },
+        { label: "Date", accessor: (o) => formatDate(o.createdAt).split(",")[0] },
+      ],
+      filename: "orders_export.pdf",
+    });
   };
 
   return (
@@ -351,14 +373,25 @@ function OrdersPage() {
             </div>
           </div>
 
-          <button
-            className="btn btn-outline rounded-2xl gap-2 border-base-300 hover:border-primary hover:bg-primary/5"
-            onClick={handleExport}
-            disabled={filtered.length === 0}
-          >
-            <DownloadIcon className="size-4" />
-            Export CSV
-          </button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <button
+              className="btn btn-outline rounded-2xl gap-2 border-base-300 hover:border-primary hover:bg-primary/5"
+              onClick={handleExport}
+              disabled={filtered.length === 0}
+            >
+              <DownloadIcon className="size-4" />
+              CSV
+            </button>
+
+            <button
+              className="btn btn-outline rounded-2xl gap-2 border-base-300 hover:border-secondary hover:bg-secondary/5"
+              onClick={handlePDFExport}
+              disabled={filtered.length === 0}
+            >
+              <DownloadIcon className="size-4" />
+              PDF
+            </button>
+          </div>
         </div>
       </div>
 

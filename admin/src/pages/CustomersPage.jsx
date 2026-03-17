@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { customerApi, orderApi } from "../lib/api";
 import { formatDate, capitalizeText } from "../lib/utils";
-import { exportToCSV } from "../lib/exportUtils";
+import { exportToCSV, exportToPDF } from "../lib/exportUtils";
 import {
   XIcon,
   ShoppingBagIcon,
@@ -320,16 +320,38 @@ function CustomersPage() {
         { label: "Email", accessor: (c) => c.email },
         { label: "Segment", accessor: (c) => c.segment },
         { label: "Total Orders", accessor: (c) => c.orderStats?.totalOrders || 0 },
-        { label: "Total Spend", accessor: (c) => c.orderStats?.totalSpend || 0 },
+        { label: "Total Spend", accessor: (c) => `$${(c.orderStats?.totalSpend || 0).toFixed(2)}` },
         {
           label: "Last Order",
           accessor: (c) =>
-            c.orderStats?.lastOrderDate ? formatDate(c.orderStats.lastOrderDate) : "",
+            c.orderStats?.lastOrderDate ? formatDate(c.orderStats.lastOrderDate) : "—",
         },
         { label: "Joined", accessor: (c) => formatDate(c.createdAt) },
       ],
       "customers_export.csv"
     );
+  };
+
+  const handlePDFExport = () => {
+    exportToPDF({
+      title: "Customer Insights Report",
+      subtitle: `Segment: ${filterSegment} | Date: ${new Date().toLocaleDateString()}`,
+      summary: {
+        "Total Count": filtered.length,
+        "VIP Count": filtered.filter(c => c.segment === "VIP").length,
+        "Total Revenue": `$${filtered.reduce((sum, c) => sum + (c.orderStats?.totalSpend || 0), 0).toLocaleString()}`,
+        "At-Risk Users": filtered.filter(c => c.segment === "At-Risk").length,
+      },
+      data: filtered,
+      columns: [
+        { label: "Customer Name", accessor: (c) => c.name },
+        { label: "Segment", accessor: (c) => c.segment.toUpperCase() },
+        { label: "Orders", accessor: (c) => c.orderStats?.totalOrders || 0 },
+        { label: "Total Spend", accessor: (c) => `$${(c.orderStats?.totalSpend || 0).toLocaleString()}` },
+        { label: "Last Order", accessor: (c) => c.orderStats?.lastOrderDate ? formatDate(c.orderStats.lastOrderDate).split(",")[0] : "—" },
+      ],
+      filename: "customers_export.pdf",
+    });
   };
 
   return (
@@ -358,14 +380,25 @@ function CustomersPage() {
             </div>
           </div>
 
-          <button
-            className="btn btn-outline rounded-2xl gap-2 border-base-300 hover:border-primary hover:bg-primary/5"
-            onClick={handleExport}
-            disabled={filtered.length === 0}
-          >
-            <DownloadIcon className="size-4" />
-            Export CSV
-          </button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <button
+              className="btn btn-outline rounded-2xl gap-2 border-base-300 hover:border-primary hover:bg-primary/5"
+              onClick={handleExport}
+              disabled={filtered.length === 0}
+            >
+              <DownloadIcon className="size-4" />
+              CSV
+            </button>
+
+            <button
+              className="btn btn-outline rounded-2xl gap-2 border-base-300 hover:border-secondary hover:bg-secondary/5"
+              onClick={handlePDFExport}
+              disabled={filtered.length === 0}
+            >
+              <DownloadIcon className="size-4" />
+              PDF
+            </button>
+          </div>
         </div>
       </div>
 
