@@ -16,6 +16,7 @@ import {
   updateReviewStatus,
   getReviewAnalytics,
 } from "../controllers/admin.controller.js";
+import { getOrderDocumentData } from "../controllers/orderDocument.controller.js";
 import { adminOnly, protectRoute } from "../middleware/auth.middleware.js";
 import { upload } from "../middleware/multer.middleware.js";
 
@@ -31,6 +32,7 @@ router.delete("/products/:id", deleteProduct);
 
 router.get("/orders", getAllOrders);
 router.patch("/orders/:orderId/status", updateOrderStatus);
+router.get("/orders/:id/document-data", getOrderDocumentData);
 
 router.get("/customers", getAllCustomers);
 
