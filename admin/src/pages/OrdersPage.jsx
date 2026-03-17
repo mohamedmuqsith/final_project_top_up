@@ -3,6 +3,7 @@ import { useState } from "react";
 import { orderApi } from "../lib/api";
 import { formatDate, capitalizeText } from "../lib/utils";
 import { exportToCSV, exportToPDF } from "../lib/exportUtils";
+import { generateInvoice, generatePackingSlip, generateShippingLabel } from "../lib/orderDocuments";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   XIcon,
@@ -23,6 +24,10 @@ import {
   UserIcon,
   BadgeDollarSignIcon,
   AlertTriangleIcon,
+  FileTextIcon,
+  ReceiptIcon,
+  TagIcon,
+  ChevronDownIcon,
 } from "lucide-react";
 
 const STATUS_ICON_MAP = {
@@ -40,6 +45,113 @@ const STATUS_COLOR_MAP = {
   delivered: "badge-success",
   cancelled: "badge-error",
 };
+
+// ─── Document Actions Component ──────────────────────────────────
+const DOC_AVAILABILITY = {
+  invoice: ["processing", "shipped", "delivered"],
+  "packing-slip": ["processing", "shipped"],
+  "shipping-label": ["processing", "shipped"],
+};
+
+function DocumentActions({ order, variant = "row" }) {
+  const [loading, setLoading] = useState(null);
+  const status = order?.status;
+
+  const canInvoice = DOC_AVAILABILITY.invoice.includes(status);
+  const canPackingSlip = DOC_AVAILABILITY["packing-slip"].includes(status);
+  const canShippingLabel = DOC_AVAILABILITY["shipping-label"].includes(status);
+
+  if (!canInvoice && !canPackingSlip && !canShippingLabel) return null;
+
+  const handleGenerate = async (type) => {
+    setLoading(type);
+    try {
+      const data = await orderApi.getDocumentData(order._id, type);
+      if (type === "invoice") generateInvoice(data);
+      else if (type === "packing-slip") generatePackingSlip(data);
+      else if (type === "shipping-label") generateShippingLabel(data);
+    } catch (err) {
+      console.error(`Failed to generate ${type}:`, err);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  // Compact dropdown for table rows
+  if (variant === "row") {
+    return (
+      <div className="dropdown dropdown-end">
+        <div tabIndex={0} role="button" className="btn btn-ghost btn-sm rounded-xl hover:bg-secondary/10 hover:text-secondary gap-1">
+          <FileTextIcon className="size-4" />
+          Docs
+          <ChevronDownIcon className="size-3 opacity-60" />
+        </div>
+        <ul tabIndex={0} className="dropdown-content menu bg-base-200 rounded-2xl z-50 w-52 p-2 shadow-xl border border-base-300/60">
+          {canInvoice && (
+            <li>
+              <button onClick={() => handleGenerate("invoice")} disabled={!!loading}>
+                <ReceiptIcon className="size-4" />
+                {loading === "invoice" ? "Generating..." : "Invoice"}
+              </button>
+            </li>
+          )}
+          {canPackingSlip && (
+            <li>
+              <button onClick={() => handleGenerate("packing-slip")} disabled={!!loading}>
+                <PackageIcon className="size-4" />
+                {loading === "packing-slip" ? "Generating..." : "Packing Slip"}
+              </button>
+            </li>
+          )}
+          {canShippingLabel && (
+            <li>
+              <button onClick={() => handleGenerate("shipping-label")} disabled={!!loading}>
+                <TagIcon className="size-4" />
+                {loading === "shipping-label" ? "Generating..." : "Shipping Label"}
+              </button>
+            </li>
+          )}
+        </ul>
+      </div>
+    );
+  }
+
+  // Button group for detail modal
+  return (
+    <div className="flex flex-wrap gap-2">
+      {canInvoice && (
+        <button
+          className="btn btn-sm btn-outline rounded-xl gap-1.5 border-base-300 hover:border-primary hover:bg-primary/5"
+          onClick={() => handleGenerate("invoice")}
+          disabled={!!loading}
+        >
+          {loading === "invoice" ? <span className="loading loading-spinner loading-xs" /> : <ReceiptIcon className="size-3.5" />}
+          Invoice
+        </button>
+      )}
+      {canPackingSlip && (
+        <button
+          className="btn btn-sm btn-outline rounded-xl gap-1.5 border-base-300 hover:border-secondary hover:bg-secondary/5"
+          onClick={() => handleGenerate("packing-slip")}
+          disabled={!!loading}
+        >
+          {loading === "packing-slip" ? <span className="loading loading-spinner loading-xs" /> : <PackageIcon className="size-3.5" />}
+          Packing Slip
+        </button>
+      )}
+      {canShippingLabel && (
+        <button
+          className="btn btn-sm btn-outline rounded-xl gap-1.5 border-base-300 hover:border-info hover:bg-info/5"
+          onClick={() => handleGenerate("shipping-label")}
+          disabled={!!loading}
+        >
+          {loading === "shipping-label" ? <span className="loading loading-spinner loading-xs" /> : <TagIcon className="size-3.5" />}
+          Shipping Label
+        </button>
+      )}
+    </div>
+  );
+}
 
 function OrderDetailModal({ order, onClose }) {
   if (!order) return null;
@@ -252,6 +364,21 @@ function OrderDetailModal({ order, onClose }) {
                     </ul>
                   </div>
                 </div>
+
+                {/* Document Actions */}
+                {["processing", "shipped", "delivered"].includes(order.status) && (
+                  <div className="rounded-3xl border border-base-300/60 bg-base-100 shadow-sm">
+                    <div className="px-5 py-4 border-b border-base-200/70">
+                      <h4 className="font-bold text-lg">Documents</h4>
+                      <p className="text-xs text-base-content/55 mt-1">
+                        Generate fulfillment documents
+                      </p>
+                    </div>
+                    <div className="p-5">
+                      <DocumentActions order={order} variant="modal" />
+                    </div>
+                  </div>
+                )}
 
                 <div className="rounded-3xl border border-primary/20 bg-linear-to-br from-primary/10 to-transparent p-5">
                   <h4 className="font-bold text-base mb-2">Reality Check</h4>
@@ -469,7 +596,7 @@ function OrdersPage() {
                     <th>Total</th>
                     <th>Status</th>
                     <th>Date</th>
-                    <th>Details</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
 
@@ -561,12 +688,15 @@ function OrdersPage() {
                         </td>
 
                         <td>
-                          <button
-                            className="btn btn-ghost btn-sm rounded-xl hover:bg-primary/10 hover:text-primary"
-                            onClick={() => setSelectedOrder(order)}
-                          >
-                            View
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              className="btn btn-ghost btn-sm rounded-xl hover:bg-primary/10 hover:text-primary"
+                              onClick={() => setSelectedOrder(order)}
+                            >
+                              View
+                            </button>
+                            <DocumentActions order={order} variant="row" />
+                          </div>
                         </td>
                       </tr>
                     );

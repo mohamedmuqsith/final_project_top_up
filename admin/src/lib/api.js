@@ -32,6 +32,13 @@ export const orderApi = {
     const { data } = await axiosInstance.patch(`/admin/orders/${orderId}/status`, { status });
     return data;
   },
+
+  getDocumentData: async (orderId, docType) => {
+    const { data } = await axiosInstance.get(`/admin/orders/${orderId}/document-data`, {
+      params: { docType },
+    });
+    return data;
+  },
 };
 
 export const statsApi = {
