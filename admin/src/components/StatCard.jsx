@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+
 import React from "react";
 
 const StatCard = ({ title, value, icon: Icon, color = "bg-primary" }) => {

@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { customerApi, orderApi } from "../lib/api";
