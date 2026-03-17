@@ -141,15 +141,52 @@ const CartScreen = () => {
 
         Alert.alert("Payment cancelled", presentError.message);
       } else {
-        Sentry.logger.info("Payment successful", {
-          total: total.toFixed(2),
-          itemCount: cartItems.length,
+        // Payment successful on client - now SYNC with backend
+        Sentry.logger.info("Payment successful, starting server-side sync", {
+          orderId: data.orderId,
+          piId: data.paymentIntentId
         });
 
-        Alert.alert("Success", "Your payment was successful! Your order is being processed.", [
-          { text: "OK", onPress: () => {} },
-        ]);
-        clearCart();
+        // Loop for sync retry logic
+        let synced = false;
+        let attempts = 0;
+        
+        const confirmOrder = async () => {
+          try {
+            setPaymentLoading(true); // Keep spinner active
+            await api.post("/payment/confirm", {
+              orderId: data.orderId,
+              paymentIntentId: data.paymentIntentId
+            });
+            synced = true;
+          } catch (syncErr) {
+            console.error("Sync attempt failed:", syncErr);
+            throw syncErr;
+          }
+        };
+
+        try {
+          await confirmOrder();
+          
+          Alert.alert("Success", "Your payment was successful! Your order is being processed.", [
+            { text: "OK", onPress: () => {} },
+          ]);
+          clearCart();
+        } catch (syncErr) {
+          Sentry.logger.error("Backend sync failed after payment", {
+            error: syncErr instanceof Error ? syncErr.message : "Unknown",
+            orderId: data.orderId
+          });
+
+          Alert.alert(
+            "Syncing Problem",
+            "Payment was successful, but we're having trouble syncing your order. Please check 'My Orders' in a moment or retry.",
+            [
+              { text: "Retry Sync", onPress: () => handleManualSync(data.orderId, data.paymentIntentId) },
+              { text: "OK", onPress: () => clearCart() } // Clear cart anyway since payment was successful
+            ]
+          );
+        }
       }
     } catch (error: any) {
       Sentry.logger.error("Payment failed", {
@@ -160,6 +197,19 @@ const CartScreen = () => {
 
       const errorMessage = error?.response?.data?.error || "Failed to process payment";
       Alert.alert("Error", errorMessage);
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const handleManualSync = async (orderId: string, paymentIntentId: string) => {
+    try {
+      setPaymentLoading(true);
+      await api.post("/payment/confirm", { orderId, paymentIntentId });
+      Alert.alert("Success", "Order synced successfully!");
+      clearCart();
+    } catch (err) {
+      Alert.alert("Sync Error", "Still unable to sync. Please contact support if this persists.");
     } finally {
       setPaymentLoading(false);
     }

@@ -162,7 +162,6 @@ export async function requestOrderReturn(req, res) {
       type: "RETURN_REQUESTED",
       entityId: order._id,
       entityModel: "Order",
-      actionUrl: "/orders"
     });
 
     res.status(200).json({ 

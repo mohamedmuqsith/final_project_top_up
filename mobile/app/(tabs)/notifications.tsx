@@ -91,7 +91,7 @@ export default function NotificationsScreen() {
     }
   };
 
-  const handlePress = async (notification: NotificationItem) => {
+  const handlePress = async (notification: NotificationItem & { entityId?: string, entityModel?: string }) => {
     if (!notification.isRead) {
       try {
         await api.patch(`/notifications/${notification._id}/read`);
@@ -103,7 +103,9 @@ export default function NotificationsScreen() {
       }
     }
 
-    if (notification.actionUrl) {
+    if (notification.entityModel === "Order" && notification.entityId) {
+      router.push(`/(profile)/order/${notification.entityId}` as any);
+    } else if (notification.actionUrl) {
       router.push(notification.actionUrl as any);
     } else {
       router.push("/(tabs)/profile" as any); // Fallback routing for customers
@@ -129,14 +131,16 @@ export default function NotificationsScreen() {
         activeOpacity={0.8}
       >
         <View className="mt-1">
-          {item.type.includes("SUCCESS") || item.type.includes("PLACED") ? (
+          {item.type.includes("SUCCESS") || item.type.includes("PLACED") || item.type === "ORDER_PROCESSING" ? (
             <Ionicons name="checkmark-circle" size={24} color="#00D9FF" />
           ) : item.type.includes("SHIPPED") ? (
             <Ionicons name="airplane" size={24} color="#00D9FF" />
           ) : item.type.includes("DELIVERED") ? (
             <Ionicons name="gift" size={24} color="#00D9FF" />
-          ) : item.type.includes("CANCELLED") ? (
+          ) : item.type.includes("CANCELLED") || item.type === "RETURN_DENIED" ? (
             <Ionicons name="close-circle" size={24} color="#FF6B6B" />
+          ) : item.type.includes("RETURN") || item.type.includes("REFUND") ? (
+            <Ionicons name="refresh-circle" size={24} color="#00D9FF" />
           ) : (
             <Ionicons name="notifications" size={24} color={isUnread ? "#00D9FF" : "#666666"} />
           )}
