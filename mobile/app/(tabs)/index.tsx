@@ -38,7 +38,7 @@ const ShopScreen = () => {
   const { data: products, isLoading, isError } = useProducts();
   const { data: recommendations, isLoading: recLoading, isError: recError } = useRecommendedProducts();
   const { data: trending, isLoading: trendLoading, isError: trendError } = useTrendingProducts();
-  const { offers, isLoading: offersLoading } = useOffers();
+  const { offers } = useOffers();
 
   const filteredProducts = useMemo(() => {
     if (!products) return [];

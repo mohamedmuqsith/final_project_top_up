@@ -24,8 +24,8 @@ function InventoryAlertsPage() {
 
   if (isLoading) {
     return (
-      <div className="rounded-[28px] border border-base-300/60 bg-base-100 p-12 shadow-sm">
-        <div className="flex min-h-[300px] items-center justify-center">
+      <div className="rounded-4xl border border-base-300/60 bg-base-100 p-12 shadow-sm">
+        <div className="flex min-h-75 items-center justify-center">
           <span className="loading loading-spinner loading-lg text-primary"></span>
         </div>
       </div>
@@ -34,7 +34,7 @@ function InventoryAlertsPage() {
 
   if (error) {
     return (
-      <div className="rounded-[28px] border border-error/20 bg-error/5 p-10 shadow-sm">
+      <div className="rounded-4xl border border-error/20 bg-error/5 p-10 shadow-sm">
         <div className="flex flex-col items-center justify-center text-center text-error">
           <div className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-error/10">
             <AlertCircleIcon className="w-8 h-8 opacity-90" />
@@ -84,7 +84,7 @@ function InventoryAlertsPage() {
   return (
     <div className="space-y-8 pb-10">
       {/* HEADER */}
-      <div className="relative overflow-hidden rounded-[32px] border border-base-300/60 bg-base-100 shadow-xl">
+      <div className="relative overflow-hidden rounded-4xl border border-base-300/60 bg-base-100 shadow-xl">
         <div className="absolute inset-x-0 top-0 h-28 bg-linear-to-r from-error/10 via-warning/10 to-primary/10 pointer-events-none"></div>
 
         <div className="relative flex flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
@@ -113,7 +113,7 @@ function InventoryAlertsPage() {
 
       {/* SUMMARY CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="rounded-[28px] border border-base-300/60 bg-base-100 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+        <div className="rounded-4xl border border-base-300/60 bg-base-100 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-base-content/60">
@@ -132,7 +132,7 @@ function InventoryAlertsPage() {
           </div>
         </div>
 
-        <div className="rounded-[28px] border border-error/20 bg-base-100 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+        <div className="rounded-4xl border border-error/20 bg-base-100 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-base-content/60">
@@ -151,7 +151,7 @@ function InventoryAlertsPage() {
           </div>
         </div>
 
-        <div className="rounded-[28px] border border-warning/20 bg-base-100 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+        <div className="rounded-4xl border border-warning/20 bg-base-100 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-base-content/60">
@@ -172,11 +172,11 @@ function InventoryAlertsPage() {
       </div>
 
       {/* FILTERS */}
-      <div className="rounded-[28px] border border-base-300/60 bg-base-100 p-4 sm:p-5 shadow-sm">
+      <div className="rounded-4xl border border-base-300/60 bg-base-100 p-4 sm:p-5 shadow-sm">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-col md:flex-row gap-4">
             <select
-              className="select select-bordered w-full md:w-[220px] rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="select select-bordered w-full md:w-55 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               value={filterSeverity}
               onChange={(e) => setFilterSeverity(e.target.value)}
             >
@@ -187,7 +187,7 @@ function InventoryAlertsPage() {
             </select>
 
             <select
-              className="select select-bordered w-full md:w-[220px] rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="select select-bordered w-full md:w-55 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
             >
@@ -212,7 +212,7 @@ function InventoryAlertsPage() {
       </div>
 
       {/* ALERTS TABLE */}
-      <div className="rounded-[30px] border border-base-300/60 bg-base-100 shadow-xl overflow-hidden">
+      <div className="rounded-4xl border border-base-300/60 bg-base-100 shadow-xl overflow-hidden">
         <div className="border-b border-base-200/70 px-5 py-4 sm:px-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -260,7 +260,7 @@ function InventoryAlertsPage() {
                 filteredAlerts.map((alert) => (
                   <tr key={alert._id} className="hover:bg-base-200/30 transition-colors">
                     <td>
-                      <div className="flex items-center space-x-3 min-w-[220px]">
+                      <div className="flex items-center space-x-3 min-w-55">
                         <div className="avatar">
                           <div className="w-12 h-12 rounded-2xl ring-1 ring-base-300 bg-base-200 overflow-hidden">
                             <img
@@ -301,7 +301,7 @@ function InventoryAlertsPage() {
                     </td>
 
                     <td>
-                      <div className="flex flex-col text-sm gap-1 min-w-[130px]">
+                      <div className="flex flex-col text-sm gap-1 min-w-32.5">
                         <span>
                           <span className="text-base-content/55">Avg Daily:</span>{" "}
                           <span className="font-semibold">{alert.avgDailySales}</span>

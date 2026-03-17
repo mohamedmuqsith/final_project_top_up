@@ -61,9 +61,6 @@ export function exportToPDF({
 
   const doc = new jsPDF();
 
-  // Header Colors
-  const primaryColor = [16, 185, 129]; // Emerald 500 equivalent for branding
-
   // Title
   doc.setFontSize(22);
   doc.setFont("helvetica", "bold");

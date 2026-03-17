@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { restockApi } from "../lib/api";
@@ -72,7 +72,7 @@ function RestockSuggestionsPage() {
   return (
     <div className="space-y-8 pb-12">
       {/* HEADER */}
-      <div className="relative overflow-hidden rounded-[32px] border border-base-300/60 bg-base-100 shadow-xl">
+      <div className="relative overflow-hidden rounded-4xl border border-base-300/60 bg-base-100 shadow-xl">
         <div className="absolute inset-x-0 top-0 h-32 bg-linear-to-r from-primary/20 via-warning/15 to-success/15 pointer-events-none"></div>
 
         <div className="relative flex flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
@@ -191,7 +191,7 @@ function RestockSuggestionsPage() {
       <div className="rounded-[28px] border border-base-300/60 bg-base-100 p-4 sm:p-5 shadow-sm">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <select
-            className="select select-bordered w-full xl:w-[220px] rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="select select-bordered w-full xl:w-55 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value)}
           >
@@ -267,7 +267,7 @@ function RestockSuggestionsPage() {
                   return (
                     <tr key={item._id} className="hover:bg-base-200/30 transition-colors">
                       <td>
-                        <div className="flex items-center gap-3 min-w-[220px]">
+                        <div className="flex items-center gap-3 min-w-55">
                           <div className="avatar">
                             <div className="w-12 h-12 rounded-2xl ring-1 ring-base-300 bg-base-200 overflow-hidden">
                               <img

@@ -35,7 +35,7 @@ function Navbar() {
 
   return (
     <div className="sticky top-0 z-30 w-full border-b border-base-300/60 bg-base-100/85 backdrop-blur-xl">
-      <div className="navbar min-h-[72px] px-3 sm:px-5 lg:px-6">
+      <div className="navbar min-h-18 px-3 sm:px-5 lg:px-6">
         <div className="flex items-center gap-3">
           <label
             htmlFor="my-drawer"

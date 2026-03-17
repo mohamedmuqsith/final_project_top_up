@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInUp, FadeIn, ZoomIn } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
 
-const { width, height } = Dimensions.get("window");
+Dimensions.get("window");
 
 const AuthScreen = () => {
   const { loadingStrategy, handleSocialAuth } = useSocialAuth();

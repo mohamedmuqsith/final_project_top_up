@@ -1,8 +1,8 @@
-/* eslint-disable react/prop-types */
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { customerApi, orderApi } from "../lib/api";
-import { formatDate, capitalizeText } from "../lib/utils";
+import { formatDate } from "../lib/utils";
 import { exportToCSV, exportToPDF } from "../lib/exportUtils";
 import {
   XIcon,
@@ -43,7 +43,7 @@ function CustomerDetailModal({ customer, onClose, orders }) {
   return (
     <dialog className="modal modal-open">
       <div className="modal-box max-w-5xl p-0 bg-transparent shadow-none">
-        <div className="relative overflow-hidden rounded-[32px] border border-base-300/60 bg-base-100 shadow-2xl">
+        <div className="relative overflow-hidden rounded-4xl border border-base-300/60 bg-base-100 shadow-2xl">
           <div className="absolute inset-x-0 top-0 h-32 bg-linear-to-r from-primary/20 via-secondary/15 to-accent/20 pointer-events-none"></div>
 
           <div className="relative px-6 sm:px-8 pt-8 pb-6 border-b border-base-200/80">
@@ -166,7 +166,7 @@ function CustomerDetailModal({ customer, onClose, orders }) {
 
                             <div className="text-right shrink-0">
                               <p className="font-black">${order.totalPrice.toFixed(2)}</p>
-                              <p className="text-[10px] opacity-60 uppercase mt-1">
+                              <p className="text-xs opacity-60 uppercase mt-1">
                                 {order.status}
                               </p>
                             </div>
@@ -193,7 +193,7 @@ function CustomerDetailModal({ customer, onClose, orders }) {
                       <p className="text-2xl font-black">
                         {customer.orderStats?.totalOrders || 0}
                       </p>
-                      <p className="text-[11px] uppercase opacity-40 font-semibold mt-1">
+                      <p className="text-xs uppercase opacity-40 font-semibold mt-1">
                         Orders
                       </p>
                     </div>
@@ -203,7 +203,7 @@ function CustomerDetailModal({ customer, onClose, orders }) {
                       <p className="text-2xl font-black">
                         ${(customer.orderStats?.totalSpend || 0).toFixed(0)}
                       </p>
-                      <p className="text-[11px] uppercase opacity-40 font-semibold mt-1">
+                      <p className="text-xs uppercase opacity-40 font-semibold mt-1">
                         Spent
                       </p>
                     </div>
@@ -215,7 +215,7 @@ function CustomerDetailModal({ customer, onClose, orders }) {
                           ? formatDate(customer.orderStats.lastOrderDate).split(",")[0]
                           : "—"}
                       </p>
-                      <p className="text-[11px] uppercase opacity-40 font-semibold mt-1">
+                      <p className="text-xs uppercase opacity-40 font-semibold mt-1">
                         Last Order
                       </p>
                     </div>
@@ -232,7 +232,7 @@ function CustomerDetailModal({ customer, onClose, orders }) {
 
                   <div className="p-5 grid grid-cols-2 gap-4">
                     <div className="rounded-2xl bg-base-200/40 p-4">
-                      <p className="text-[10px] uppercase opacity-40 font-bold mb-2">
+                      <p className="text-xs uppercase opacity-40 font-bold mb-2">
                         Addresses
                       </p>
                       <div className="flex items-center gap-2">
@@ -244,7 +244,7 @@ function CustomerDetailModal({ customer, onClose, orders }) {
                     </div>
 
                     <div className="rounded-2xl bg-base-200/40 p-4">
-                      <p className="text-[10px] uppercase opacity-40 font-bold mb-2">
+                      <p className="text-xs uppercase opacity-40 font-bold mb-2">
                         Wishlist
                       </p>
                       <div className="flex items-center gap-2">
@@ -357,7 +357,7 @@ function CustomersPage() {
   return (
     <div className="space-y-8 pb-10">
       {/* HEADER */}
-      <div className="relative overflow-hidden rounded-[32px] border border-base-300/60 bg-base-100 shadow-xl">
+      <div className="relative overflow-hidden rounded-4xl border border-base-300/60 bg-base-100 shadow-xl">
         <div className="absolute inset-x-0 top-0 h-32 bg-linear-to-r from-primary/20 via-secondary/15 to-accent/20 pointer-events-none"></div>
 
         <div className="relative flex flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
@@ -410,7 +410,7 @@ function CustomersPage() {
           return (
             <button
               key={segment}
-              className={`group rounded-[26px] border bg-base-100 p-5 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+              className={`group rounded-3xl border bg-base-100 p-5 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
                 filterSegment === segment
                   ? "border-primary ring-4 ring-primary/10 shadow-primary/5"
                   : "border-base-300/60 hover:border-primary/40"
@@ -441,7 +441,7 @@ function CustomersPage() {
       </div>
 
       {/* SEARCH + FILTER */}
-      <div className="rounded-[28px] border border-base-300/60 bg-base-100 p-4 sm:p-5 shadow-sm">
+      <div className="rounded-4xl border border-base-300/60 bg-base-100 p-4 sm:p-5 shadow-sm">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
           <div className="relative flex-1">
             <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/45 w-5 h-5" />
@@ -454,7 +454,7 @@ function CustomersPage() {
             />
           </div>
 
-          <div className="relative w-full xl:w-[240px]">
+          <div className="relative w-full xl:w-60">
             <FilterIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/45 w-4 h-4 pointer-events-none" />
             <select
               className="select select-bordered w-full pl-11 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all"
@@ -472,7 +472,7 @@ function CustomersPage() {
       </div>
 
       {/* CUSTOMERS TABLE */}
-      <div className="rounded-[30px] border border-base-300/60 bg-base-100 shadow-xl overflow-hidden min-w-0">
+      <div className="rounded-4xl border border-base-300/60 bg-base-100 shadow-xl overflow-hidden min-w-0">
         <div className="border-b border-base-200/70 px-5 py-4 sm:px-6">
           <div className="flex items-center gap-3">
             <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -527,7 +527,7 @@ function CustomersPage() {
                         className="hover:bg-base-200/30 transition-colors"
                       >
                         <td>
-                          <div className="flex items-center gap-3 min-w-[230px]">
+                          <div className="flex items-center gap-3 min-w-57.5">
                             <img
                               src={customer.imageUrl}
                               alt={customer.name}

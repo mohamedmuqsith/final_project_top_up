@@ -50,7 +50,7 @@ function DashboardPage() {
 
   if (isError) {
     return (
-      <div className="rounded-[28px] border border-error/20 bg-error/5 p-10 shadow-sm">
+      <div className="rounded-4xl border border-error/20 bg-error/5 p-10 shadow-sm">
         <div className="flex flex-col items-center justify-center text-center text-error">
           <div className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-error/10">
             <AlertTriangleIcon className="size-9 opacity-90" />
@@ -155,7 +155,7 @@ function DashboardPage() {
   return (
     <div className="space-y-8 pb-12">
       {/* HEADER */}
-      <div className="relative overflow-hidden rounded-[32px] border border-base-300/60 bg-base-100 shadow-xl">
+      <div className="relative overflow-hidden rounded-4xl border border-base-300/60 bg-base-100 shadow-xl">
         <div className="absolute inset-x-0 top-0 h-32 bg-linear-to-r from-primary/20 via-secondary/15 to-accent/20 pointer-events-none"></div>
 
         <div className="relative flex flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
@@ -178,11 +178,11 @@ function DashboardPage() {
             </div>
           </div>
 
-          <select
-            className="select select-bordered rounded-2xl w-full sm:w-[180px] bg-base-100 border-base-300 focus:border-primary focus:outline-none"
-            value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value)}
-          >
+            <select
+              className="select select-bordered rounded-2xl w-full sm:w-45 bg-base-100 border-base-300 focus:border-primary focus:outline-none"
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value)}
+            >
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
@@ -195,7 +195,7 @@ function DashboardPage() {
         {statsCards.map((stat) => (
           <div
             key={stat.name}
-            className="group rounded-[28px] border border-base-300/60 bg-base-100 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+            className="group rounded-4xl border border-base-300/60 bg-base-100 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
           >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
@@ -220,7 +220,7 @@ function DashboardPage() {
 
       {/* MAIN CHARTS */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="rounded-[30px] border border-base-300/60 bg-base-100 shadow-xl overflow-hidden min-w-0">
+        <div className="rounded-4xl border border-base-300/60 bg-base-100 shadow-xl overflow-hidden min-w-0">
           <div className="border-b border-base-200/70 px-5 py-4 sm:px-6">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -239,15 +239,15 @@ function DashboardPage() {
 
           <div className="p-4 sm:p-6">
             {isLoading ? (
-              <div className="h-[340px] flex items-center justify-center">
+              <div className="h-85 flex items-center justify-center">
                 <span className="loading loading-spinner loading-lg text-primary"></span>
               </div>
             ) : chartData.length === 0 ? (
-              <div className="h-[340px] flex items-center justify-center text-base-content/60">
+              <div className="h-85 flex items-center justify-center text-base-content/60">
                 No revenue data available
               </div>
             ) : (
-              <div className="h-[340px] w-full min-h-[340px]">
+              <div className="h-85 w-full min-h-85">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <LineChart
                     data={chartData}
@@ -283,7 +283,7 @@ function DashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-[30px] border border-base-300/60 bg-base-100 shadow-xl overflow-hidden min-w-0">
+        <div className="rounded-4xl border border-base-300/60 bg-base-100 shadow-xl overflow-hidden min-w-0">
           <div className="border-b border-base-200/70 px-5 py-4 sm:px-6">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -302,15 +302,15 @@ function DashboardPage() {
 
           <div className="p-4 sm:p-6">
             {isLoading ? (
-              <div className="h-[340px] flex items-center justify-center">
+              <div className="h-85 flex items-center justify-center">
                 <span className="loading loading-spinner loading-lg text-primary"></span>
               </div>
             ) : chartData.length === 0 ? (
-              <div className="h-[340px] flex items-center justify-center text-base-content/60">
+              <div className="h-85 flex items-center justify-center text-base-content/60">
                 No orders data available
               </div>
             ) : (
-              <div className="h-[340px] w-full min-h-[340px]">
+              <div className="h-85 w-full min-h-85">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <BarChart
                     data={chartData}
@@ -345,7 +345,7 @@ function DashboardPage() {
         </div>
 
         {/* STATUS BREAKDOWN */}
-        <div className="rounded-[30px] border border-base-300/60 bg-base-100 shadow-xl overflow-hidden xl:col-span-2 min-w-0">
+        <div className="rounded-4xl border border-base-300/60 bg-base-100 shadow-xl overflow-hidden xl:col-span-2 min-w-0">
           <div className="border-b border-base-200/70 px-5 py-4 sm:px-6">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -364,7 +364,7 @@ function DashboardPage() {
 
           <div className="p-4 sm:p-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-              <div className="h-[340px]">
+              <div className="h-85">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <PieChart>
                     <Pie
@@ -424,7 +424,7 @@ function DashboardPage() {
       {/* BOTTOM SECTION */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* RECENT ORDERS */}
-        <div className="rounded-[30px] border border-base-300/60 bg-base-100 shadow-xl overflow-hidden xl:col-span-2 min-w-0">
+        <div className="rounded-4xl border border-base-300/60 bg-base-100 shadow-xl overflow-hidden xl:col-span-2 min-w-0">
           <div className="border-b border-base-200/70 px-5 py-4 sm:px-6">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -475,7 +475,7 @@ function DashboardPage() {
                           </span>
                         </td>
                         <td>
-                          <div className="max-w-[140px] truncate">
+                          <div className="max-w-35 truncate">
                             <span className="font-medium">
                               {order.shippingAddress?.fullName || "N/A"}
                             </span>
@@ -484,7 +484,7 @@ function DashboardPage() {
                         <td>
                           <div className="text-sm">
                             {order.orderItems?.[0]?.name && (
-                              <span className="max-w-[140px] truncate inline-block align-bottom wrap-break-word">
+                              <span className="max-w-35 truncate inline-block align-bottom wrap-break-word">
                                 {order.orderItems[0].name}
                               </span>
                             )}
@@ -524,7 +524,7 @@ function DashboardPage() {
         {/* ALERTS */}
         <div className="space-y-6">
           {/* LOW STOCK */}
-          <div className="rounded-[30px] border border-base-300/60 bg-base-100 shadow-xl overflow-hidden min-w-0">
+          <div className="rounded-4xl border border-base-300/60 bg-base-100 shadow-xl overflow-hidden min-w-0">
             <div className="border-b border-base-200/70 px-5 py-4 sm:px-6">
               <div className="flex items-center gap-3">
                 <div className="flex size-11 items-center justify-center rounded-2xl bg-warning/10 text-warning">
@@ -593,7 +593,7 @@ function DashboardPage() {
           </div>
 
           {/* PREDICTED STOCKOUT */}
-          <div className="rounded-[30px] border border-error/20 bg-base-100 shadow-xl overflow-hidden min-w-0">
+          <div className="rounded-4xl border border-error/20 bg-base-100 shadow-xl overflow-hidden min-w-0">
             <div className="border-b border-base-200/70 px-5 py-4 sm:px-6">
               <div className="flex items-center gap-3">
                 <div className="flex size-11 items-center justify-center rounded-2xl bg-error/10 text-error">
@@ -669,7 +669,7 @@ function DashboardPage() {
           </div>
 
           {/* QUICK INVENTORY SUMMARY */}
-          <div className="rounded-[30px] border border-base-300/60 bg-base-100 shadow-xl overflow-hidden min-w-0">
+          <div className="rounded-4xl border border-base-300/60 bg-base-100 shadow-xl overflow-hidden min-w-0">
             <div className="border-b border-base-200/70 px-5 py-4 sm:px-6">
               <div className="flex items-center gap-3">
                 <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">

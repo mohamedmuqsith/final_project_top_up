@@ -1,5 +1,5 @@
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from "react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useApi } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -50,7 +50,7 @@ export default function NotificationsScreen() {
   const api = useApi();
   const router = useRouter();
 
-  const fetchNotifications = async (pageNumber = 1, isRefresh = false) => {
+  const fetchNotifications = useCallback(async (pageNumber = 1, isRefresh = false) => {
     try {
       const url = `notifications?recipientType=customer&page=${pageNumber}&limit=15`;
       const { data } = await api.get(url);
@@ -71,11 +71,11 @@ export default function NotificationsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [api]);
 
   useEffect(() => {
     fetchNotifications(1, true);
-  }, []);
+  }, [fetchNotifications]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -196,7 +196,7 @@ export default function NotificationsScreen() {
           <View className="flex-1 justify-center items-center mt-32 px-10">
             <Ionicons name="notifications-off-outline" size={64} color="#666666" />
             <Text className="text-text-primary font-bold text-lg mt-4 text-center">
-              You're all caught up! 
+              You&apos;re all caught up! 
             </Text>
             <Text className="text-text-secondary text-sm mt-1 text-center">
               No active notifications at the moment.

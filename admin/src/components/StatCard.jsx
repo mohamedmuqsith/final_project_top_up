@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+
 import React from "react";
 
 const StatCard = ({ title, value, icon: Icon, color = "bg-primary" }) => {
@@ -8,7 +8,7 @@ const StatCard = ({ title, value, icon: Icon, color = "bg-primary" }) => {
         {Icon && <Icon className={`w-8 h-8 ${color.replace('bg-', 'text-')}`} />}
       </div>
       <div className="stat-title">{title}</div>
-      <div className="stat-value text-2xl truncate max-w-[200px]" title={value}>{value}</div>
+      <div className="stat-value text-2xl truncate max-w-50" title={value}>{value}</div>
     </div>
   );
 };
