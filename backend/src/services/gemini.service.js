@@ -63,7 +63,11 @@ No markdown wrappers, no conversational text, strictly JSON array.
     return parsedResponse;
     
   } catch (error) {
-    console.error("[Gemini] API or Parsing Error:", error.message);
+    if (error.message?.includes("429") || error.message?.includes("quota")) {
+      console.warn("[Gemini] Quota exceeded (429). Using rule-based fallback.");
+    } else {
+      console.error("[Gemini] API or Parsing Error:", error.message);
+    }
     return null; // Signals controller to use rule-based fallback
   }
 };

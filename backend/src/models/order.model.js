@@ -109,6 +109,10 @@ const orderSchema = new mongoose.Schema(
     returnNotes: {
       type: String,
     },
+    isFinalized: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

@@ -295,7 +295,7 @@ export async function updateOrderStatus(req, res) {
     let type = "";
     let message = "";
     if (newStatus === "processing") {
-      type = "ORDER_PLACED"; // Reuse or create specific one if needed
+      type = "ORDER_PROCESSING";
       message = "Your order is now being processed.";
     } else if (newStatus === "shipped") {
       type = "ORDER_SHIPPED";
@@ -306,6 +306,15 @@ export async function updateOrderStatus(req, res) {
     } else if (newStatus === "cancelled") {
       type = "ORDER_CANCELLED";
       message = "Your order has been cancelled. Please contact support if you have questions.";
+    } else if (newStatus === "approved") {
+      type = "RETURN_APPROVED";
+      message = "Your return request has been approved. Please follow the instructions to return your item.";
+    } else if (newStatus === "denied") {
+      type = "RETURN_DENIED";
+      message = "Your return request was not approved. Please contact support for more information.";
+    } else if (newStatus === "refunded") {
+      type = "REFUND_COMPLETED";
+      message = "Your refund has been completed successfully.";
     }
 
     if (type) {
@@ -326,7 +335,7 @@ export async function updateOrderStatus(req, res) {
       const idStr = order._id.toString().slice(-6).toUpperCase();
       
       if (newStatus === "processing") {
-        adminType = "NEW_ORDER";
+        adminType = "NEW_ORDER"; // Re-alert for status change if desired
         adminMessage = `Operational Alert: Order #${idStr} moved to PROCESSING.`;
       } else if (newStatus === "shipped") {
         adminType = "ORDER_MARKED_SHIPPED";
@@ -337,9 +346,6 @@ export async function updateOrderStatus(req, res) {
       } else if (newStatus === "cancelled") {
         adminType = "ORDER_CANCELLED";
         adminMessage = `Operational Alert: Order #${idStr} marked as CANCELLED.`;
-      } else if (newStatus === "return-requested") {
-        adminType = "RETURN_REQUESTED";
-        adminMessage = `Attention Needed: Return requested for Order #${idStr}.`;
       } else if (newStatus === "refunded") {
         adminType = "ORDER_REFUNDED";
         adminMessage = `Operational Alert: Order #${idStr} has been REFUNDED.`;
@@ -353,7 +359,6 @@ export async function updateOrderStatus(req, res) {
           type: adminType,
           entityId: order._id,
           entityModel: "Order",
-          actionUrl: "/orders"
         });
       }
     }

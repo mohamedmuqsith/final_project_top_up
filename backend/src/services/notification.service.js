@@ -140,7 +140,6 @@ async function manageConditionState(product, type, isConditionActive) {
           type,
           entityId: product._id,
           entityModel: "Product",
-          actionUrl: "/products"
         });
       }
     }

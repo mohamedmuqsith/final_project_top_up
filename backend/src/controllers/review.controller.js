@@ -1,6 +1,7 @@
 import { Order } from "../models/order.model.js";
 import { Product } from "../models/product.model.js";
 import { Review } from "../models/review.model.js";
+import { createNotification } from "../services/notification.service.js";
 
 /**
  * Recalculate a product's averageRating and reviewCount
@@ -86,6 +87,16 @@ export async function createReview(req, res) {
 
     // Recalculate product rating
     await recalculateProductRating(product._id);
+
+    // Notify Admins
+    await createNotification({
+      recipientType: "admin",
+      title: "New Review Received",
+      message: `A new ${rating}-star review was posted for '${product.name}' by ${user.name}.`,
+      type: "NEW_REVIEW",
+      entityId: product._id,
+      entityModel: "Product",
+    });
 
     res.status(201).json({ message: "Review submitted successfully", review });
   } catch (error) {

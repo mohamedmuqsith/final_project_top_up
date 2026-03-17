@@ -60,22 +60,31 @@ function NotificationDropdown() {
       document.activeElement.blur();
     }
 
-    if (notification.actionUrl) {
+    if (notification.entityModel === "Order" && notification.entityId) {
+      navigate(`/orders?search=${notification.entityId}`); // Search by ID to find relevant order
+    } else if (notification.entityModel === "Product" && notification.entityId) {
+      navigate("/inventory-alerts"); // Products point to inventory dashboard
+    } else if (notification.actionUrl) {
       navigate(notification.actionUrl);
-    } else if (
-      notification.type === "NEAR_STOCKOUT" ||
-      notification.type === "LOW_STOCK" ||
-      notification.type === "OUT_OF_STOCK" ||
-      notification.type === "PREDICTED_STOCKOUT"
-    ) {
-      navigate("/inventory-alerts");
-    } else if (
-      notification.type === "NEW_ORDER" ||
-      notification.type === "PAYMENT_FAILED" ||
-      notification.type === "ORDER_MARKED_SHIPPED" ||
-      notification.type === "ORDER_MARKED_DELIVERED"
-    ) {
-      navigate("/orders");
+    } else {
+      // Logic fallback
+      if (
+        notification.type === "NEAR_STOCKOUT" ||
+        notification.type === "LOW_STOCK" ||
+        notification.type === "OUT_OF_STOCK" ||
+        notification.type === "PREDICTED_STOCKOUT"
+      ) {
+        navigate("/inventory-alerts");
+      } else if (
+        notification.type === "NEW_ORDER" ||
+        notification.type === "PAYMENT_FAILED" ||
+        notification.type === "RETURN_REQUESTED" ||
+        notification.type === "ORDER_REFUNDED" ||
+        notification.type === "ORDER_MARKED_SHIPPED" ||
+        notification.type === "ORDER_MARKED_DELIVERED"
+      ) {
+        navigate("/orders");
+      }
     }
   };
 
@@ -83,10 +92,11 @@ function NotificationDropdown() {
     if (
       type === "LOW_STOCK" ||
       type === "OUT_OF_STOCK" ||
-      type === "PAYMENT_FAILED"
+      type === "PAYMENT_FAILED" ||
+      type === "RETURN_REQUESTED"
     )
       return "badge-error";
-    if (type === "PREDICTED_STOCKOUT") return "badge-warning";
+    if (type === "PREDICTED_STOCKOUT" || type === "ORDER_REFUNDED") return "badge-warning";
     if (type === "NEW_ORDER" || type === "ORDER_MARKED_DELIVERED")
       return "badge-success";
     if (type === "ORDER_MARKED_SHIPPED") return "badge-info";
