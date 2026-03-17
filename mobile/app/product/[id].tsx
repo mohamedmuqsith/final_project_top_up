@@ -1,8 +1,7 @@
 import SafeScreen from "@/components/SafeScreen";
 import { useProduct } from "@/hooks/useProduct";
 import useCart from "@/hooks/useCart";
-import { useReviews, useProductReviews } from "@/hooks/useReviews";
-import { useOrders } from "@/hooks/useOrders";
+import { useProductReviews } from "@/hooks/useReviews";
 import useWishlist from "@/hooks/useWishlist";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -10,16 +9,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import HorizontalProductList from "@/components/HorizontalProductList";
 import { useSimilarProducts, useFrequentlyBoughtTogether } from "@/hooks/useRecommendations";
-import { Product, Review } from "@/types";
-import {
-  View,
-  Text,
-  Alert,
-  ActivityIndicator,
-  TouchableOpacity,
-  ScrollView,
-  Dimensions,
-} from "react-native";
+import { View, Text, Alert, ActivityIndicator, TouchableOpacity, ScrollView, Dimensions } from "react-native";
 
 const { width } = Dimensions.get("window");
 

@@ -36,7 +36,7 @@
 
   /* Placeholder contrast - use ! prefix for important in v4 @apply */
   ::placeholder {
-    @apply !text-base-content/40;
+    @apply text-base-content/40!;
   }
 
   /* Label contrast */

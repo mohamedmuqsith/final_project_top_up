@@ -164,7 +164,7 @@ function ProductsPage() {
   return (
     <div className="space-y-8 pb-10">
       {/* HEADER */}
-      <div className="relative overflow-hidden rounded-[32px] border border-base-300/60 bg-base-100 shadow-xl">
+      <div className="relative overflow-hidden rounded-4xl border border-base-300/60 bg-base-100 shadow-xl">
         <div className="absolute inset-x-0 top-0 h-28 bg-linear-to-r from-primary/15 via-secondary/10 to-accent/15 pointer-events-none"></div>
 
         <div className="relative flex flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
@@ -198,7 +198,7 @@ function ProductsPage() {
       </div>
 
       {/* FILTERS */}
-      <div className="rounded-[28px] border border-base-300/60 bg-base-100 p-4 sm:p-5 shadow-sm">
+      <div className="rounded-4xl border border-base-300/60 bg-base-100 p-4 sm:p-5 shadow-sm">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
           <div className="relative flex-1">
             <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/45 w-5 h-5" />
@@ -212,7 +212,7 @@ function ProductsPage() {
           </div>
 
           <select
-            className="select select-bordered w-full xl:w-[220px] rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="select select-bordered w-full xl:w-55 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
           >
@@ -225,7 +225,7 @@ function ProductsPage() {
           </select>
 
           <select
-            className="select select-bordered w-full xl:w-[180px] rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="select select-bordered w-full xl:w-45 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             value={filterStock}
             onChange={(e) => setFilterStock(e.target.value)}
           >
@@ -239,7 +239,7 @@ function ProductsPage() {
 
       {/* PRODUCTS */}
       {filtered.length === 0 ? (
-        <div className="rounded-[28px] border border-base-300/60 bg-base-100 py-16 px-6 text-center shadow-sm">
+        <div className="rounded-4xl border border-base-300/60 bg-base-100 py-16 px-6 text-center shadow-sm">
           <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-base-200 text-base-content/50">
             <AlertTriangleIcon className="size-8" />
           </div>
@@ -256,7 +256,7 @@ function ProductsPage() {
             return (
               <div
                 key={product._id}
-                className="group rounded-[28px] border border-base-300/60 bg-base-100 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                className="group rounded-4xl border border-base-300/60 bg-base-100 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
               >
                 <div className="p-5 sm:p-6">
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
@@ -356,7 +356,7 @@ function ProductsPage() {
 
       <div className="modal">
         <div className="modal-box max-w-5xl p-0 bg-transparent shadow-none">
-          <div className="relative overflow-hidden rounded-[32px] border border-base-300/60 bg-base-100 shadow-2xl">
+          <div className="relative overflow-hidden rounded-4xl border border-base-300/60 bg-base-100 shadow-2xl">
             <div className="absolute inset-x-0 top-0 h-28 bg-linear-to-r from-primary/15 via-secondary/10 to-accent/15 pointer-events-none"></div>
 
             <div className="relative px-6 sm:px-8 pt-8 pb-6 border-b border-base-200/80">
@@ -513,7 +513,7 @@ function ProductsPage() {
                           </span>
                         </label>
                         <textarea
-                          className="textarea textarea-bordered w-full min-h-[150px] rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                          className="textarea textarea-bordered w-full min-h-37.5 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
                           placeholder="Write a clear, useful description..."
                           value={formData.description}
                           onChange={(e) =>

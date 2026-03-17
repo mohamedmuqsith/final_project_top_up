@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+
 import { useState } from "react";
 import { orderApi } from "../lib/api";
 import { formatDate, capitalizeText } from "../lib/utils";
@@ -64,7 +64,7 @@ function OrderDetailModal({ order, onClose }) {
   return (
     <dialog className="modal modal-open">
       <div className="modal-box max-w-5xl p-0 bg-transparent shadow-none">
-        <div className="relative overflow-hidden rounded-[32px] border border-base-300/60 bg-base-100 shadow-2xl">
+        <div className="relative overflow-hidden rounded-4xl border border-base-300/60 bg-base-100 shadow-2xl">
           <div className="absolute inset-x-0 top-0 h-32 bg-linear-to-r from-primary/20 via-secondary/15 to-accent/20 pointer-events-none"></div>
 
           <div className="relative px-6 sm:px-8 pt-8 pb-6 border-b border-base-200/80">
@@ -350,7 +350,7 @@ function OrdersPage() {
   return (
     <div className="space-y-8 pb-10">
       {/* HEADER */}
-      <div className="relative overflow-hidden rounded-[32px] border border-base-300/60 bg-base-100 shadow-xl">
+      <div className="relative overflow-hidden rounded-4xl border border-base-300/60 bg-base-100 shadow-xl">
         <div className="absolute inset-x-0 top-0 h-32 bg-linear-to-r from-primary/20 via-secondary/15 to-accent/20 pointer-events-none"></div>
 
         <div className="relative flex flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
@@ -409,7 +409,7 @@ function OrdersPage() {
             />
           </div>
 
-          <div className="relative w-full xl:w-[220px]">
+          <div className="relative w-full xl:w-55">
             <FilterIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/45 w-4 h-4 pointer-events-none" />
             <select
               className="select select-bordered w-full pl-11 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -500,7 +500,7 @@ function OrdersPage() {
                         </td>
 
                         <td>
-                          <div className="min-w-[180px]">
+                          <div className="min-w-45">
                             <div className="flex items-center gap-2 font-semibold">
                               <UserIcon className="size-4 opacity-45" />
                               {order.shippingAddress.fullName}
@@ -513,7 +513,7 @@ function OrdersPage() {
 
                         <td>
                           <div className="text-sm font-semibold">{totalQuantity} items</div>
-                          <div className="text-xs opacity-50 truncate max-w-[150px] mt-1">
+                          <div className="text-xs opacity-50 truncate max-w-37.5 mt-1">
                             {order.orderItems[0]?.name}
                             {order.orderItems.length > 1 &&
                               ` +${order.orderItems.length - 1} more`}
@@ -539,7 +539,7 @@ function OrdersPage() {
                             <select
                               value={order.status}
                               onChange={(e) => handleStatusChange(order._id, e.target.value)}
-                              className="select select-bordered select-sm w-full max-w-[140px] rounded-xl bg-base-100 border-base-300 focus:outline-none focus:border-primary"
+                              className="select select-bordered select-sm w-full max-w-35 rounded-xl bg-base-100 border-base-300 focus:outline-none focus:border-primary"
                               disabled={updateStatusMutation.isPending}
                             >
                               <option value={order.status}>

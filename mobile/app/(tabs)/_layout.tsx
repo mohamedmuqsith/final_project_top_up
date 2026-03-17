@@ -20,7 +20,7 @@ const TabsLayout = () => {
         try {
           const { data } = await api.get("notifications/unread-count");
           setUnreadCount(data.unreadCount);
-        } catch (e) {
+        } catch {
           // ignore error to not spam console
         }
       };

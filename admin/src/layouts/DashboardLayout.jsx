@@ -16,7 +16,7 @@ function DashboardLayout() {
         <Navbar />
 
         <main className="flex-1 p-4 sm:p-5 lg:p-6 overflow-x-hidden">
-          <div className="mx-auto w-full max-w-[1600px] min-w-0">
+          <div className="mx-auto w-full max-w-400 min-w-0">
             <Outlet />
           </div>
         </main>

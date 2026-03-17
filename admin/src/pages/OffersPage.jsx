@@ -27,7 +27,6 @@ const OffersPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOffer, setEditingOffer] = useState(null);
   const [selectedAppliesTo, setSelectedAppliesTo] = useState("all");
-  const [filterType, setFilterType] = useState("");
 
   const { data: offersData, isLoading } = useQuery({
     queryKey: ["offers"],
@@ -277,7 +276,7 @@ const OffersPage = () => {
       {isModalOpen && (
         <div className="modal modal-open">
           <div className="modal-box max-w-4xl p-0 bg-transparent shadow-none">
-            <div className="relative overflow-hidden rounded-[32px] border border-base-300/60 bg-base-100 shadow-2xl">
+            <div className="relative overflow-hidden rounded-4xl border border-base-300/60 bg-base-100 shadow-2xl">
               <div className="absolute inset-x-0 top-0 h-28 bg-linear-to-r from-primary/15 via-secondary/10 to-accent/15 pointer-events-none"></div>
 
               <div className="relative px-6 sm:px-8 pt-8 pb-6 border-b border-base-200/80">
@@ -342,7 +341,7 @@ const OffersPage = () => {
                             name="description"
                             defaultValue={editingOffer?.description}
                             placeholder="Describe the offer details..."
-                            className="textarea textarea-bordered w-full min-h-[120px] rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                            className="textarea textarea-bordered w-full min-h-30 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
                             required
                           />
                         </div>

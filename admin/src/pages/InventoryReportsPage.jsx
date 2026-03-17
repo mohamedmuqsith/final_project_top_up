@@ -78,7 +78,7 @@ function InventoryReportsPage() {
 
   if (isError) {
     return (
-      <div className="rounded-[28px] border border-error/20 bg-error/5 p-10 shadow-sm">
+      <div className="rounded-4xl border border-error/20 bg-error/5 p-10 shadow-sm">
         <div className="flex flex-col items-center justify-center text-center text-error">
           <div className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-error/10">
             <AlertTriangleIcon className="size-9 opacity-90" />
@@ -179,7 +179,7 @@ function InventoryReportsPage() {
   return (
     <div className="space-y-8 pb-12">
       {/* HEADER */}
-      <div className="relative overflow-hidden rounded-[32px] border border-base-300/60 bg-base-100 shadow-xl">
+      <div className="relative overflow-hidden rounded-4xl border border-base-300/60 bg-base-100 shadow-xl">
         <div className="absolute inset-x-0 top-0 h-32 bg-linear-to-r from-primary/20 via-secondary/15 to-accent/20 pointer-events-none"></div>
 
         <div className="relative flex flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
@@ -231,7 +231,7 @@ function InventoryReportsPage() {
         {statsCards.map((stat) => (
           <div
             key={stat.name}
-            className={`rounded-[28px] border border-base-300/60 bg-base-100 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+            className={`rounded-4xl border border-base-300/60 bg-base-100 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
               stat.muted ? "opacity-90" : ""
             }`}
           >
@@ -275,7 +275,7 @@ function InventoryReportsPage() {
       {/* CHARTS */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Stock Levels by Category */}
-        <div className="rounded-[30px] border border-base-300/60 bg-base-100 shadow-xl overflow-hidden min-w-0">
+        <div className="rounded-4xl border border-base-300/60 bg-base-100 shadow-xl overflow-hidden min-w-0">
           <div className="border-b border-base-200/70 px-5 py-4 sm:px-6">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -294,15 +294,15 @@ function InventoryReportsPage() {
 
           <div className="p-4 sm:p-6">
             {isLoading ? (
-              <div className="h-[340px] flex items-center justify-center">
+              <div className="h-85 flex items-center justify-center">
                 <span className="loading loading-spinner loading-lg text-primary"></span>
               </div>
             ) : stockByCategory.length === 0 ? (
-              <div className="h-[340px] flex items-center justify-center text-center text-base-content/60">
+              <div className="h-85 flex items-center justify-center text-center text-base-content/60">
                 No inventory data available
               </div>
             ) : (
-              <div className="h-[340px] w-full min-h-[340px]">
+              <div className="h-85 w-full min-h-85">
                 <ResponsiveContainer width="99%" height="100%">
                   <BarChart
                     data={stockByCategory}
@@ -345,7 +345,7 @@ function InventoryReportsPage() {
         </div>
 
         {/* Value Distribution */}
-        <div className="rounded-[30px] border border-base-300/60 bg-base-100 shadow-xl overflow-hidden min-w-0">
+        <div className="rounded-4xl border border-base-300/60 bg-base-100 shadow-xl overflow-hidden min-w-0">
           <div className="border-b border-base-200/70 px-5 py-4 sm:px-6">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -364,15 +364,15 @@ function InventoryReportsPage() {
 
           <div className="p-4 sm:p-6">
             {isLoading ? (
-              <div className="h-[340px] flex items-center justify-center">
+              <div className="h-85 flex items-center justify-center">
                 <span className="loading loading-spinner loading-lg text-primary"></span>
               </div>
             ) : stockByCategory.length === 0 ? (
-              <div className="h-[340px] flex items-center justify-center text-center text-base-content/60">
+              <div className="h-85 flex items-center justify-center text-center text-base-content/60">
                 No value data available
               </div>
             ) : (
-              <div className="h-[340px] w-full min-h-[340px]">
+              <div className="h-85 w-full min-h-85">
                 <ResponsiveContainer width="99%" height="100%">
                   <PieChart>
                     <Pie
@@ -408,7 +408,7 @@ function InventoryReportsPage() {
       {/* STOCK LISTS */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Out of Stock */}
-        <div className="rounded-[30px] border border-error/20 bg-base-100 shadow-xl overflow-hidden min-w-0">
+        <div className="rounded-4xl border border-error/20 bg-base-100 shadow-xl overflow-hidden min-w-0">
           <div className="border-b border-error/10 px-5 py-4 sm:px-6">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -456,7 +456,7 @@ function InventoryReportsPage() {
                         <td>
                           <div className="flex flex-col gap-1">
                             <span
-                              className="max-w-[200px] wrap-break-word text-sm font-semibold leading-tight"
+                              className="max-w-50 wrap-break-word text-sm font-semibold leading-tight"
                               title={product.name}
                             >
                               {product.name}
@@ -482,7 +482,7 @@ function InventoryReportsPage() {
         </div>
 
         {/* Low Stock */}
-        <div className="rounded-[30px] border border-warning/30 bg-base-100 shadow-xl overflow-hidden min-w-0">
+        <div className="rounded-4xl border border-warning/30 bg-base-100 shadow-xl overflow-hidden min-w-0">
           <div className="border-b border-warning/10 px-5 py-4 sm:px-6">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -530,7 +530,7 @@ function InventoryReportsPage() {
                         <td>
                           <div className="flex flex-col gap-1">
                             <span
-                              className="max-w-[200px] wrap-break-word text-sm font-semibold leading-tight"
+                              className="max-w-50 wrap-break-word text-sm font-semibold leading-tight"
                               title={product.name}
                             >
                               {product.name}

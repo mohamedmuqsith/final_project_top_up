@@ -657,90 +657,129 @@ export async function getInventoryAlerts(req, res) {
 }
 
 // GET /api/admin/sales-report?range=30d|90d|ytd
+// GET /api/admin/sales-report?range=30d|90d|ytd
 export async function getSalesReport(req, res) {
   try {
     const { range = "30d" } = req.query;
 
     // Determine date range
     const now = new Date();
-    let startDate;
+    let currentStartDate;
+    let previousStartDate;
     let dateFormat;
     let groupLabel;
+    let timeUnit; // for chart padding
 
     if (range === "90d") {
-      startDate = new Date(now);
-      startDate.setDate(startDate.getDate() - 90);
-      dateFormat = "%Y-W%U"; // weekly
+      currentStartDate = new Date(now);
+      currentStartDate.setDate(currentStartDate.getDate() - 90);
+      previousStartDate = new Date(currentStartDate);
+      previousStartDate.setDate(previousStartDate.getDate() - 90);
+      dateFormat = "%Y-W%U";
       groupLabel = "weekly";
+      timeUnit = "week";
     } else if (range === "ytd") {
-      startDate = new Date(now.getFullYear(), 0, 1); // Jan 1st of current year
-      dateFormat = "%Y-%m"; // monthly
+      currentStartDate = new Date(now.getFullYear(), 0, 1);
+      previousStartDate = new Date(now.getFullYear() - 1, 0, 1);
+      dateFormat = "%Y-%m";
       groupLabel = "monthly";
+      timeUnit = "month";
     } else {
       // Default: 30d
-      startDate = new Date(now);
-      startDate.setDate(startDate.getDate() - 30);
-      dateFormat = "%Y-%m-%d"; // daily
+      currentStartDate = new Date(now);
+      currentStartDate.setDate(currentStartDate.getDate() - 30);
+      previousStartDate = new Date(currentStartDate);
+      previousStartDate.setDate(previousStartDate.getDate() - 30);
+      dateFormat = "%Y-%m-%d";
       groupLabel = "daily";
+      timeUnit = "day";
     }
 
-    // 1. Summary metrics
-    const summaryAgg = await Order.aggregate([
-      {
-        $facet: {
-          revenueStats: [
-            { 
-              $match: { 
-                createdAt: { $gte: startDate },
-                "paymentResult.status": "succeeded",
-                status: { $ne: "cancelled" }
-              } 
-            },
-            {
-              $group: {
-                _id: null,
-                totalRevenue: { $sum: "$totalPrice" },
-                totalConfirmedSales: { $sum: 1 },
+    // Helper for summary aggregation
+    const getSummary = async (start, end) => {
+      const match = { createdAt: { $gte: start } };
+      if (end) match.createdAt.$lt = end;
+
+      const agg = await Order.aggregate([
+        {
+          $facet: {
+            revenueStats: [
+              { 
+                $match: { 
+                  ...match,
+                  "paymentResult.status": "succeeded",
+                  status: { $ne: "cancelled" }
+                } 
               },
-            },
-          ],
-          totalStats: [
-            { $match: { createdAt: { $gte: startDate } } },
-            {
-              $group: {
-                _id: null,
-                totalOrders: { $sum: 1 },
-                cancelledOrders: {
-                  $sum: { $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0] },
+              {
+                $group: {
+                  _id: null,
+                  totalRevenue: { $sum: "$totalPrice" },
+                  totalConfirmedSales: { $sum: 1 },
                 },
               },
-            },
-          ],
+            ],
+            totalStats: [
+              { $match: match },
+              {
+                $group: {
+                  _id: null,
+                  totalOrders: { $sum: 1 },
+                  cancelledOrders: {
+                    $sum: { $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0] },
+                  },
+                },
+              },
+            ],
+          },
         },
-      },
-      {
-        $project: {
-          totalRevenue: { $ifNull: [{ $arrayElemAt: ["$revenueStats.totalRevenue", 0] }, 0] },
-          totalConfirmedSales: { $ifNull: [{ $arrayElemAt: ["$revenueStats.totalConfirmedSales", 0] }, 0] },
-          totalOrders: { $ifNull: [{ $arrayElemAt: ["$totalStats.totalOrders", 0] }, 0] },
-          cancelledOrders: { $ifNull: [{ $arrayElemAt: ["$totalStats.cancelledOrders", 0] }, 0] },
+        {
+          $project: {
+            totalRevenue: { $ifNull: [{ $arrayElemAt: ["$revenueStats.totalRevenue", 0] }, 0] },
+            totalConfirmedSales: { $ifNull: [{ $arrayElemAt: ["$revenueStats.totalConfirmedSales", 0] }, 0] },
+            totalOrders: { $ifNull: [{ $arrayElemAt: ["$totalStats.totalOrders", 0] }, 0] },
+            cancelledOrders: { $ifNull: [{ $arrayElemAt: ["$totalStats.cancelledOrders", 0] }, 0] },
+          },
         },
-      },
-    ]);
-    
-    const { totalRevenue, totalConfirmedSales, totalOrders, cancelledOrders } = summaryAgg[0];
-    const avgOrderValue = totalConfirmedSales > 0 ? totalRevenue / totalConfirmedSales : 0;
-    const cancellationRate = totalOrders > 0 ? ((cancelledOrders / totalOrders) * 100).toFixed(1) : 0;
-
-    const revenueMatchStage = {
-      createdAt: { $gte: startDate },
-      "paymentResult.status": "succeeded",
-      status: { $ne: "cancelled" },
+      ]);
+      return agg[0] || { totalRevenue: 0, totalConfirmedSales: 0, totalOrders: 0, cancelledOrders: 0 };
     };
-    
-    // 2. Revenue & orders over time
+
+    // 1. Comparison Metrics
+    const currentSummary = await getSummary(currentStartDate);
+    const previousSummary = await getSummary(previousStartDate, currentStartDate);
+
+    const calcChange = (current, previous) => {
+      if (!previous) return current > 0 ? 100 : 0;
+      return ((current - previous) / previous) * 100;
+    };
+
+    const summary = {
+      totalRevenue: parseFloat(currentSummary.totalRevenue.toFixed(2)),
+      totalOrders: currentSummary.totalOrders,
+      totalConfirmedSales: currentSummary.totalConfirmedSales,
+      cancelledOrders: currentSummary.cancelledOrders,
+      avgOrderValue: currentSummary.totalConfirmedSales > 0 ? parseFloat((currentSummary.totalRevenue / currentSummary.totalConfirmedSales).toFixed(2)) : 0,
+      cancellationRate: currentSummary.totalOrders > 0 ? parseFloat(((currentSummary.cancelledOrders / currentSummary.totalOrders) * 100).toFixed(1)) : 0,
+      
+      // Comparison metrics
+      comparison: {
+        revenueChange: parseFloat(calcChange(currentSummary.totalRevenue, previousSummary.totalRevenue).toFixed(1)),
+        ordersChange: parseFloat(calcChange(currentSummary.totalOrders, previousSummary.totalOrders).toFixed(1)),
+        avgOrderValueChange: parseFloat(calcChange(
+          currentSummary.totalConfirmedSales > 0 ? currentSummary.totalRevenue / currentSummary.totalConfirmedSales : 0,
+          previousSummary.totalConfirmedSales > 0 ? previousSummary.totalRevenue / previousSummary.totalConfirmedSales : 0
+        ).toFixed(1)),
+        cancellationRateChange: parseFloat((
+          (currentSummary.totalOrders > 0 ? (currentSummary.cancelledOrders / currentSummary.totalOrders) * 100 : 0) -
+          (previousSummary.totalOrders > 0 ? (previousSummary.cancelledOrders / previousSummary.totalOrders) * 100 : 0)
+        ).toFixed(1))
+      }
+    };
+
+    // 2. Revenue & orders over time (Current period only for chart)
     const timeSeriesAgg = await Order.aggregate([
-      { $match: { createdAt: { $gte: startDate } } },
+      { $match: { createdAt: { $gte: currentStartDate } } },
       {
         $group: {
           _id: { $dateToString: { format: dateFormat, date: "$createdAt" } },
@@ -764,13 +803,47 @@ export async function getSalesReport(req, res) {
       { $sort: { _id: 1 } },
     ]);
 
-    const chartData = timeSeriesAgg.map((item) => ({
-      date: item._id,
-      revenue: parseFloat(item.revenue.toFixed(2)),
-      orders: item.orders,
-    }));
+    // Padding logic
+    const paddedChartData = [];
+    const tempDate = new Date(currentStartDate);
+    const endDate = new Date(now);
 
-    // 3. Top products by units sold
+    const formatDateK = (date) => {
+      if (timeUnit === "day") return date.toISOString().split("T")[0];
+      if (timeUnit === "month") return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      if (timeUnit === "week") {
+        const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+        const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+        const weekNum = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+        return `${date.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
+      }
+    };
+
+    const dataMap = new Map(timeSeriesAgg.map(item => [item._id, item]));
+
+    while (tempDate <= endDate) {
+      const key = formatDateK(tempDate);
+      const existing = dataMap.get(key);
+      paddedChartData.push({
+        date: key,
+        revenue: existing ? parseFloat(existing.revenue.toFixed(2)) : 0,
+        orders: existing ? existing.orders : 0
+      });
+
+      if (timeUnit === "day") tempDate.setDate(tempDate.getDate() + 1);
+      else if (timeUnit === "week") tempDate.setDate(tempDate.getDate() + 7);
+      else if (timeUnit === "month") tempDate.setMonth(tempDate.getMonth() + 1);
+      
+      if (tempDate > endDate && formatDateK(tempDate) === key) break; // safety
+    }
+
+    // 3. Top products & Best performing category
+    const revenueMatchStage = {
+      createdAt: { $gte: currentStartDate },
+      "paymentResult.status": "succeeded",
+      status: { $ne: "cancelled" },
+    };
+
     const topProductsAgg = await Order.aggregate([
       { $match: revenueMatchStage },
       { $unwind: "$orderItems" },
@@ -786,19 +859,13 @@ export async function getSalesReport(req, res) {
         },
       },
       { $sort: { totalUnitsSold: -1 } },
-      { $limit: 5 },
+      { $limit: 8 },
     ]);
 
-    // Enrich top products with current stock from Product collection
     const productIds = topProductsAgg.map((p) => p._id);
-    const productsData = await Product.find(
-      { _id: { $in: productIds } },
-      "stock"
-    ).lean();
+    const productsData = await Product.find({ _id: { $in: productIds } }, "stock").lean();
     const stockMap = {};
-    productsData.forEach((p) => {
-      stockMap[p._id.toString()] = p.stock;
-    });
+    productsData.forEach((p) => { stockMap[p._id.toString()] = p.stock; });
 
     const topProducts = topProductsAgg.map((p) => ({
       _id: p._id,
@@ -809,8 +876,7 @@ export async function getSalesReport(req, res) {
       stock: stockMap[p._id.toString()] ?? 0,
     }));
 
-    // 4. Top categories by revenue
-    const topCategoriesAgg = await Order.aggregate([
+    const categoryAgg = await Order.aggregate([
       { $match: revenueMatchStage },
       { $unwind: "$orderItems" },
       {
@@ -821,49 +887,37 @@ export async function getSalesReport(req, res) {
           as: "productInfo",
         },
       },
-      { $unwind: { path: "$productInfo", preserveNullAndEmptyArrays: false } },
+      { $unwind: "$productInfo" },
       {
         $group: {
           _id: "$productInfo.category",
-          totalRevenue: {
-            $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] },
-          },
-          totalUnitsSold: { $sum: "$orderItems.quantity" },
+          revenue: { $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] } },
+          unitsSold: { $sum: "$orderItems.quantity" },
           productCount: { $addToSet: "$orderItems.product" },
         },
       },
       {
         $project: {
-          _id: 1,
-          totalRevenue: 1,
-          totalUnitsSold: 1,
+          category: "$_id",
+          revenue: 1,
+          unitsSold: 1,
           productCount: { $size: "$productCount" },
         },
       },
-      { $sort: { totalRevenue: -1 } },
-      { $limit: 5 },
+      { $sort: { revenue: -1 } },
     ]);
 
-    const topCategories = topCategoriesAgg.map((c) => ({
-      category: c._id,
-      revenue: parseFloat(c.totalRevenue.toFixed(2)),
-      unitsSold: c.totalUnitsSold,
-      productCount: c.productCount,
-    }));
+    const bestCategory = categoryAgg[0] || null;
 
     res.status(200).json({
-      summary: {
-        totalRevenue: parseFloat(totalRevenue.toFixed(2)),
-        totalOrders,
-        totalConfirmedSales,
-        cancelledOrders,
-        cancellationRate,
-        avgOrderValue: parseFloat(avgOrderValue.toFixed(2)),
-      },
-      chartData,
+      summary,
+      chartData: paddedChartData,
       topProducts,
-      topCategories,
-      grouping: groupLabel,
+      topCategories: categoryAgg.slice(0, 5),
+      insights: {
+        bestCategory,
+        periodLabel: groupLabel
+      },
       range,
     });
   } catch (error) {

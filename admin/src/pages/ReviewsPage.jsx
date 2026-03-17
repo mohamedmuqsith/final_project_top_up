@@ -118,7 +118,7 @@ const ReviewsPage = () => {
   return (
     <div className="p-6 space-y-8 pb-10">
       {/* HEADER */}
-      <div className="relative overflow-hidden rounded-[32px] border border-base-300/60 bg-base-100 shadow-xl">
+      <div className="relative overflow-hidden rounded-4xl border border-base-300/60 bg-base-100 shadow-xl">
         <div className="absolute inset-x-0 top-0 h-32 bg-linear-to-r from-primary/20 via-secondary/15 to-accent/20 pointer-events-none"></div>
 
         <div className="relative flex flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
@@ -143,7 +143,7 @@ const ReviewsPage = () => {
         {summaryCards.map((card) => (
           <div
             key={card.title}
-            className="group rounded-[28px] border border-base-300/60 bg-base-100 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+            className="group rounded-4xl border border-base-300/60 bg-base-100 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
           >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
@@ -165,7 +165,7 @@ const ReviewsPage = () => {
       </div>
 
       {/* MAIN CARD */}
-      <div className="rounded-[30px] border border-base-300/60 bg-base-100 shadow-xl overflow-hidden min-w-0">
+      <div className="rounded-4xl border border-base-300/60 bg-base-100 shadow-xl overflow-hidden min-w-0">
         {/* FILTER BAR */}
         <div className="border-b border-base-200/70 px-5 py-4 sm:px-6 bg-base-100">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -216,7 +216,7 @@ const ReviewsPage = () => {
                 <th>Rating</th>
                 <th className="w-[34%]">Review Content</th>
                 <th>Status</th>
-                <th className="text-center min-w-[180px]">Moderation Actions</th>
+                <th className="text-center min-w-45">Moderation Actions</th>
               </tr>
             </thead>
 
@@ -245,10 +245,10 @@ const ReviewsPage = () => {
                 reviewsData?.reviews?.map((review) => (
                   <tr key={review._id} className="hover:bg-base-200/30 transition-colors">
                     <td>
-                      <div className="flex flex-col gap-2 min-w-[220px]">
+                      <div className="flex flex-col gap-2 min-w-55">
                         <Link
                           to={`/products?id=${review.productId?._id}`}
-                          className="font-bold text-sm truncate max-w-[220px] text-primary hover:underline hover:text-primary-focus transition-colors"
+                          className="font-bold text-sm truncate max-w-55 text-primary hover:underline hover:text-primary-focus transition-colors"
                           title={review.productId?.name}
                         >
                           {review.productId?.name}
@@ -282,7 +282,7 @@ const ReviewsPage = () => {
                         <div className="flex gap-0.5">{renderStars(review.rating)}</div>
 
                         {review.isVerifiedPurchase && (
-                          <span className="inline-flex w-fit items-center gap-1 rounded-full bg-success/10 px-2 py-1 text-[10px] font-bold text-success">
+                          <span className="inline-flex w-fit items-center gap-1 rounded-full bg-success/10 px-2 py-1 text-xs font-bold text-success">
                             <CheckCircle className="size-3" />
                             Verified
                           </span>
@@ -291,7 +291,7 @@ const ReviewsPage = () => {
                     </td>
 
                     <td>
-                      <div className="flex flex-col gap-2 pr-4 max-w-[380px]">
+                      <div className="flex flex-col gap-2 pr-4 max-w-95">
                         {review.title && (
                           <span className="font-bold text-sm text-base-content">
                             "{review.title}"
@@ -307,7 +307,7 @@ const ReviewsPage = () => {
                           )}
                         </p>
 
-                        <span className="text-[10px] opacity-40 font-medium">
+                        <span className="text-xs opacity-40 font-medium">
                           {new Date(review.createdAt).toLocaleDateString()} at{" "}
                           {new Date(review.createdAt).toLocaleTimeString([], {
                             hour: "2-digit",

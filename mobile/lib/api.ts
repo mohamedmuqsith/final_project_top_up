@@ -2,7 +2,7 @@ import { useAuth } from "@clerk/expo";
 import axios from "axios";
 import { useEffect } from "react";
 
-import Constants from "expo-constants";
+
 
 // Dynamically determine the API URL based on the environment
 const getBaseUrl = () => {
