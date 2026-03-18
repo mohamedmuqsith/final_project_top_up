@@ -28,8 +28,8 @@ export const orderApi = {
     return data;
   },
 
-  updateStatus: async ({ orderId, status }) => {
-    const { data } = await axiosInstance.patch(`/admin/orders/${orderId}/status`, { status });
+  updateStatus: async ({ orderId, ...statusData }) => {
+    const { data } = await axiosInstance.patch(`/admin/orders/${orderId}/status`, statusData);
     return data;
   },
 
@@ -41,6 +41,10 @@ export const orderApi = {
   },
   requestReturn: async (orderId, returnData) => {
     const { data } = await axiosInstance.post(`/orders/${orderId}/return`, returnData);
+    return data;
+  },
+  markAsPaid: async (orderId) => {
+    const { data } = await axiosInstance.post(`/payment/${orderId}/mark-as-paid`);
     return data;
   },
 };
