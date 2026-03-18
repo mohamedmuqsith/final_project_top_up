@@ -8,31 +8,36 @@ export const protectRoute = [
     try {
       const auth = typeof req.auth === "function" ? req.auth() : req.auth;
       const clerkId = auth?.userId;
-      
-      if (!clerkId) return res.status(401).json({ error: "Unauthorized - invalid token" });
+
+      if (!clerkId) {
+        return res.status(401).json({ error: "Unauthorized - invalid token" });
+      }
 
       let user = await User.findOne({ clerkId });
 
       // JIT Provisioning: If user authenticated in Clerk but missing in DB, sync them now
       if (!user) {
         console.log(`[Auth] User ${clerkId} not found in DB. Attempting JIT provisioning...`);
+
         try {
           const clerkUser = await clerkClient.users.getUser(clerkId);
           const email = clerkUser.emailAddresses[0]?.emailAddress;
-          const name = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || "User";
-          
+          const name =
+            `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || "User";
+
           if (!email) {
             console.warn(`[Auth] JIT provisioning: No email found for user ${clerkId}`);
           }
 
           user = await User.create({
             clerkId,
-            email: email || `${clerkId}@noemail.clerk.com`, // Fallback to avoid validation failure
+            email: email || `${clerkId}@noemail.clerk.com`,
             name,
             imageUrl: clerkUser.imageUrl,
             addresses: [],
             wishlist: [],
           });
+
           console.log(`[Auth] JIT provisioning successful for ${user.email}`);
         } catch (clerkError) {
           console.error("[Auth] JIT provisioning failed:", clerkError.message);
@@ -40,8 +45,15 @@ export const protectRoute = [
         }
       }
 
-      // Robust Role Sync: Sync from ENV.ADMIN_EMAIL to ensure 'role' is always correct
-      const isAdminEmail = user.email.toLowerCase() === ENV.ADMIN_EMAIL?.toLowerCase();
+      // Support multiple admin emails
+      const adminEmails = (ENV.ADMIN_EMAILS || "")
+        .split(",")
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean);
+
+      const userEmail = user.email?.trim().toLowerCase() || "";
+      const isAdminEmail = adminEmails.includes(userEmail);
+
       if (isAdminEmail && user.role !== "admin") {
         user.role = "admin";
         await user.save();
