@@ -234,6 +234,13 @@ export async function updateOrderStatus(req, res) {
 
     const currentStatus = order.status;
 
+    // Guardrail: Prevent moving online orders to processing if they haven't been paid
+    if (newStatus === "processing" && order.paymentMethod === "online" && order.paymentStatus !== "paid") {
+      return res.status(400).json({ 
+        error: "Cannot move an unpaid online order to processing. Please wait for payment confirmation or verify the transaction." 
+      });
+    }
+
     // ─── Legacy Migration / Fallback Seeding ──────────────────
     // If order has no history yet, seed it with the current actual status
     if (!order.statusHistory || order.statusHistory.length === 0) {
@@ -263,12 +270,28 @@ export async function updateOrderStatus(req, res) {
 
     // Record History
     const adminId = req.user?._id;
-    const { comment: adminComment } = req.body;
+    const { comment: adminComment, cashCollected } = req.body;
+
+    // COD Delivery Logic: Confirm payment collection
+    if (newStatus === "delivered" && order.paymentMethod === "cod") {
+      if (cashCollected === true) {
+        order.paymentStatus = "paid";
+      } else if (cashCollected === false) {
+        order.paymentStatus = "pending";
+      }
+      // If cashCollected is undefined, we leave paymentStatus as is (defaulting to pending/current state)
+    }
     
+    const statusComment = adminComment || (
+      newStatus === "delivered" && order.paymentMethod === "cod"
+        ? `Order delivered. Cash collected: ${cashCollected === true ? "YES" : "NO"}`
+        : `Status updated to ${newStatus} via Admin Panel`
+    );
+
     order.statusHistory.push({
       status: newStatus,
       timestamp: new Date(),
-      comment: adminComment || `Status updated to ${newStatus} via Admin Panel`,
+      comment: statusComment,
       changedBy: adminId,
       changedByType: "admin"
     });
@@ -279,6 +302,11 @@ export async function updateOrderStatus(req, res) {
       order.returnStatus = "denied";
     } else if (newStatus === "refunded") {
       order.returnStatus = "refunded";
+      order.paymentStatus = "refunded";
+    } else if (newStatus === "cancelled") {
+        if (order.paymentStatus === "pending") {
+            order.paymentStatus = "failed";
+        }
     }
 
     if (newStatus === "shipped" && !order.shippedAt) {
@@ -305,7 +333,7 @@ export async function updateOrderStatus(req, res) {
       message = "Your order has been delivered. Enjoy your electronics!";
     } else if (newStatus === "cancelled") {
       type = "ORDER_CANCELLED";
-      message = "Your order has been cancelled. Please contact support if you have questions.";
+      message = "Your order has been cancelled. If payment was made, a refund will be processed shortly.";
     } else if (newStatus === "approved") {
       type = "RETURN_APPROVED";
       message = "Your return request has been approved. Please follow the instructions to return your item.";
@@ -394,7 +422,7 @@ export async function getAllCustomers(req, res) {
               $cond: [
                 {
                   $and: [
-                    { $eq: ["$paymentResult.status", "succeeded"] },
+                    { $eq: ["$paymentStatus", "paid"] },
                     { $ne: ["$status", "cancelled"] },
                   ],
                 },
@@ -410,7 +438,7 @@ export async function getAllCustomers(req, res) {
 
     // NEW: Deeper aggregation for Top Category PER CUSTOMER (by Revenue)
     const categoryStats = await Order.aggregate([
-      { $match: { "paymentResult.status": "succeeded", status: { $ne: "cancelled" } } },
+      { $match: { paymentStatus: "paid", status: { $ne: "cancelled" } } },
       { $unwind: "$orderItems" },
       // Note: We need to populate category which is on Product, but in aggregate we likely have the ID or string if stored.
       // Assuming orderItems.product has category or we join with Products.
@@ -529,7 +557,7 @@ export async function getCustomerStats(req, res) {
       .populate("orderItems.product");
 
     const successfulOrders = orders.filter(
-      (o) => o.paymentResult?.status === "succeeded" && o.status !== "cancelled"
+      (o) => o.paymentStatus === "paid" && o.status !== "cancelled"
     );
 
     const totalOrders = orders.length;
@@ -576,7 +604,7 @@ export async function getDashboardStats(req, res) {
     const { timeRange = "weekly" } = req.query; // "daily" | "weekly" | "monthly"
 
     const totalOrders = await Order.countDocuments();
-    const confirmedSales = await Order.countDocuments({ "paymentResult.status": "succeeded", status: { $ne: "cancelled" } });
+    const confirmedSales = await Order.countDocuments({ paymentStatus: "paid", status: { $ne: "cancelled" } });
     const cancelledOrders = await Order.countDocuments({ status: "cancelled" });
     const cancellationRate = totalOrders > 0 ? ((cancelledOrders / totalOrders) * 100).toFixed(1) : 0;
 
@@ -595,7 +623,7 @@ export async function getDashboardStats(req, res) {
     }, {});
 
     const revenueResult = await Order.aggregate([
-      { $match: { "paymentResult.status": "succeeded", status: { $ne: "cancelled" } } },
+      { $match: { paymentStatus: "paid", status: { $ne: "cancelled" } } },
       {
         $group: {
           _id: null,
@@ -628,7 +656,7 @@ export async function getDashboardStats(req, res) {
       {
         $match: {
           createdAt: { $gte: thirtyDaysAgo },
-          "paymentResult.status": "succeeded",
+          paymentStatus: "paid",
           status: { $ne: "cancelled" },
         },
       },
@@ -696,7 +724,7 @@ export async function getDashboardStats(req, res) {
               $cond: [
                 { 
                   $and: [
-                    { $eq: ["$paymentResult.status", "succeeded"] },
+                    { $eq: ["$paymentStatus", "paid"] },
                     { $ne: ["$status", "cancelled"] }
                   ]
                 }, 
@@ -792,7 +820,7 @@ export async function getInventoryAlerts(req, res) {
       {
         $match: {
           createdAt: { $gte: sevenDaysAgo },
-          "paymentResult.status": "succeeded",
+          paymentStatus: "paid",
           status: { $ne: "cancelled" },
         },
       },
@@ -914,7 +942,7 @@ export async function getSalesReport(req, res) {
               { 
                 $match: { 
                   ...match,
-                  "paymentResult.status": "succeeded",
+                  paymentStatus: "paid",
                   status: { $ne: "cancelled" }
                 } 
               },
@@ -995,7 +1023,7 @@ export async function getSalesReport(req, res) {
               $cond: [
                 { 
                   $and: [
-                    { $eq: ["$paymentResult.status", "succeeded"] },
+                    { $eq: ["$paymentStatus", "paid"] },
                     { $ne: ["$status", "cancelled"] }
                   ]
                 }, 

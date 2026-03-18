@@ -127,4 +127,7 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Fix duplicate key error: allow multiple null/missing IDs for COD orders
+orderSchema.index({ "paymentResult.id": 1 }, { unique: true, sparse: true });
+
 export const Order = mongoose.model("Order", orderSchema);

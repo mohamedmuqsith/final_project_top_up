@@ -10,12 +10,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import OrderSummary from "@/components/OrderSummary";
 import AddressSelectionModal from "@/components/AddressSelectionModal";
+import { useQueryClient } from "@tanstack/react-query";
 
 import * as Linking from "expo-linking";
 import * as Sentry from "@sentry/react-native";
 
 const CartScreen = () => {
   const api = useApi();
+  const queryClient = useQueryClient();
   const {
     cart,
     cartItemCount,
@@ -34,6 +36,7 @@ const CartScreen = () => {
 
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [addressModalVisible, setAddressModalVisible] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"online" | "cod">("online");
 
   const cartItems = cart?.items || [];
   const subtotal = cartTotal;
@@ -96,9 +99,11 @@ const CartScreen = () => {
         return;
       }
 
-      // create payment intent with valid cart items and shipping address
-      const { data } = await api.post("/payment/create-intent", {
-        cartItems: validCartItems,
+      const orderPayload = {
+        cartItems: cartItems.map(item => ({
+          product: item.product._id,
+          quantity: item.quantity
+        })),
         shippingAddress: {
           fullName: selectedAddress.fullName,
           streetAddress: selectedAddress.streetAddress,
@@ -107,12 +112,27 @@ const CartScreen = () => {
           zipCode: selectedAddress.zipCode,
           phoneNumber: selectedAddress.phoneNumber,
         },
-      });
+      };
+
+      if (paymentMethod === "cod") {
+        // --- CASH ON DELIVERY FLOW ---
+        const { data } = await api.post("/payment/cod-order", orderPayload);
+        
+        Alert.alert("Order Placed", "Your Cash on Delivery order has been placed successfully!", [
+          { text: "OK", onPress: () => {} },
+        ]);
+        queryClient.invalidateQueries({ queryKey: ["notifications"] });
+        clearCart();
+        return;
+      }
+
+      // --- ONLINE PAYMENT FLOW (STRIPE) ---
+      const { data } = await api.post("/payment/create-intent", orderPayload);
 
       const { error: initError } = await initPaymentSheet({
         paymentIntentClientSecret: data.clientSecret,
-        merchantDisplayName: "TechSpot Electronics",
-        returnURL: Linking.createURL("stripe-redirect"), // Correct way to generate returnURL in Expo
+        merchantDisplayName: "SmartShop Electronics",
+        returnURL: Linking.createURL("stripe-redirect"), 
       });
 
       if (initError) {
@@ -124,11 +144,9 @@ const CartScreen = () => {
         });
 
         Alert.alert("Error", initError.message);
-        setPaymentLoading(false);
         return;
       }
 
-      // present payment sheet
       const { error: presentError } = await presentPaymentSheet();
 
       if (presentError) {
@@ -171,6 +189,7 @@ const CartScreen = () => {
           Alert.alert("Success", "Your payment was successful! Your order is being processed.", [
             { text: "OK", onPress: () => {} },
           ]);
+          queryClient.invalidateQueries({ queryKey: ["notifications"] });
           clearCart();
         } catch (syncErr) {
           Sentry.logger.error("Backend sync failed after payment", {
@@ -195,7 +214,7 @@ const CartScreen = () => {
         itemCount: cartItems.length,
       });
 
-      const errorMessage = error?.response?.data?.error || "Failed to process payment";
+      const errorMessage = error?.response?.data?.error || error?.response?.data?.message || "Failed to process payment";
       Alert.alert("Error", errorMessage);
     } finally {
       setPaymentLoading(false);
@@ -310,6 +329,48 @@ const CartScreen = () => {
             </View>
             );
           })}
+        </View>
+
+        {/* Payment Method Selector */}
+        <View className="px-6 mt-6 mb-2">
+          <Text className="text-text-primary text-xl font-bold mb-4">Payment Method</Text>
+          <View className="flex-row gap-3">
+            <TouchableOpacity
+              onPress={() => setPaymentMethod("online")}
+              className={`flex-1 p-4 rounded-3xl border-2 ${
+                paymentMethod === "online" ? "border-primary bg-primary/5" : "border-surface bg-surface"
+              }`}
+            >
+              <View className="items-center">
+                <Ionicons 
+                  name="card" 
+                  size={24} 
+                  color={paymentMethod === "online" ? "#1DB954" : "#666"} 
+                />
+                <Text className={`mt-2 font-bold ${paymentMethod === "online" ? "text-primary" : "text-text-secondary"}`}>
+                  Online
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setPaymentMethod("cod")}
+              className={`flex-1 p-4 rounded-3xl border-2 ${
+                paymentMethod === "cod" ? "border-primary bg-primary/5" : "border-surface bg-surface"
+              }`}
+            >
+              <View className="items-center">
+                <Ionicons 
+                  name="cash" 
+                  size={24} 
+                  color={paymentMethod === "cod" ? "#1DB954" : "#666"} 
+                />
+                <Text className={`mt-2 font-bold ${paymentMethod === "cod" ? "text-primary" : "text-text-secondary"}`}>
+                  C.O.D
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <OrderSummary subtotal={subtotal} shipping={shipping} tax={tax} total={total} />

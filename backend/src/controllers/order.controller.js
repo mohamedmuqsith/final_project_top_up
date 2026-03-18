@@ -23,14 +23,23 @@ export async function createOrder(req, res) {
       }
     }
 
-    const order = await Order.create({
+    const orderData = {
       user: user._id,
       clerkId: user.clerkId,
       orderItems,
       shippingAddress,
-      paymentResult,
       totalPrice,
-    });
+      paymentMethod: "online", // Explicitly set for legacy createOrder
+      paymentStatus: "pending", 
+      status: "pending",
+    };
+
+    // Only include paymentResult if it has an id (prevents null-collision on unique index)
+    if (paymentResult && paymentResult.id) {
+      orderData.paymentResult = paymentResult;
+    }
+
+    const order = await Order.create(orderData);
 
     // update product stock
     for (const item of orderItems) {
@@ -115,6 +124,11 @@ export async function requestOrderReturn(req, res) {
       return res.status(400).json({ error: `Cannot return an order with status: ${order.status}` });
     }
 
+    // 2b. Payment check
+    if (order.paymentStatus !== "paid") {
+      return res.status(400).json({ error: "Only paid orders can be returned/refunded. Please ensure payment is collected first." });
+    }
+
     // 3. Finalized check (already refunded or denied)
     if (["refunded", "denied"].includes(order.returnStatus)) {
       return res.status(400).json({ error: "This order has already reached a final return state" });
@@ -154,11 +168,22 @@ export async function requestOrderReturn(req, res) {
 
     await order.save();
 
-    // Notify Admins
+    // 1. Notify Admins
     await createNotification({
       recipientType: "admin",
       title: "New Return Request",
       message: `Customer ${req.user.name} requested a return for Order #${order._id.toString().slice(-6).toUpperCase()}.`,
+      type: "RETURN_REQUESTED",
+      entityId: order._id,
+      entityModel: "Order",
+    });
+
+    // 2. Confirmation to CUSTOMER
+    await createNotification({
+      recipientType: "customer",
+      recipientId: req.user._id.toString(),
+      title: "Return Request Received",
+      message: "We've received your return request and an admin will review it shortly.",
       type: "RETURN_REQUESTED",
       entityId: order._id,
       entityModel: "Order",

@@ -102,10 +102,11 @@ export function generateInvoice(data) {
   doc.text("PAYMENT", pw - 80, y - 6);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...COLORS.mid);
-  doc.text(`Status: ${data.payment.status.charAt(0).toUpperCase() + data.payment.status.slice(1)}`, pw - 80, y);
+  doc.text(`Method: ${data.payment.method.toUpperCase()}`, pw - 80, y);
+  doc.text(`Status: ${data.payment.status.charAt(0).toUpperCase() + data.payment.status.slice(1)}`, pw - 80, y + 4);
   if (data.payment.transactionId) {
     doc.setFontSize(7);
-    doc.text(`Txn: ${data.payment.transactionId}`, pw - 80, y + 4);
+    doc.text(`Txn: ${data.payment.transactionId}`, pw - 80, y + 8);
   }
 
   // ── Items Table ──

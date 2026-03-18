@@ -98,7 +98,8 @@ export async function getOrderDocumentData(req, res) {
       },
 
       payment: {
-        status: order.paymentResult?.status || "unknown",
+        method: order.paymentMethod || "online",
+        status: order.paymentStatus || order.paymentResult?.status || "pending",
         transactionId: order.paymentResult?.id || null,
       },
 
