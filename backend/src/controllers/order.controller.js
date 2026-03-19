@@ -29,9 +29,15 @@ export async function createOrder(req, res) {
       orderItems,
       shippingAddress,
       totalPrice,
-      paymentMethod: "online", // Explicitly set for legacy createOrder
+      paymentMethod: "online", 
       paymentStatus: "pending", 
       status: "pending",
+      statusHistory: [{
+        status: "pending",
+        timestamp: new Date(),
+        comment: "Order created and awaiting payment confirmation.",
+        changedByType: "system"
+      }]
     };
 
     // Only include paymentResult if it has an id (prevents null-collision on unique index)
@@ -156,9 +162,9 @@ export async function requestOrderReturn(req, res) {
 
     order.returnStatus = "requested";
     order.returnReason = reason;
-    order.status = "return-requested";
+    
     order.statusHistory.push({
-      status: "return-requested",
+      status: order.status, // Keep actual logistics status unchanged
       timestamp: new Date(),
       comment: comment || `Customer requested return. Reason: ${reason}`,
       changedBy: req.user._id,

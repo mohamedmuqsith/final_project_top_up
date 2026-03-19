@@ -64,7 +64,9 @@ export interface Order {
     status: string;
   };
   totalPrice: number;
-  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled" | "return-requested" | "approved" | "refunded" | "denied";
+  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+  paymentStatus?: "pending" | "paid" | "failed" | "refunded";
+  paymentMethod?: "online" | "cod";
   statusHistory?: {
     status: string;
     timestamp: string;

@@ -55,22 +55,108 @@ export default function OrderDetailsScreen() {
     );
   }
 
-  const timelineEvents = order.statusHistory && order.statusHistory.length > 0
-    ? order.statusHistory.map(h => ({
-        label: capitalizeFirstLetter(h.status.replace(/-/g, ' ')),
-        date: h.timestamp,
-        active: true,
-        isError: ["cancelled", "denied"].includes(h.status),
-        isReturn: ["return-requested", "approved", "refunded"].includes(h.status),
-        comment: h.comment
-      }))
-    : [
-        { label: "Order Placed", date: order.createdAt, active: true, comment: undefined, isError: false, isReturn: false },
-        { label: "Processing", date: null, active: ["processing", "shipped", "delivered"].includes(order.status), comment: undefined, isError: false, isReturn: false },
-        { label: "Shipped", date: order.shippedAt || null, active: ["shipped", "delivered"].includes(order.status), comment: undefined, isError: false, isReturn: false },
-        { label: "Delivered", date: order.deliveredAt || null, active: order.status === "delivered", comment: undefined, isError: false, isReturn: false },
-        ...(order.status === "cancelled" ? [{ label: "Cancelled", date: order.updatedAt, active: true, isError: true, isReturn: false, comment: undefined }] : [])
-      ];
+  // Build a fixed 4-step sequence, mapping dates from history if they exist
+  const getHistoryEntry = (statusToFind: string) => 
+    order.statusHistory?.find(h => h.status.toLowerCase() === statusToFind);
+
+  const pendingEntry = getHistoryEntry("pending");
+  const processingEntry = getHistoryEntry("processing");
+  const shippedEntry = getHistoryEntry("shipped");
+  const deliveredEntry = getHistoryEntry("delivered");
+  const cancelledEntry = getHistoryEntry("cancelled");
+  const returnRequested = getHistoryEntry("return-requested") || getHistoryEntry("requested");
+  const returnApproved = getHistoryEntry("approved");
+  const deniedEntry = getHistoryEntry("denied");
+  const refundedEntry = getHistoryEntry("refunded");
+
+  const isCancelled = order.status === "cancelled";
+
+  const timelineEvents = [
+    { 
+      label: "Pending", 
+      date: pendingEntry?.timestamp || order.createdAt, 
+      active: true, 
+      comment: pendingEntry?.comment || "Awaiting processing", 
+      isError: false, 
+      isReturn: false 
+    },
+    ...(!isCancelled ? [
+      { 
+        label: "Processing", 
+        date: processingEntry?.timestamp || null, 
+        active: ["processing", "shipped", "delivered"].includes(order.status), 
+        comment: processingEntry?.comment, 
+        isError: false, 
+        isReturn: false 
+      },
+      { 
+        label: "Shipped", 
+        date: order.shippedAt || shippedEntry?.timestamp || null, 
+        active: ["shipped", "delivered"].includes(order.status), 
+        comment: shippedEntry?.comment, 
+        isError: false, 
+        isReturn: false 
+      },
+      { 
+        label: "Delivered", 
+        date: order.deliveredAt || deliveredEntry?.timestamp || null, 
+        active: order.status === "delivered", 
+        comment: deliveredEntry?.comment, 
+        isError: false, 
+        isReturn: false 
+      }
+    ] : [
+      { 
+        label: "Cancelled", 
+        date: cancelledEntry?.timestamp || order.updatedAt, 
+        active: true, 
+        isError: true, 
+        isReturn: false, 
+        comment: cancelledEntry?.comment || "Order was cancelled" 
+      }
+    ])
+  ];
+
+  // Append any return/refund states if present
+  if (returnRequested) {
+    timelineEvents.push({
+      label: "Return Requested",
+      date: returnRequested.timestamp,
+      active: true,
+      isError: false,
+      isReturn: true,
+      comment: returnRequested.comment
+    });
+  }
+  if (deniedEntry) {
+    timelineEvents.push({
+      label: "Return Denied",
+      date: deniedEntry.timestamp,
+      active: true,
+      isError: true,
+      isReturn: false,
+      comment: deniedEntry.comment
+    });
+  } else if (returnApproved) {
+    timelineEvents.push({
+      label: "Return Approved",
+      date: returnApproved.timestamp,
+      active: true,
+      isError: false,
+      isReturn: true,
+      comment: returnApproved.comment
+    });
+  }
+  if (refundedEntry) {
+    timelineEvents.push({
+      label: "Refund Processed",
+      date: refundedEntry.timestamp,
+      active: true,
+      isError: false,
+      isReturn: true,
+      comment: refundedEntry.comment
+    });
+  }
 
   const handleReorder = () => {
     order.orderItems.forEach((item) => {
@@ -153,7 +239,7 @@ export default function OrderDetailsScreen() {
     }
   };
 
-  const isInvoiceEligible = ["processing", "shipped", "delivered"].includes(order.status);
+  const isInvoiceEligible = ["pending", "processing", "shipped", "delivered"].includes(order.status);
   
   const isReturnEligible = 
     order.status === "delivered" && 

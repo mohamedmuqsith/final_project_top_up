@@ -141,16 +141,44 @@ function OrdersScreen() {
                       <Text className="text-text-secondary text-sm mb-2">
                         {formatDate(order.createdAt)}
                       </Text>
-                      <View
-                        className="self-start px-3 py-1.5 rounded-full"
-                        style={{ backgroundColor: getStatusColor(order.status) + "20" }}
-                      >
-                        <Text
-                          className="text-xs font-bold"
-                          style={{ color: getStatusColor(order.status) }}
+                      <View className="flex-row flex-wrap gap-2">
+                        <View
+                          className="self-start px-3 py-1.5 rounded-full"
+                          style={{ backgroundColor: getStatusColor(order.status) + "20" }}
                         >
-                          {capitalizeFirstLetter(order.status)}
-                        </Text>
+                          <Text
+                            className="text-xs font-bold"
+                            style={{ color: getStatusColor(order.status) }}
+                          >
+                            {capitalizeFirstLetter(order.status)}
+                          </Text>
+                        </View>
+                        {order.returnStatus && order.returnStatus !== "none" && (
+                          <View
+                            className="self-start px-3 py-1.5 rounded-full"
+                            style={{ backgroundColor: getStatusColor(order.returnStatus) + "20" }}
+                          >
+                            <Text
+                              className="text-xs font-bold"
+                              style={{ color: getStatusColor(order.returnStatus) }}
+                            >
+                              Return {capitalizeFirstLetter(order.returnStatus)}
+                            </Text>
+                          </View>
+                        )}
+                        {order.paymentStatus === "refunded" && (
+                          <View
+                            className="self-start px-3 py-1.5 rounded-full"
+                            style={{ backgroundColor: getStatusColor("refunded") + "20" }}
+                          >
+                            <Text
+                              className="text-xs font-bold"
+                              style={{ color: getStatusColor("refunded") }}
+                            >
+                              Refunded
+                            </Text>
+                          </View>
+                        )}
                       </View>
                     </View>
                   </View>

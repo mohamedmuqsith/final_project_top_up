@@ -219,12 +219,8 @@ export async function updateOrderStatus(req, res) {
       pending: ["processing", "cancelled"],
       processing: ["shipped", "cancelled"],
       shipped: ["delivered"],
-      delivered: ["return-requested"], // Customer usually starts this, but admin might force manual
-      "return-requested": ["approved", "denied"],
-      approved: ["refunded"],
-      refunded: [], // Terminal
-      denied: ["delivered"], // Rollback to delivered if denied
-      cancelled: [], // Terminal
+      delivered: [], // Terminal for logistics
+      cancelled: [], // Terminal for logistics
     };
 
     const order = await Order.findById(orderId);
@@ -296,14 +292,7 @@ export async function updateOrderStatus(req, res) {
       changedByType: "admin"
     });
 
-    if (newStatus === "approved") {
-      order.returnStatus = "approved";
-    } else if (newStatus === "denied") {
-      order.returnStatus = "denied";
-    } else if (newStatus === "refunded") {
-      order.returnStatus = "refunded";
-      order.paymentStatus = "refunded";
-    } else if (newStatus === "cancelled") {
+    if (newStatus === "cancelled") {
         if (order.paymentStatus === "pending") {
             order.paymentStatus = "failed";
         }
@@ -334,15 +323,6 @@ export async function updateOrderStatus(req, res) {
     } else if (newStatus === "cancelled") {
       type = "ORDER_CANCELLED";
       message = "Your order has been cancelled. If payment was made, a refund will be processed shortly.";
-    } else if (newStatus === "approved") {
-      type = "RETURN_APPROVED";
-      message = "Your return request has been approved. Please follow the instructions to return your item.";
-    } else if (newStatus === "denied") {
-      type = "RETURN_DENIED";
-      message = "Your return request was not approved. Please contact support for more information.";
-    } else if (newStatus === "refunded") {
-      type = "REFUND_COMPLETED";
-      message = "Your refund has been completed successfully.";
     }
 
     if (type) {
@@ -374,9 +354,6 @@ export async function updateOrderStatus(req, res) {
       } else if (newStatus === "cancelled") {
         adminType = "ORDER_CANCELLED";
         adminMessage = `Operational Alert: Order #${idStr} marked as CANCELLED.`;
-      } else if (newStatus === "refunded") {
-        adminType = "ORDER_REFUNDED";
-        adminMessage = `Operational Alert: Order #${idStr} has been REFUNDED.`;
       }
 
       if (adminType) {
@@ -396,6 +373,120 @@ export async function updateOrderStatus(req, res) {
     console.error("Error in updateOrderStatus controller:", error);
     res.status(500).json({ error: "Internal server error" });
   }
+}
+
+export async function handleReturnRequest(req, res) {
+  try {
+    const { orderId } = req.params;
+    const { action } = req.body; // "approve" or "deny"
+
+    if (!["approve", "deny"].includes(action)) {
+      return res.status(400).json({ error: "Invalid action. Must be 'approve' or 'deny'." });
+    }
+
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    if (order.returnStatus !== "requested") {
+      return res.status(400).json({ error: "Return can only be processed if it is currently 'requested'." });
+    }
+
+    const newReturnStatus = action === "approve" ? "approved" : "denied";
+    order.returnStatus = newReturnStatus;
+    
+    order.statusHistory.push({
+      status: order.status,
+      timestamp: new Date(),
+      comment: `Admin ${newReturnStatus} the return request.`,
+      changedBy: req.user._id,
+      changedByType: "admin"
+    });
+
+    await order.save();
+
+    const type = newReturnStatus === "approved" ? "RETURN_APPROVED" : "RETURN_DENIED";
+    const message = newReturnStatus === "approved"
+      ? "Your return request has been approved. Please follow the instructions to return your item."
+      : "Your return request was not approved. Please contact support for more information.";
+
+    await createNotification({
+      recipientType: "customer",
+      recipientId: order.user.toString(),
+      title: `Return Request ${capitalizeFirstLetter(newReturnStatus)}`,
+      message,
+      type,
+      entityId: order._id,
+      entityModel: "Order",
+    });
+
+    res.status(200).json({ message: `Return successfully ${newReturnStatus}`, order });
+  } catch (error) {
+    console.error("Error in handleReturnRequest:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function processRefund(req, res) {
+  try {
+    const { orderId } = req.params;
+    
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    // Strict refund eligibility rules:
+    // 1. Only paid orders can be refunded
+    if (order.paymentStatus !== "paid") {
+      return res.status(400).json({ error: "Only 'paid' orders can be refunded. Unpaid COD or failed orders are ineligible." });
+    }
+    
+    // 2. Must be cancelled, OR have an approved return
+    if (order.status !== "cancelled" && order.returnStatus !== "approved") {
+      return res.status(400).json({ error: "Order must be 'cancelled' or have an 'approved' return to issue a refund." });
+    }
+
+    if (order.paymentStatus === "refunded") {
+      return res.status(400).json({ error: "Order is already refunded." });
+    }
+
+    order.paymentStatus = "refunded";
+    order.statusHistory.push({
+      status: order.status,
+      timestamp: new Date(),
+      comment: "Admin processed refund for this order.",
+      changedBy: req.user._id,
+      changedByType: "admin"
+    });
+
+    await order.save();
+
+    await createNotification({
+      recipientType: "customer",
+      recipientId: order.user.toString(),
+      title: "Refund Completed",
+      message: `Your refund for order #${order._id.toString().slice(-6).toUpperCase()} has been completed successfully.`,
+      type: "REFUND_COMPLETED",
+      entityId: order._id,
+      entityModel: "Order",
+    });
+
+    await createNotification({
+      recipientType: "admin",
+      title: "Order Refunded",
+      message: `Operational Alert: Order #${order._id.toString().slice(-6).toUpperCase()} has been REFUNDED.`,
+      type: "ORDER_REFUNDED",
+      entityId: order._id,
+      entityModel: "Order",
+    });
+
+    res.status(200).json({ message: "Refund processed successfully", order });
+  } catch (error) {
+    console.error("Error in processRefund:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+function capitalizeFirstLetter(string) {
+  return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
 export async function getAllCustomers(req, res) {

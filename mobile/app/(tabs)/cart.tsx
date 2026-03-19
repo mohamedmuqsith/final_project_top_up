@@ -186,7 +186,7 @@ const CartScreen = () => {
         try {
           await confirmOrder();
           
-          Alert.alert("Success", "Your payment was successful! Your order is being processed.", [
+          Alert.alert("Success", "Your payment was successful! Your order has been placed and is awaiting processing.", [
             { text: "OK", onPress: () => {} },
           ]);
           queryClient.invalidateQueries({ queryKey: ["notifications"] });

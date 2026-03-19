@@ -16,6 +16,8 @@ import {
   updateReviewStatus,
   getReviewAnalytics,
   getCustomerStats,
+  handleReturnRequest,
+  processRefund,
 } from "../controllers/admin.controller.js";
 import { getOrderDocumentData } from "../controllers/orderDocument.controller.js";
 import { adminOnly, protectRoute } from "../middleware/auth.middleware.js";
@@ -33,6 +35,8 @@ router.delete("/products/:id", deleteProduct);
 
 router.get("/orders", getAllOrders);
 router.patch("/orders/:orderId/status", updateOrderStatus);
+router.patch("/orders/:orderId/return", handleReturnRequest);
+router.post("/orders/:orderId/refund", processRefund);
 router.get("/orders/:id/document-data", getOrderDocumentData);
 
 router.get("/customers", getAllCustomers);
