@@ -18,8 +18,15 @@ export const getStatusColor = (status: string) => {
     case "pending":
       return "#F59E0B";
     case "cancelled":
+    case "denied":
       return "#EF4444";
+    case "requested":
+      return "#F59E0B";
+    case "approved":
+      return "#00D9FF";
+    case "refunded":
+      return "#10B981";
     default:
       return "#666";
   }
-};  
+};

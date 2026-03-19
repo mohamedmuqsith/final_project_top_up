@@ -64,7 +64,7 @@ const PAYMENT_COLOR_MAP = {
 
 // ─── Document Actions Component ──────────────────────────────────
 const DOC_AVAILABILITY = {
-  invoice: ["processing", "shipped", "delivered"],
+  invoice: ["pending", "processing", "shipped", "delivered"],
   "packing-slip": ["processing", "shipped"],
   "shipping-label": ["processing", "shipped"],
 };
@@ -235,24 +235,84 @@ function CodDeliveryModal({ order, isOpen, onClose, onConfirm, isPending }) {
   );
 }
 
-function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpdatingStatus }) {
+function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpdatingStatus, onApproveReturn, onDenyReturn, onRefund, isRefunding }) {
   if (!order) return null;
 
   const totalQuantity = order.orderItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Use real statusHistory from backend, or fallback to seeded timeline
-  const timeline = order.statusHistory && order.statusHistory.length > 0
-    ? order.statusHistory.map(h => ({
-        label: capitalizeText(h.status),
-        date: h.timestamp,
-        status: h.status,
-        comment: h.comment,
-        by: h.changedBy?.name || h.changedByType || "system"
-      }))
-    : [
-        { label: "Order Created", date: order.createdAt, status: "pending", by: "customer" },
-        ...(order.status !== "pending" ? [{ label: capitalizeText(order.status), date: order.updatedAt, status: order.status, by: "system" }] : [])
-      ];
+  // Build a fixed logical sequence for the admin timeline
+  const getHistoryEntry = (statusToFind) => 
+    order.statusHistory?.find(h => h.status.toLowerCase() === statusToFind);
+
+  const pendingEntry = getHistoryEntry("pending");
+  const processingEntry = getHistoryEntry("processing");
+  const shippedEntry = getHistoryEntry("shipped");
+  const deliveredEntry = getHistoryEntry("delivered");
+  const cancelledEntry = getHistoryEntry("cancelled");
+
+  const isCancelled = order.status === "cancelled";
+
+  const timeline = [
+    { 
+      label: "Pending", 
+      date: pendingEntry?.timestamp || order.createdAt, 
+      status: "pending", 
+      comment: pendingEntry?.comment, 
+      by: pendingEntry?.changedByType || "system" 
+    }
+  ];
+
+  if (!isCancelled) {
+    timeline.push(
+      { 
+        label: "Processing", 
+        date: processingEntry?.timestamp || null, 
+        status: "processing", 
+        comment: processingEntry?.comment, 
+        by: processingEntry?.changedByType || "system" 
+      },
+      { 
+        label: "Shipped", 
+        date: shippedEntry?.timestamp || order.shippedAt || null, 
+        status: "shipped", 
+        comment: shippedEntry?.comment, 
+        by: shippedEntry?.changedByType || "admin" 
+      },
+      { 
+        label: "Delivered", 
+        date: deliveredEntry?.timestamp || order.deliveredAt || null, 
+        status: "delivered", 
+        comment: deliveredEntry?.comment, 
+        by: deliveredEntry?.changedByType || "worker" 
+      }
+    );
+  } else {
+    timeline.push({
+      label: "Cancelled",
+      date: cancelledEntry?.timestamp || order.updatedAt,
+      status: "cancelled",
+      comment: cancelledEntry?.comment || "Order cancelled",
+      by: cancelledEntry?.changedByType || "admin"
+    });
+  }
+
+  // Add return states if applicable
+  const returnRequested = getHistoryEntry("return-requested") || getHistoryEntry("requested");
+  const returnApproved = getHistoryEntry("approved");
+  const deniedEntry = getHistoryEntry("denied");
+  const refundedEntry = getHistoryEntry("refunded");
+
+  if (returnRequested) {
+    timeline.push({ label: "Return Requested", date: returnRequested.timestamp, status: "return-requested", comment: returnRequested.comment, by: returnRequested.changedByType || "customer" });
+  }
+  if (deniedEntry) {
+    timeline.push({ label: "Return Denied", date: deniedEntry.timestamp, status: "denied", comment: deniedEntry.comment, by: deniedEntry.changedByType || "admin" });
+  } else if (returnApproved) {
+    timeline.push({ label: "Return Approved", date: returnApproved.timestamp, status: "approved", comment: returnApproved.comment, by: returnApproved.changedByType || "admin" });
+  }
+  if (refundedEntry) {
+    timeline.push({ label: "Refund Processed", date: refundedEntry.timestamp, status: "refunded", comment: refundedEntry.comment, by: refundedEntry.changedByType || "admin" });
+  }
 
   return (
     <dialog className="modal modal-open">
@@ -387,6 +447,19 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
                         </div>
                       </div>
                     )}
+
+                    {/* NEW REFUND/RETURN BUTTONS */}
+                    {order.returnStatus === "requested" && (
+                      <div className="md:col-span-2 flex flex-wrap gap-2 mt-2">
+                        <button className="btn btn-sm btn-success" onClick={() => onApproveReturn(order._id)} disabled={isRefunding}>Approve Return</button>
+                        <button className="btn btn-sm btn-error" onClick={() => onDenyReturn(order._id)} disabled={isRefunding}>Deny Return</button>
+                      </div>
+                    )}
+                    {(order.paymentStatus === "paid" && (order.status === "cancelled" || order.returnStatus === "approved")) && (
+                      <div className="md:col-span-2 mt-2">
+                        <button className="btn btn-sm btn-warning" onClick={() => onRefund(order._id)} disabled={isRefunding}>Process Refund</button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -499,16 +572,16 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
                   </div>
                 </div>
 
-                {/* Document Actions */}
-                {["processing", "shipped", "delivered"].includes(order.status) && (
-                  <div className="rounded-3xl border border-base-300/60 bg-base-100 shadow-sm">
-                    <div className="px-5 py-4 border-b border-base-200/70">
-                      <h4 className="font-bold text-lg">Documents</h4>
-                      <p className="text-xs text-base-content/55 mt-1">
-                        Generate fulfillment documents
-                      </p>
-                    </div>
-                  <div className="p-5 flex flex-col gap-4">
+                {/* Fulfillment Actions */}
+                <div className="rounded-3xl border border-base-300/60 bg-base-100 shadow-sm">
+                  <div className="px-5 py-4 border-b border-base-200/70">
+                    <h4 className="font-bold text-lg">Fulfillment</h4>
+                    <p className="text-xs text-base-content/55 mt-1">
+                      Manage progress and generate related documents
+                    </p>
+                  </div>
+                  <div className="p-5 flex flex-col gap-6">
+                    {/* Status Dropdown */}
                     {!isTerminal && (
                       <div className="form-control">
                         <label className="label">
@@ -531,10 +604,18 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
                         </select>
                       </div>
                     )}
-                    <DocumentActions order={order} variant="modal" />
+
+                    {/* Document Actions */}
+                    {["processing", "shipped", "delivered"].includes(order.status) && (
+                      <div className="form-control">
+                        <label className="label">
+                          <span className="label-text text-xs font-bold uppercase opacity-50">Generate Documents</span>
+                        </label>
+                        <DocumentActions order={order} variant="modal" />
+                      </div>
+                    )}
                   </div>
-                  </div>
-                )}
+                </div>
 
                 <div className="rounded-3xl border border-primary/20 bg-linear-to-br from-primary/10 to-transparent p-5">
                   <h4 className="font-bold text-base mb-2">Reality Check</h4>
@@ -605,6 +686,24 @@ function OrdersPage() {
     },
   });
 
+  const returnRequestMutation = useMutation({
+    mutationFn: orderApi.handleReturnRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+
+  const refundMutation = useMutation({
+    mutationFn: orderApi.processRefund,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+
   const handleStatusChange = (orderId, newStatus) => {
     // Intercept "delivered" transition for COD orders
     const order = orders.find(o => o._id === orderId);
@@ -637,7 +736,16 @@ function OrdersPage() {
   const orders = ordersData?.orders || [];
 
   const filtered = orders.filter((order) => {
-    if (filterStatus !== "All" && order.status !== filterStatus) return false;
+    if (filterStatus !== "All") {
+      if (["return-requested", "approved", "denied"].includes(filterStatus)) {
+        const checkStatus = filterStatus === "return-requested" ? "requested" : filterStatus;
+        if (order.returnStatus !== checkStatus) return false;
+      } else if (filterStatus === "refunded") {
+        if (order.paymentStatus !== "refunded") return false;
+      } else {
+        if (order.status !== filterStatus) return false;
+      }
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const idMatch = order._id.toLowerCase().includes(q);
@@ -868,9 +976,10 @@ function OrdersPage() {
                   <tr>
                     <th>Order ID</th>
                     <th>Customer</th>
+                    <th>Method</th>
                     <th>Payment</th>
+                    <th>Logistics</th>
                     <th>Total</th>
-                    <th>Status</th>
                     <th>Date</th>
                     <th>Actions</th>
                   </tr>
@@ -895,7 +1004,7 @@ function OrdersPage() {
                       cancelled: [],
                     };
 
-                    const isTerminal = ["refunded", "cancelled"].includes(order.status);
+                    const isTerminal = ["delivered", "refunded", "cancelled"].includes(order.status);
                     const validNextStatuses = ALLOWED_TRANSITIONS[order.status] || [];
 
                     return (
@@ -919,18 +1028,19 @@ function OrdersPage() {
                         </td>
 
                         <td>
-                          <div className="flex flex-col gap-1">
-                            <div className={`badge badge-ghost badge-xs font-bold ${order.paymentMethod === 'cod' ? 'text-orange-500' : 'text-blue-500'}`}>
-                              {order.paymentMethod?.toUpperCase() || "ONLINE"}
-                            </div>
-                            <div className={`badge badge-xs ${PAYMENT_COLOR_MAP[order.paymentStatus] || "badge-ghost"} font-extrabold uppercase`}>
-                              {order.paymentStatus || "PENDING"}
-                            </div>
+                          <div className={`badge badge-ghost badge-xs font-bold ${order.paymentMethod === 'cod' ? 'text-orange-500' : 'text-blue-500'}`}>
+                            {order.paymentMethod?.toUpperCase() || "ONLINE"}
                           </div>
                         </td>
 
                         <td>
-                          <span className="font-bold">${order.totalPrice.toFixed(2)}</span>
+                          <div className={`badge badge-xs ${PAYMENT_COLOR_MAP[order.paymentStatus] || "badge-ghost"} font-extrabold uppercase`}>
+                            {order.paymentStatus || "PENDING"}
+                          </div>
+                        </td>
+
+                        <td>
+                          <div className="flex font-bold">${order.totalPrice.toFixed(2)}</div>
                         </td>
 
                         <td>
@@ -939,7 +1049,9 @@ function OrdersPage() {
                               className={`badge badge-sm font-semibold py-3 px-4 border-0 ${
                                 order.status === "delivered"
                                   ? "badge-success text-success-content"
-                                  : "badge-error text-error-content"
+                                  : order.status === "cancelled" || order.status === "refunded"
+                                  ? "badge-error text-error-content"
+                                  : "badge-ghost"
                               }`}
                             >
                               {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
@@ -996,6 +1108,10 @@ function OrdersPage() {
         onMarkAsPaid={handleMarkAsPaid}
         onStatusChange={handleStatusChange}
         isUpdatingStatus={updateStatusMutation.isPending}
+        onApproveReturn={(id) => returnRequestMutation.mutate({ orderId: id, action: "approve" })}
+        onDenyReturn={(id) => returnRequestMutation.mutate({ orderId: id, action: "deny" })}
+        onRefund={(id) => { if (window.confirm("Process refund for this order?")) refundMutation.mutate(id); }}
+        isRefunding={returnRequestMutation.isPending || refundMutation.isPending}
       />
 
       <CodDeliveryModal 

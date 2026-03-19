@@ -148,7 +148,7 @@ const finalizeOrder = async (orderId, paymentIntent) => {
     { 
       $set: { 
         isFinalized: true,
-        status: "processing",
+        status: "pending",
         paymentMethod: "online",
         paymentStatus: "paid",
         "paymentResult.id": paymentIntent.id,
@@ -172,9 +172,9 @@ const finalizeOrder = async (orderId, paymentIntent) => {
 
   // Record History
   order.statusHistory.push({
-    status: "processing",
+    status: "pending",
     timestamp: new Date(),
-    comment: "Payment confirmed. Order finalized via atomic logic.",
+    comment: "Order placed successfully. Payment confirmed.",
     changedByType: "system"
   });
   await order.save();
@@ -184,7 +184,7 @@ const finalizeOrder = async (orderId, paymentIntent) => {
     recipientType: "customer",
     recipientId: order.user.toString(),
     title: "Order Placed Successfully",
-    message: `Your order for $${order.totalPrice.toFixed(2)} has been placed. We're getting it ready!`,
+    message: `Your order for $${order.totalPrice.toFixed(2)} has been received and is awaiting processing.`,
     type: "ORDER_PLACED",
     entityId: order._id,
     entityModel: "Order",
@@ -265,7 +265,7 @@ export const createCodOrder = async (req, res) => {
       statusHistory: [{
         status: "pending",
         timestamp: new Date(),
-        comment: "Order placed using Cash on Delivery (COD).",
+        comment: "Order placed using Cash on Delivery (COD). Awaiting processing.",
         changedByType: "system"
       }]
     });
@@ -284,7 +284,7 @@ export const createCodOrder = async (req, res) => {
       recipientType: "customer",
       recipientId: req.user._id.toString(),
       title: "Order Placed (Cash on Delivery)",
-      message: "Your COD order has been placed. Please have the amount ready at delivery.",
+      message: "Your COD order has been received and is awaiting processing. Please have the amount ready at delivery.",
       type: "ORDER_PLACED",
       entityId: order._id,
       entityModel: "Order",

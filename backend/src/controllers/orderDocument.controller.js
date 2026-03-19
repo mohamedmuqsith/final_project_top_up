@@ -13,7 +13,7 @@ const STORE_INFO = {
 
 // Server-side status validation per document type
 const DOC_STATUS_RULES = {
-  invoice: ["processing", "shipped", "delivered"],
+  invoice: ["pending", "processing", "shipped", "delivered"],
   "packing-slip": ["processing", "shipped"],
   "shipping-label": ["processing", "shipped"],
 };
