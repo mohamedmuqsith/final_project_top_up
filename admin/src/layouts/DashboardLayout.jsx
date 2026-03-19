@@ -12,11 +12,11 @@ function DashboardLayout() {
         defaultChecked
       />
 
-      <div className="drawer-content flex flex-col min-h-screen min-w-0">
+      <div className="drawer-content flex flex-col min-h-screen min-w-0 max-w-full">
         <Navbar />
 
-        <main className="flex-1 p-4 sm:p-5 lg:p-6 overflow-x-hidden">
-          <div className="mx-auto w-full max-w-400 min-w-0">
+        <main className="flex-1 p-4 sm:p-5 lg:p-6">
+          <div className="mx-auto w-full max-w-screen-2xl min-w-0">
             <Outlet />
           </div>
         </main>
