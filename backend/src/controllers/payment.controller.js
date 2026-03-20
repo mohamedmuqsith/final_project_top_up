@@ -79,6 +79,12 @@ export async function createPaymentIntent(req, res) {
       paymentMethod: "online",
       paymentStatus: "pending",
       status: "pending",
+      statusHistory: [{
+        status: "pending",
+        timestamp: new Date(),
+        comment: "Order created and awaiting payment confirmation.",
+        changedByType: "system"
+      }],
       paymentResult: {
         status: "pending",
       }
@@ -174,7 +180,7 @@ const finalizeOrder = async (orderId, paymentIntent) => {
   order.statusHistory.push({
     status: "pending",
     timestamp: new Date(),
-    comment: "Order placed successfully. Payment confirmed.",
+    comment: "Payment confirmed. Order is now pending fulfillment.",
     changedByType: "system"
   });
   await order.save();
@@ -184,7 +190,7 @@ const finalizeOrder = async (orderId, paymentIntent) => {
     recipientType: "customer",
     recipientId: order.user.toString(),
     title: "Order Placed Successfully",
-    message: `Your order for $${order.totalPrice.toFixed(2)} has been received and is awaiting processing.`,
+    message: `Your order for $${order.totalPrice.toFixed(2)} has been received and is currently pending.`,
     type: "ORDER_PLACED",
     entityId: order._id,
     entityModel: "Order",
@@ -265,7 +271,7 @@ export const createCodOrder = async (req, res) => {
       statusHistory: [{
         status: "pending",
         timestamp: new Date(),
-        comment: "Order placed using Cash on Delivery (COD). Awaiting processing.",
+        comment: "Order placed using Cash on Delivery (COD). Currently pending.",
         changedByType: "system"
       }]
     });
@@ -284,7 +290,7 @@ export const createCodOrder = async (req, res) => {
       recipientType: "customer",
       recipientId: req.user._id.toString(),
       title: "Order Placed (Cash on Delivery)",
-      message: "Your COD order has been received and is awaiting processing. Please have the amount ready at delivery.",
+      message: "Your COD order has been received and is currently pending. Please have the amount ready at delivery.",
       type: "ORDER_PLACED",
       entityId: order._id,
       entityModel: "Order",
@@ -329,8 +335,8 @@ export const markAsPaid = async (req, res) => {
     if (order.paymentStatus === "paid") {
       return res.status(400).json({ error: "Order is already marked as paid" });
     }
-    if (["cancelled", "refunded"].includes(order.status)) {
-      return res.status(400).json({ error: `Cannot mark ${order.status} order as paid` });
+    if (order.status === "cancelled" || order.paymentStatus === "refunded") {
+      return res.status(400).json({ error: `Cannot mark this order as paid (status: ${order.status}, payment: ${order.paymentStatus})` });
     }
 
     order.paymentStatus = "paid";

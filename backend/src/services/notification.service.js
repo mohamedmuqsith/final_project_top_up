@@ -59,7 +59,7 @@ export async function checkAndCreateInventoryNotifications(productIds = []) {
     // Only aggregate sales for the products we are checking to save db cost
     const matchQuery = {
       createdAt: { $gte: sevenDaysAgo },
-      "paymentResult.status": "succeeded",
+      paymentStatus: "paid",
       status: { $ne: "cancelled" },
     };
 

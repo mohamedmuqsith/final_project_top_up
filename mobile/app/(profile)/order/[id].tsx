@@ -65,8 +65,8 @@ export default function OrderDetailsScreen() {
   const deliveredEntry = getHistoryEntry("delivered");
   const cancelledEntry = getHistoryEntry("cancelled");
   const returnRequested = getHistoryEntry("return-requested") || getHistoryEntry("requested");
-  const returnApproved = getHistoryEntry("approved");
-  const deniedEntry = getHistoryEntry("denied");
+  const returnApproved = getHistoryEntry("return-approved") || getHistoryEntry("approved");
+  const deniedEntry = getHistoryEntry("return-denied") || getHistoryEntry("denied");
   const refundedEntry = getHistoryEntry("refunded");
 
   const isCancelled = order.status === "cancelled";
@@ -76,7 +76,7 @@ export default function OrderDetailsScreen() {
       label: "Pending", 
       date: pendingEntry?.timestamp || order.createdAt, 
       active: true, 
-      comment: pendingEntry?.comment || "Awaiting processing", 
+      comment: pendingEntry?.comment || "Order received", 
       isError: false, 
       isReturn: false 
     },
@@ -243,6 +243,7 @@ export default function OrderDetailsScreen() {
   
   const isReturnEligible = 
     order.status === "delivered" && 
+    order.paymentStatus === "paid" &&
     (!order.returnStatus || order.returnStatus === "none") &&
     (order.deliveredAt ? (new Date().getTime() - new Date(order.deliveredAt).getTime()) < 14 * 24 * 60 * 60 * 1000 : false);
 
@@ -306,13 +307,38 @@ export default function OrderDetailsScreen() {
         
         {/* Header Summary */}
         <View className="px-6 mt-6 mb-8 items-center">
-          <View 
-            className="px-4 py-2 rounded-full mb-3"
-            style={{ backgroundColor: getStatusColor(order.status) + "20" }}
-          >
-            <Text className="text-sm font-bold tracking-wide" style={{ color: getStatusColor(order.status) }}>
-              {capitalizeFirstLetter(order.status)}
-            </Text>
+          <View className="flex-row items-center gap-2 mb-2 flex-wrap">
+            <View 
+              className="px-4 py-2 rounded-full"
+              style={{ backgroundColor: getStatusColor(order.status) + "20" }}
+            >
+              <Text className="text-sm font-bold tracking-wide" style={{ color: getStatusColor(order.status) }}>
+                {capitalizeFirstLetter(order.status)}
+              </Text>
+            </View>
+            
+            <View 
+              className="px-4 py-2 rounded-full"
+              style={{ backgroundColor: getStatusColor(order.paymentStatus || "pending") + "20" }}
+            >
+              <Text className="text-sm font-bold tracking-wide" style={{ color: getStatusColor(order.paymentStatus || "pending") }}>
+                {order.paymentMethod === "cod" ? "COD" : "Online"} • {capitalizeFirstLetter(order.paymentStatus || "pending")}
+              </Text>
+            </View>
+            
+            {order.paymentStatus === "refunded" ? (
+              <View className="px-4 py-2 rounded-full bg-green-500/20">
+                <Text className="text-sm font-bold tracking-wide text-green-500">
+                  Refunded
+                </Text>
+              </View>
+            ) : order.returnStatus && order.returnStatus !== "none" ? (
+              <View className="px-4 py-2 rounded-full bg-amber-500/20">
+                <Text className="text-sm font-bold tracking-wide text-amber-500">
+                  Return: {capitalizeFirstLetter(order.returnStatus)}
+                </Text>
+              </View>
+            ) : null}
           </View>
           <Text className="text-text-primary text-3xl font-bold">${order.totalPrice.toFixed(2)}</Text>
           <Text className="text-text-secondary mt-1">Order #{order._id.slice(-8).toUpperCase()}</Text>
@@ -377,6 +403,39 @@ export default function OrderDetailsScreen() {
           </View>
         </View>
 
+        {/* Return Details */}
+        {order.returnStatus && order.returnStatus !== "none" && (
+          <View className="px-6 mb-8">
+            <Text className="text-text-primary font-bold text-lg mb-4">Return Details</Text>
+            <View className="bg-surface rounded-3xl p-5 border border-amber-500/30">
+              <View className="flex-row items-center mb-3">
+                <Ionicons name="refresh-circle" size={24} color="#FFC107" />
+                <Text className="text-amber-500 font-bold text-base ml-2">
+                  Status: {capitalizeFirstLetter(order.returnStatus)}
+                </Text>
+              </View>
+              {returnRequested && (
+                <View className="mb-2">
+                  <Text className="text-text-secondary text-xs uppercase tracking-wider mb-1">Requested On</Text>
+                  <Text className="text-text-primary font-medium">{formatDate(returnRequested.timestamp || new Date().toISOString())}</Text>
+                </View>
+              )}
+              {order.returnReason && (
+                <View className="mt-2">
+                  <Text className="text-text-secondary text-xs uppercase tracking-wider mb-1">Reason provided</Text>
+                  <Text className="text-text-primary font-medium italic">"{order.returnReason}"</Text>
+                </View>
+              )}
+              {order.returnNotes && (
+                <View className="mt-3 pt-3 border-t border-background/50">
+                  <Text className="text-text-secondary text-xs uppercase tracking-wider mb-1">Admin Notes</Text>
+                  <Text className="text-text-primary font-medium italic">"{order.returnNotes}"</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* Shipping Summary */}
         {order.shippingAddress && (
           <View className="px-6 mb-8">
@@ -403,6 +462,26 @@ export default function OrderDetailsScreen() {
           <Text className="text-text-primary font-bold text-lg mb-4">Payment Summary</Text>
           <View className="bg-surface rounded-3xl p-5">
             <View className="flex-row justify-between mb-3">
+              <Text className="text-text-secondary">Method</Text>
+              <Text className="text-text-primary font-bold">
+                {order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}
+              </Text>
+            </View>
+            <View className="flex-row justify-between mb-3">
+              <Text className="text-text-secondary">Payment Status</Text>
+              <View 
+                className="px-3 py-1 rounded-full"
+                style={{ backgroundColor: getStatusColor(order.paymentStatus || "pending") + "20" }}
+              >
+                <Text 
+                  className="text-xs font-bold" 
+                  style={{ color: getStatusColor(order.paymentStatus || "pending") }}
+                >
+                  {capitalizeFirstLetter(order.paymentStatus || "pending")}
+                </Text>
+              </View>
+            </View>
+            <View className="flex-row justify-between mb-3">
               <Text className="text-text-secondary">Subtotal</Text>
               <Text className="text-text-primary font-medium">
                 ${order.orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}
@@ -424,6 +503,7 @@ export default function OrderDetailsScreen() {
           <Text className="text-text-primary font-bold text-lg mb-4">Order Actions</Text>
           <View className="gap-4">
             {/* Primary Action: Reorder */}
+            {order.status !== "cancelled" && (
             <TouchableOpacity
               className="bg-[#00D9FF] rounded-2xl py-4 flex-row items-center justify-center shadow-lg shadow-[#00D9FF]/30"
               activeOpacity={0.7}
@@ -432,6 +512,7 @@ export default function OrderDetailsScreen() {
               <Ionicons name="refresh" size={22} color="#000000" />
               <Text className="text-[#000000] font-black text-base ml-2">Order Again</Text>
             </TouchableOpacity>
+            )}
 
             <View className="flex-row gap-3">
               {/* View Invoice */}
@@ -481,18 +562,7 @@ export default function OrderDetailsScreen() {
               </TouchableOpacity>
             )}
             
-            {/* Return Status Summary */}
-            {order.returnStatus && order.returnStatus !== 'none' && (
-              <View className="bg-surface-lighter rounded-2xl p-4 border border-text-primary/5 items-center flex-row justify-center">
-                <View 
-                  className="w-2 h-2 rounded-full mr-3" 
-                  style={{ backgroundColor: order.returnStatus === 'denied' ? "#FF6B6B" : "#FFC107" }} 
-                />
-                <Text className="text-text-secondary font-semibold text-sm">
-                  Return Status: <Text className="text-text-primary">{capitalizeFirstLetter(order.returnStatus)}</Text>
-                </Text>
-              </View>
-            )}
+
           </View>
         </View>
       </ScrollView>

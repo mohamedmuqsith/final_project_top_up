@@ -49,6 +49,7 @@ const STATUS_COLOR_MAP = {
   shipped: "badge-info",
   delivered: "badge-success",
   cancelled: "badge-error",
+  requested: "badge-warning text-warning-content",
   "return-requested": "badge-warning text-warning-content",
   approved: "badge-primary text-primary-content",
   refunded: "badge-success text-success-content",
@@ -240,6 +241,16 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
 
   const totalQuantity = order.orderItems.reduce((sum, item) => sum + item.quantity, 0);
 
+  const ALLOWED_TRANSITIONS = {
+    pending: ["processing", "cancelled"],
+    processing: ["shipped", "cancelled"],
+    shipped: ["delivered"],
+    delivered: [],
+    cancelled: [],
+  };
+  const validNextStatuses = ALLOWED_TRANSITIONS[order.status] || [];
+  const isTerminal = ["delivered", "cancelled"].includes(order.status);
+
   // Build a fixed logical sequence for the admin timeline
   const getHistoryEntry = (statusToFind) => 
     order.statusHistory?.find(h => h.status.toLowerCase() === statusToFind);
@@ -385,7 +396,7 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
                         </p>
                       </div>
                       
-                      {order.paymentMethod === "cod" && order.paymentStatus === "pending" && !["cancelled", "refunded"].includes(order.status) && (
+                      {order.paymentMethod === "cod" && order.paymentStatus === "pending" && order.status !== "cancelled" && (
                         <button 
                           className="btn btn-xs btn-primary mt-3 w-full rounded-lg"
                           onClick={() => onMarkAsPaid(order._id)}
@@ -434,7 +445,7 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
                           </div>
                           <div>
                             <p className="text-[10px] uppercase opacity-50 font-bold">Status</p>
-                            <div className={`badge ${STATUS_COLOR_MAP[order.returnStatus]} badge-xs font-bold`}>
+                            <div className={`badge ${STATUS_COLOR_MAP[order.returnStatus] || "badge-warning"} font-bold border-0`}>
                               {order.returnStatus.toUpperCase()}
                             </div>
                           </div>
@@ -764,7 +775,7 @@ function OrdersPage() {
         { label: "Items", accessor: (o) => o.orderItems.reduce((s, i) => s + i.quantity, 0) },
         { label: "Total Price", accessor: (o) => `$${o.totalPrice.toFixed(2)}` },
         { label: "Status", accessor: (o) => o.status },
-        { label: "Payment Status", accessor: (o) => o.paymentResult?.status || "" },
+        { label: "Payment Status", accessor: (o) => o.paymentStatus || "pending" },
         { label: "Date", accessor: (o) => formatDate(o.createdAt) },
       ],
       "orders_export.csv"
@@ -996,15 +1007,11 @@ function OrdersPage() {
                       pending: ["processing", "cancelled"],
                       processing: ["shipped", "cancelled"],
                       shipped: ["delivered"],
-                      delivered: ["return-requested"],
-                      "return-requested": ["approved", "denied"],
-                      approved: ["refunded"],
-                      refunded: [],
-                      denied: ["delivered"],
+                      delivered: [],
                       cancelled: [],
                     };
 
-                    const isTerminal = ["delivered", "refunded", "cancelled"].includes(order.status);
+                    const isTerminal = ["delivered", "cancelled"].includes(order.status);
                     const validNextStatuses = ALLOWED_TRANSITIONS[order.status] || [];
 
                     return (
@@ -1045,16 +1052,23 @@ function OrdersPage() {
 
                         <td>
                           {isTerminal ? (
-                            <div
-                              className={`badge badge-sm font-semibold py-3 px-4 border-0 ${
-                                order.status === "delivered"
-                                  ? "badge-success text-success-content"
-                                  : order.status === "cancelled" || order.status === "refunded"
-                                  ? "badge-error text-error-content"
-                                  : "badge-ghost"
-                              }`}
-                            >
-                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                            <div className="flex flex-col gap-1 items-start">
+                              <div
+                                className={`badge badge-sm font-semibold py-3 px-4 border-0 ${
+                                  order.status === "delivered"
+                                    ? "badge-success text-success-content"
+                                    : order.status === "cancelled"
+                                    ? "badge-error text-error-content"
+                                    : "badge-ghost"
+                                }`}
+                              >
+                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                              </div>
+                              {order.returnStatus !== "none" && (
+                                <div className={`badge badge-sm font-bold py-3 px-4 border-0 mt-1 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] ${STATUS_COLOR_MAP[order.returnStatus] || "badge-warning"}`}>
+                                  Return: {order.returnStatus.toUpperCase()}
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <select

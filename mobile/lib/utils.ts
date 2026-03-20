@@ -19,11 +19,14 @@ export const getStatusColor = (status: string) => {
       return "#F59E0B";
     case "cancelled":
     case "denied":
+    case "failed":
       return "#EF4444";
     case "requested":
       return "#F59E0B";
     case "approved":
       return "#00D9FF";
+    case "paid":
+      return "#10B981";
     case "refunded":
       return "#10B981";
     default:
