@@ -153,7 +153,7 @@ export const getTrendingProducts = async (req, res) => {
       {
         $match: {
           createdAt: { $gte: fourteenDaysAgo },
-          "paymentResult.status": "succeeded",
+          paymentStatus: "paid",
           status: { $ne: "cancelled" }
         }
       },

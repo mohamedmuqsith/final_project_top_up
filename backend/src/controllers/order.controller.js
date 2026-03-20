@@ -2,6 +2,8 @@ import { Order } from "../models/order.model.js";
 import { Product } from "../models/product.model.js";
 import { Review } from "../models/review.model.js";
 import { createNotification } from "../services/notification.service.js";
+import { OrderService } from "../services/order.service.js";
+import { InventoryService } from "../services/inventory.service.js";
 
 export async function createOrder(req, res) {
   try {
@@ -47,12 +49,12 @@ export async function createOrder(req, res) {
 
     const order = await Order.create(orderData);
 
-    // update product stock
-    for (const item of orderItems) {
-      await Product.findByIdAndUpdate(item.product._id, {
-        $inc: { stock: -item.quantity },
-      });
-    }
+    // Finalize the order using OrderService (handles stock and notifications)
+    await OrderService.finalizeOrder(order, {
+      paymentMethod: "online",
+      paymentStatus: "pending",
+      comment: "Order created and awaiting payment confirmation."
+    });
 
     res.status(201).json({ message: "Order created successfully", order });
   } catch (error) {

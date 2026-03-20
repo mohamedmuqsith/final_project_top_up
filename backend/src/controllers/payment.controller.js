@@ -6,6 +6,7 @@ import { Order } from "../models/order.model.js";
 import { Cart } from "../models/cart.model.js";
 import { createNotification, checkAndCreateInventoryNotifications } from "../services/notification.service.js";
 import { getEffectivePrice } from "../services/pricing.service.js";
+import { OrderService } from "../services/order.service.js";
 
 const stripe = new Stripe(ENV.STRIPE_SECRET_KEY);
 
@@ -141,77 +142,7 @@ export async function createPaymentIntent(req, res) {
   }
 }
 
-/**
- * Shared logic to finalize an order after payment success.
- * Uses an atomic lock to ensure it only runs once per order ID.
- */
-const finalizeOrder = async (orderId, paymentIntent) => {
-  console.log(`[FinalizeOrder] Attempting to finalize order ${orderId}`);
-  
-  // Use findOneAndUpdate with isFinalized: false as an atomic lock
-  const order = await Order.findOneAndUpdate(
-    { _id: orderId, isFinalized: false },
-    { 
-      $set: { 
-        isFinalized: true,
-        status: "pending",
-        paymentMethod: "online",
-        paymentStatus: "paid",
-        "paymentResult.id": paymentIntent.id,
-        "paymentResult.status": paymentIntent.status
-      } 
-    },
-    { new: true }
-  );
-
-  if (!order) {
-    console.log(`[FinalizeOrder] Order ${orderId} already finalized or not found.`);
-    return null;
-  }
-
-  // Stock reduction Logic
-  for (const item of order.orderItems) {
-    await Product.findByIdAndUpdate(item.product, {
-      $inc: { stock: -item.quantity },
-    });
-  }
-
-  // Record History
-  order.statusHistory.push({
-    status: "pending",
-    timestamp: new Date(),
-    comment: "Payment confirmed. Order is now pending fulfillment.",
-    changedByType: "system"
-  });
-  await order.save();
-
-  // Notifications
-  await createNotification({
-    recipientType: "customer",
-    recipientId: order.user.toString(),
-    title: "Order Placed Successfully",
-    message: `Your order for $${order.totalPrice.toFixed(2)} has been received and is currently pending.`,
-    type: "ORDER_PLACED",
-    entityId: order._id,
-    entityModel: "Order",
-  });
-
-  await createNotification({
-    recipientType: "admin",
-    title: "New Online Order",
-    message: `Payment confirmed for Order #${order._id.toString().slice(-6).toUpperCase()}.`,
-    type: "NEW_ORDER",
-    entityId: order._id,
-    entityModel: "Order",
-  });
-
-  // Inventory checks
-  const productIds = order.orderItems.map(item => item.product);
-  await checkAndCreateInventoryNotifications(productIds);
-
-  console.log(`[FinalizeOrder] Successfully finalized order ${orderId}`);
-  return order;
-};
+// Removed local finalizeOrder, now using OrderService.finalizeOrder
 
 // @desc    Confirm payment on server-side (Client-side fallback)
 // @route   POST /api/payment/confirm
@@ -235,12 +166,28 @@ export const confirmPayment = async (req, res) => {
       return res.status(400).json({ error: "Invalid payment intent metadata" });
     }
 
-    const order = await finalizeOrder(orderId, paymentIntent);
+    // Replaced local finalizeOrder with OrderService.finalizeOrder logic
+    const order = await Order.findOneAndUpdate(
+      { _id: orderId, isFinalized: false },
+      { 
+        $set: { 
+          // We don't set isFinalized here yet, OrderService.finalizeOrder will do it correctly
+          "paymentResult.id": paymentIntent.id,
+          "paymentResult.status": paymentIntent.status
+        } 
+      },
+      { new: true }
+    );
 
     if (order) {
+      await OrderService.finalizeOrder(order, {
+        paymentMethod: "online",
+        paymentStatus: "paid",
+        comment: "Payment confirmed via API. Order is now pending fulfillment."
+      });
       res.status(200).json({ message: "Order confirmed successfully", order });
     } else {
-      res.status(200).json({ message: "Order already processed" });
+      res.status(200).json({ message: "Order already processed or not found" });
     }
   } catch (error) {
     console.error("Error in confirmPayment:", error);
@@ -276,37 +223,12 @@ export const createCodOrder = async (req, res) => {
       }]
     });
 
-    // 3. Update stock (Atomic Reservation)
-    const productIds = [];
-    for (const item of validatedItems) {
-      productIds.push(item.product);
-      await Product.findByIdAndUpdate(item.product, {
-        $inc: { stock: -item.quantity },
-      });
-    }
-
-    // 4. Notifications
-    await createNotification({
-      recipientType: "customer",
-      recipientId: req.user._id.toString(),
-      title: "Order Placed (Cash on Delivery)",
-      message: "Your COD order has been received and is currently pending. Please have the amount ready at delivery.",
-      type: "ORDER_PLACED",
-      entityId: order._id,
-      entityModel: "Order",
+    // Simplified via OrderService.finalizeOrder
+    await OrderService.finalizeOrder(order, {
+      paymentMethod: "cod",
+      paymentStatus: "pending",
+      comment: "Order placed using Cash on Delivery (COD). Currently pending."
     });
-
-    await createNotification({
-      recipientType: "admin",
-      title: "New COD Order",
-      message: `A new COD order (#${order._id.toString().slice(-6).toUpperCase()}) was placed and is awaiting payment collection.`,
-      type: "NEW_ORDER",
-      entityId: order._id,
-      entityModel: "Order",
-    });
-
-    // 5. Inventory checks
-    await checkAndCreateInventoryNotifications(productIds);
 
     res.status(201).json({ message: "COD Order created successfully", order });
   } catch (error) {
@@ -350,7 +272,7 @@ export const markAsPaid = async (req, res) => {
 
     await order.save();
 
-    // Notify customer
+    // Notify customer using standardized enum PAYMENT_CONFIRMED
     await createNotification({
       recipientType: "customer",
       recipientId: order.user.toString(),
@@ -386,7 +308,24 @@ export async function handleWebhook(req, res) {
     try {
       const { orderId } = paymentIntent.metadata;
       if (orderId) {
-        await finalizeOrder(orderId, paymentIntent);
+        // Find and finalize using OrderService
+        const order = await Order.findOneAndUpdate(
+          { _id: orderId, isFinalized: false },
+          { 
+            $set: { 
+              "paymentResult.id": paymentIntent.id,
+              "paymentResult.status": paymentIntent.status
+            } 
+          },
+          { new: true }
+        );
+        if (order) {
+          await OrderService.finalizeOrder(order, {
+            paymentMethod: "online",
+            paymentStatus: "paid",
+            comment: "Payment confirmed via Stripe Webhook."
+          });
+        }
       } else {
         console.error("[Webhook] Missing orderId in metadata for PI:", paymentIntent.id);
       }
@@ -398,16 +337,17 @@ export async function handleWebhook(req, res) {
     const { userId, orderId } = paymentIntent.metadata;
     console.log(`[Webhook] Payment failed event: ${paymentIntent.id}`);
     
-    // Mark Order as Cancelled if it exists
+    // Mark Order as Cancelled and RESTORE STOCK via OrderService
     if (orderId) {
       try {
-        await Order.findByIdAndUpdate(orderId, { 
-          status: "cancelled",
-          paymentStatus: "failed",
-          "paymentResult.id": paymentIntent.id,
-          "paymentResult.status": "failed"
-        });
-        console.log(`[Webhook] Order ${orderId} marked as cancelled.`);
+        const order = await Order.findById(orderId);
+        if (order) {
+          await OrderService.cancelOrder(order, {
+            actorType: "system",
+            comment: "Order cancelled automatically due to failed payment."
+          });
+          console.log(`[Webhook] Order ${orderId} cancelled and stock restored.`);
+        }
       } catch (err) {
         console.error("Error cancelling order on payment failure:", err);
       }
