@@ -101,6 +101,10 @@ export const inventoryApi = {
     const { data } = await axiosInstance.get("/admin/alerts");
     return data;
   },
+  getHistory: async (productId) => {
+    const { data } = await axiosInstance.get(`/admin/products/${productId}/history`);
+    return data;
+  },
 };
 
 export const salesReportApi = {

@@ -15,6 +15,7 @@ router.use(protectRoute, adminOnly);
 
 router.post("/products", upload.array("images", 3), ProductAdmin.createProduct);
 router.get("/products", ProductAdmin.getAllProducts);
+router.get("/products/:id/history", ProductAdmin.getInventoryHistory);
 router.put("/products/:id", upload.array("images", 3), ProductAdmin.updateProduct);
 router.delete("/products/:id", ProductAdmin.deleteProduct);
 
@@ -32,7 +33,7 @@ router.get("/stats", ReportAdmin.getDashboardStats);
 router.get("/alerts", ProductAdmin.getInventoryAlerts);
 router.get("/sales-report", ReportAdmin.getSalesReport);
 router.get("/inventory-report", ReportAdmin.getInventoryReport);
-router.get("/restock-suggestions", ReportAdmin.getRestockSuggestions);
+router.get("/restock-suggestions", ProductAdmin.getRestockSuggestions);
 
 // Review management
 router.get("/reviews", ReviewAdmin.getAdminReviews);
