@@ -49,12 +49,8 @@ export async function createOrder(req, res) {
 
     const order = await Order.create(orderData);
 
-    // Finalize the order using OrderService (handles stock and notifications)
-    await OrderService.finalizeOrder(order, {
-      paymentMethod: "online",
-      paymentStatus: "pending",
-      comment: "Order created and awaiting payment confirmation."
-    });
+    // Note: Online orders are finalized via confirmPayment or Stripe Webhook
+    // once payment succeeds. We don't deduct stock here to prevent ghost deductions.
 
     res.status(201).json({ message: "Order created successfully", order });
   } catch (error) {

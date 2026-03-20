@@ -1,6 +1,8 @@
 import { Product } from "../../models/product.model.js";
+import { Order } from "../../models/order.model.js";
 import cloudinary from "../../config/cloudinary.js";
 import { checkAndCreateInventoryNotifications } from "../../services/notification.service.js";
+import { InventoryHistory } from "../../models/inventoryHistory.model.js";
 
 // @desc    Create a product
 // @route   POST /api/admin/products
@@ -31,6 +33,20 @@ export const createProduct = async (req, res) => {
       discountPrice
     });
 
+    // Log Initial Inventory
+    if (product.stock > 0) {
+      await InventoryHistory.create({
+        product: product._id,
+        actionType: "manual_adjustment",
+        quantityDelta: product.stock,
+        previousStock: 0,
+        newStock: product.stock,
+        reason: "Initial stock on product creation",
+        changedBy: req.user?._id,
+        changedByType: "admin"
+      });
+    }
+
     res.status(201).json(product);
   } catch (error) {
     console.error("Error in createProduct:", error);
@@ -58,10 +74,23 @@ export const updateProduct = async (req, res) => {
       updateData.images = [...(product.images || []), ...newImages];
     }
 
+    const oldStock = product.stock;
     const updatedProduct = await Product.findByIdAndUpdate(id, updateData, { new: true });
     
-    // Check for low stock after update
-    if (updateData.stock !== undefined) {
+    // Log Manual Adjustment if stock changed
+    if (updateData.stock !== undefined && updateData.stock !== oldStock) {
+      await InventoryHistory.create({
+        product: updatedProduct._id,
+        actionType: "manual_adjustment",
+        quantityDelta: updatedProduct.stock - oldStock,
+        previousStock: oldStock,
+        newStock: updatedProduct.stock,
+        reason: "Manual stock adjustment via Admin Panel",
+        changedBy: req.user?._id,
+        changedByType: "admin"
+      });
+
+      // Check for low stock after update
       await checkAndCreateInventoryNotifications([id]);
     }
 
@@ -106,8 +135,8 @@ export const getAllProducts = async (req, res) => {
     if (category && category !== "All") query.category = category;
 
     if (stockStatus && stockStatus !== "all") {
-      if (stockStatus === "in-stock") query.stock = { $gt: 10 };
-      if (stockStatus === "low-stock") query.stock = { $gt: 0, $lte: 10 };
+      if (stockStatus === "in-stock") query.$expr = { $gt: ["$stock", "$lowStockThreshold"] };
+      if (stockStatus === "low-stock") query.$expr = { $and: [{ $gt: ["$stock", 0] }, { $lte: ["$stock", "$lowStockThreshold"] }] };
       if (stockStatus === "out-of-stock") query.stock = { $lte: 0 };
     }
 
@@ -132,17 +161,234 @@ export const getAllProducts = async (req, res) => {
   }
 };
 
-// @desc    Get inventory alerts
+// @desc    Get inventory history for a product or all
+// @route   GET /api/admin/products/:id/history
+export const getInventoryHistory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limit = 50 } = req.query;
+
+    const query = id === "all" ? {} : { product: id };
+    
+    const history = await InventoryHistory.find(query)
+      .populate("product", "name images")
+      .populate("changedBy", "name")
+      .sort({ createdAt: -1 })
+      .limit(Number(limit));
+
+    res.status(200).json(history);
+  } catch (error) {
+    console.error("Error in getInventoryHistory:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// @desc    Get inventory alerts (using per-product threshold)
 // @route   GET /api/admin/alerts
 export const getInventoryAlerts = async (req, res) => {
   try {
-    const lowStockProducts = await Product.find({
-      $expr: { $lte: ["$stock", "$lowStockThreshold"] }
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // 1. Calculate sales velocity from last 30 days (paid, non-cancelled)
+    // Using correct orderItem field: product (from Phase 9 fix)
+    const velocityAgg = await Order.aggregate([
+      { 
+        $match: { 
+          createdAt: { $gte: thirtyDaysAgo }, 
+          status: { $ne: "cancelled" }
+        } 
+      },
+      { $unwind: "$orderItems" },
+      { 
+        $group: { 
+          _id: "$orderItems.product", 
+          unitsSold: { $sum: "$orderItems.quantity" } 
+        } 
+      }
+    ]);
+
+    const velocityMap = new Map(velocityAgg.map(v => [v._id.toString(), v.unitsSold]));
+
+    // 2. Fetch products that are either objectively low stock OR have sales
+    // We fetch all products with stock <= threshold OR velocity > 0 to check predictions
+    const products = await Product.find({
+      $or: [
+        { $expr: { $lte: ["$stock", "$lowStockThreshold"] } },
+        { _id: { $in: Array.from(velocityMap.keys()) } }
+      ]
     }).select("name stock lowStockThreshold images category");
 
-    res.status(200).json(lowStockProducts);
+    // 3. Normalize and enrich alerts
+    const alerts = products.map(product => {
+      const unitsSold30d = velocityMap.get(product._id.toString()) || 0;
+      const avgDailySales = unitsSold30d / 30;
+      
+      let daysRemaining = Infinity;
+      if (avgDailySales > 0) {
+        daysRemaining = Math.floor(product.stock / avgDailySales);
+      }
+
+      const threshold = product.lowStockThreshold || 10;
+      let type = "";
+      let severity = "";
+
+      // Logic: Out of Stock (0) > Low Stock (<= threshold) > Predicted Stockout (velocity indicates depletion)
+      if (product.stock <= 0) {
+        type = "Out of Stock";
+        severity = "Critical";
+      } else if (product.stock <= threshold) {
+        type = "Low Stock";
+        severity = "High";
+      } else if (daysRemaining <= 14) {
+        type = "Predicted Stockout";
+        severity = daysRemaining <= 7 ? "High" : "Medium";
+      } else {
+        // Not actually an alert if stock is high and velocity is low
+        return null;
+      }
+
+      return {
+        _id: `alert-${product._id}`, // unique id for frontend
+        productId: product._id,
+        productName: product.name,
+        image: product.images?.[0] || "/placeholder.jpg",
+        type,
+        severity,
+        currentStock: product.stock,
+        threshold,
+        avgDailySales: parseFloat(avgDailySales.toFixed(2)),
+        daysRemaining: daysRemaining === Infinity ? "N/A" : daysRemaining,
+        category: product.category
+      };
+    }).filter(a => a !== null);
+
+    // Sort: Critical first, then High, then Medium
+    const severityOrder = { "Critical": 0, "High": 1, "Medium": 2 };
+    alerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+
+    res.status(200).json(alerts);
   } catch (error) {
     console.error("Error in getInventoryAlerts:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// @desc    Get restock suggestions (using predictive velocity)
+// @route   GET /api/admin/restock-suggestions
+export const getRestockSuggestions = async (req, res) => {
+  try {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // 1. Calculate sales velocity (paid, non-cancelled)
+    // Using correct orderItem field: product (from Phase 9 fix)
+    const velocityAgg = await Order.aggregate([
+      { 
+        $match: { 
+          createdAt: { $gte: thirtyDaysAgo }, 
+          status: { $ne: "cancelled" }
+        } 
+      },
+      { $unwind: "$orderItems" },
+      { 
+        $group: { 
+          _id: "$orderItems.product", 
+          unitsSold: { $sum: "$orderItems.quantity" } 
+        } 
+      }
+    ]);
+
+    const velocityMap = new Map(velocityAgg.map(v => [v._id.toString(), v.unitsSold]));
+
+    // 2. Fetch products that might need restocking 
+    // (stock <= lowStockThreshold OR high velocity products)
+    const products = await Product.find({
+      $or: [
+        { $expr: { $lte: ["$stock", "$lowStockThreshold"] } },
+        { _id: { $in: Array.from(velocityMap.keys()) } }
+      ]
+    }).select("name stock lowStockThreshold images category price");
+
+    let criticalCount = 0;
+    let highCount = 0;
+    let mediumCount = 0;
+    let totalEstimatedCost = 0;
+
+    const suggestions = products.map(product => {
+      const unitsSold30d = velocityMap.get(product._id.toString()) || 0;
+      const avgDailySales = unitsSold30d / 30;
+      
+      let daysRemaining = Infinity;
+      if (avgDailySales > 0) {
+        daysRemaining = Math.floor(product.stock / avgDailySales);
+      }
+
+      const threshold = product.lowStockThreshold || 10;
+      let priority = "";
+
+      // Priority Logic: Critical (0 stock or <= 3 days) > High (<= threshold or <= 7 days) > Medium (<= 14 days)
+      if (product.stock <= 0 || daysRemaining <= 3) {
+        priority = "Critical";
+        criticalCount++;
+      } else if (product.stock <= threshold || daysRemaining <= 7) {
+        priority = "High";
+        highCount++;
+      } else if (daysRemaining <= 14 || product.stock <= threshold * 1.5) {
+        priority = "Medium";
+        mediumCount++;
+      } else {
+        // Not a suggestion priority
+        return null;
+      }
+
+      // Restock Quantity Logic: Aim for 30-day buffer
+      // If no sales but stock is 0, suggest a baseline restock
+      let suggestedRestockQty = Math.ceil(avgDailySales * 30);
+      if (suggestedRestockQty < 10) suggestedRestockQty = Math.max(10, threshold * 2);
+      
+      // Adjust to current stock
+      suggestedRestockQty = Math.max(0, suggestedRestockQty - product.stock);
+      
+      // If we don't actually need to restock (qty 0), but it was marked priority? 
+      // Force at least some restock if priority is Critical/High
+      if (suggestedRestockQty === 0 && (priority === "Critical" || priority === "High")) {
+        suggestedRestockQty = Math.max(5, threshold);
+      }
+
+      const estimatedRestockCost = suggestedRestockQty * product.price;
+      totalEstimatedCost += estimatedRestockCost;
+
+      return {
+        _id: product._id,
+        name: product.name,
+        image: product.images?.[0] || "/placeholder.jpg",
+        category: product.category,
+        currentStock: product.stock,
+        avgDailySales: parseFloat(avgDailySales.toFixed(2)),
+        daysRemaining: daysRemaining === Infinity ? "N/A" : daysRemaining,
+        priority,
+        suggestedRestockQty,
+        estimatedRestockCost: parseFloat(estimatedRestockCost.toFixed(2))
+      };
+    }).filter(s => s !== null);
+
+    // Sort: Critical -> High -> Medium
+    const priorityOrder = { "Critical": 0, "High": 1, "Medium": 2 };
+    suggestions.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+
+    res.status(200).json({
+      summary: {
+        critical: criticalCount,
+        high: highCount,
+        medium: mediumCount,
+        total: suggestions.length,
+        totalEstimatedCost: parseFloat(totalEstimatedCost.toFixed(2))
+      },
+      suggestions
+    });
+  } catch (error) {
+    console.error("Error in getRestockSuggestions:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };

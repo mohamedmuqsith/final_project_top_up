@@ -160,7 +160,8 @@ export const handleReturnRequest = async (req, res) => {
 
     if (action === "approve") {
       order.returnStatus = "approved";
-      order.status = "returned";
+      // order.status remains "delivered" or its current valid state per schema enums.
+      // Return workflow is tracked via returnStatus.
       
       // Restore stock when return is approved (items are back)
       await InventoryService.restoreStock(order);
@@ -170,6 +171,8 @@ export const handleReturnRequest = async (req, res) => {
       return res.status(400).json({ error: "Invalid action. Use 'approve' or 'deny'." });
     }
 
+    order.returnNotes = adminComment;
+    
     order.statusHistory.push({
       status: order.status,
       oldStatus: "delivered",

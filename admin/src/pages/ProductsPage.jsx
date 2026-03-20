@@ -9,10 +9,15 @@ import {
   PackageIcon,
   BoxesIcon,
   AlertTriangleIcon,
+  HistoryIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+  ClockIcon,
+  RefreshCcwIcon,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { productApi } from "../lib/api";
-import { getStockStatusBadge } from "../lib/utils";
+import { productApi, inventoryApi } from "../lib/api";
+import { getStockStatusBadge, formatDate } from "../lib/utils";
 
 const CATEGORIES = [
   "Smartphones", "Laptops", "Tablets", "Audio", "Headphones",
@@ -20,8 +25,73 @@ const CATEGORIES = [
   "Cameras", "Storage", "Networking", "Monitors", "Computer Components"
 ];
 
+function HistoryModal({ productId, onClose }) {
+  const { data: history = [], isLoading } = useQuery({
+    queryKey: ["inventory-history", productId],
+    queryFn: () => inventoryApi.getHistory(productId),
+    enabled: !!productId,
+  });
+
+  if (!productId) return null;
+
+  return (
+    <div className="modal modal-open">
+      <div className="modal-box max-w-2xl rounded-4xl bg-base-100 p-0 overflow-hidden shadow-2xl">
+        <div className="bg-linear-to-r from-primary/10 to-transparent px-6 py-5 border-b border-base-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <HistoryIcon className="size-5" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black tracking-tight">Stock Movement History</h3>
+                <p className="text-xs text-base-content/50">Audit trail for this product</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="btn btn-sm btn-circle btn-ghost"><XIcon /></button>
+          </div>
+        </div>
+
+        <div className="p-6 max-h-[60vh] overflow-y-auto">
+          {isLoading ? (
+            <div className="flex justify-center py-10"><span className="loading loading-spinner text-primary"></span></div>
+          ) : history.length === 0 ? (
+            <div className="text-center py-10 text-base-content/40">No movements recorded yet</div>
+          ) : (
+            <div className="space-y-4">
+              {history.map((item) => (
+                <div key={item._id} className="flex gap-4 items-start p-4 rounded-2xl bg-base-200/40 border border-base-200/60">
+                  <div className={`mt-1 size-8 rounded-full flex items-center justify-center shrink-0 ${
+                    item.quantityDelta > 0 ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
+                  }`}>
+                    {item.quantityDelta > 0 ? <ArrowUpIcon className="size-4" /> : <ArrowDownIcon className="size-4" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start gap-2">
+                      <p className="font-bold text-sm capitalize">{item.actionType.replace('_', ' ')}</p>
+                      <span className="text-[10px] font-mono whitespace-nowrap opacity-40">{formatDate(item.createdAt)}</span>
+                    </div>
+                    <p className="text-xs text-base-content/60 mt-1">{item.reason || "No reason provided"}</p>
+                    <div className="mt-3 flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider">
+                      <div className="px-2 py-0.5 rounded bg-base-300">Delta: {item.quantityDelta > 0 ? '+' : ''}{item.quantityDelta}</div>
+                      <div className="px-2 py-0.5 rounded bg-base-300">New Stock: {item.newStock}</div>
+                      {item.changedBy?.name && <div className="text-primary italic">By: {item.changedBy.name}</div>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="modal-backdrop bg-base-content/20 backdrop-blur-sm" onClick={onClose}></div>
+    </div>
+  );
+}
+
 function ProductsPage() {
   const [showModal, setShowModal] = useState(false);
+  const [historyProductId, setHistoryProductId] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -42,6 +112,12 @@ function ProductsPage() {
 
   const queryClient = useQueryClient();
 
+  // Low Stock Alerts Query
+  const { data: alerts = [] } = useQuery({
+    queryKey: ["inventory-alerts"],
+    queryFn: inventoryApi.getAlerts,
+  });
+
   const { data: products = [] } = useQuery({
     queryKey: ["products", filterCategory, filterStock, minPrice, maxPrice],
     queryFn: () => productApi.getAll({
@@ -57,6 +133,7 @@ function ProductsPage() {
     onSuccess: () => {
       closeModal();
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-alerts"] });
     },
   });
 
@@ -65,6 +142,7 @@ function ProductsPage() {
     onSuccess: () => {
       closeModal();
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-alerts"] });
     },
   });
 
@@ -73,6 +151,7 @@ function ProductsPage() {
     onSuccess: () => {
       closeModal();
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-alerts"] });
     },
   });
 
@@ -156,8 +235,6 @@ function ProductsPage() {
       !product.name.toLowerCase().includes(searchQuery.toLowerCase())
     )
       return false;
-    // Note: Backend handles category, stockStatus, minPrice, maxPrice.
-    // We only filter by searchQuery on the client for instant UX.
     return true;
   });
 
@@ -169,9 +246,20 @@ function ProductsPage() {
 
         <div className="relative flex flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary">
-              <PackageIcon className="size-4" />
-              Inventory Manager
+            <div className="mb-3 flex items-center gap-2">
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary">
+                <PackageIcon className="size-4" />
+                Inventory Manager
+              </div>
+              {alerts.length > 0 && (
+                <div 
+                  className="inline-flex items-center gap-2 rounded-full bg-error/10 px-4 py-1.5 text-xs font-bold text-error animate-pulse cursor-pointer"
+                  onClick={() => setFilterStock("Low Stock")}
+                >
+                  <AlertTriangleIcon className="size-4" />
+                  {alerts.length} Low Stock Alerts
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-3">
@@ -346,6 +434,14 @@ function ProductsPage() {
                     </div>
 
                     <div className="flex lg:flex-col gap-2 lg:items-end">
+                      <button
+                        className="btn btn-square btn-ghost btn-sm text-primary hover:bg-primary/10 rounded-xl"
+                        onClick={() => setHistoryProductId(product._id)}
+                        title="Movement History"
+                      >
+                        <HistoryIcon className="w-5 h-5" />
+                      </button>
+
                       <button
                         className="btn btn-square btn-ghost btn-sm text-info hover:bg-info/10 rounded-xl"
                         onClick={() => handleEdit(product)}
@@ -661,8 +757,13 @@ function ProductsPage() {
           </div>
         </div>
       </div>
+
+      <HistoryModal 
+        productId={historyProductId} 
+        onClose={() => setHistoryProductId(null)} 
+      />
     </div>
   );
 }
 
-export default ProductsPage;
+export default ProductsPage;

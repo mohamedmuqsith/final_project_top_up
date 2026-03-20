@@ -214,7 +214,6 @@ export const createCodOrder = async (req, res) => {
       paymentMethod: "cod",
       paymentStatus: "pending",
       status: "pending",
-      isFinalized: true,
       statusHistory: [{
         status: "pending",
         timestamp: new Date(),
