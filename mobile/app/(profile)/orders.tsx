@@ -153,6 +153,17 @@ function OrdersScreen() {
                             {capitalizeFirstLetter(order.status)}
                           </Text>
                         </View>
+                        <View
+                          className="self-start px-3 py-1.5 rounded-full"
+                          style={{ backgroundColor: getStatusColor(order.paymentStatus || "pending") + "20" }}
+                        >
+                          <Text
+                            className="text-xs font-bold"
+                            style={{ color: getStatusColor(order.paymentStatus || "pending") }}
+                          >
+                            {order.paymentMethod === "cod" ? "COD" : "Online"} • {capitalizeFirstLetter(order.paymentStatus || "pending")}
+                          </Text>
+                        </View>
                         {order.returnStatus && order.returnStatus !== "none" && (
                           <View
                             className="self-start px-3 py-1.5 rounded-full"

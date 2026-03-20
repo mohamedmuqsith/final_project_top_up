@@ -172,19 +172,22 @@ export async function getAllOrders(req, res) {
     const { status, startDate, endDate, minPrice, maxPrice, category, stockStatus } = req.query;
     const query = {};
 
+    // 1. Status Filter
     if (status && status !== "All") {
-      query.status = status.toLowerCase();
+      const lowerStatus = status.toLowerCase();
+      // Map frontend return/refund filters to the correct DB fields
+      if (lowerStatus === "return-requested") {
+        query.returnStatus = "requested";
+      } else if (["approved", "denied"].includes(lowerStatus)) {
+        query.returnStatus = lowerStatus;
+      } else if (lowerStatus === "refunded") {
+        query.paymentStatus = "refunded";
+      } else {
+        query.status = lowerStatus;
+      }
     }
 
-    if (category && category !== "All") {
-      query.category = category;
-    }
-
-    if (stockStatus) {
-      if (stockStatus === "Out of Stock") query.stock = 0;
-      if (stockStatus === "Low Stock") query.stock = { $gt: 0, $lte: 10 }; // Default threshold
-      if (stockStatus === "In Stock") query.stock = { $gt: 10 };
-    }
+    // Note: category and stockStatus are product-level filters, not applicable to orders
 
     if (startDate || endDate) {
       query.createdAt = {};
@@ -395,7 +398,7 @@ export async function handleReturnRequest(req, res) {
     order.returnStatus = newReturnStatus;
     
     order.statusHistory.push({
-      status: order.status,
+      status: `return-${newReturnStatus}`,
       timestamp: new Date(),
       comment: `Admin ${newReturnStatus} the return request.`,
       changedBy: req.user._id,
@@ -1166,7 +1169,7 @@ export async function getSalesReport(req, res) {
     // 3. Top products & Best performing category
     const revenueMatchStage = {
       createdAt: { $gte: currentStartDate },
-      "paymentResult.status": "succeeded",
+      paymentStatus: "paid",
       status: { $ne: "cancelled" },
     };
 
@@ -1362,7 +1365,7 @@ export async function getRestockSuggestions(req, res) {
       {
         $match: {
           createdAt: { $gte: thirtyDaysAgo },
-          "paymentResult.status": "succeeded",
+          paymentStatus: "paid",
           status: { $ne: "cancelled" },
         },
       },
