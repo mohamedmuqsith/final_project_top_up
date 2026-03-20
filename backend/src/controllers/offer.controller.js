@@ -4,9 +4,29 @@ import { Offer } from "../models/offer.model.js";
 
 export const createOffer = async (req, res) => {
   try {
-    const { appliesTo, category, productId } = req.body;
+    const { title, type, value, appliesTo, category, productId, startDate, endDate } = req.body;
 
-    // Validation
+    // Basic required fields
+    if (!title || !type || value === undefined || !appliesTo || !startDate || !endDate) {
+      return res.status(400).json({ error: "All required fields must be provided" });
+    }
+
+    // Date validation
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (end <= start) {
+      return res.status(400).json({ error: "End date must be after start date" });
+    }
+
+    // Value validation
+    if (value < 0) {
+      return res.status(400).json({ error: "Discount value cannot be negative" });
+    }
+    if (type === "percentage" && value > 100) {
+      return res.status(400).json({ error: "Percentage discount cannot exceed 100%" });
+    }
+
+    // Target validation
     if (appliesTo === "category" && !category) {
       return res.status(400).json({ error: "Category is required for category-specific offers" });
     }
@@ -15,16 +35,17 @@ export const createOffer = async (req, res) => {
     }
 
     // Clean up irrelevant fields
+    const newOfferData = { ...req.body };
     if (appliesTo === "all") {
-      req.body.category = undefined;
-      req.body.productId = undefined;
+      newOfferData.category = undefined;
+      newOfferData.productId = undefined;
     } else if (appliesTo === "category") {
-      req.body.productId = undefined;
+      newOfferData.productId = undefined;
     } else if (appliesTo === "product") {
-      req.body.category = undefined;
+      newOfferData.category = undefined;
     }
 
-    const offer = await Offer.create(req.body);
+    const offer = await Offer.create(newOfferData);
     res.status(201).json({ message: "Offer created successfully", offer });
   } catch (error) {
     console.error("Error in createOffer:", error);
@@ -66,9 +87,25 @@ export const getOffers = async (req, res) => {
 export const updateOffer = async (req, res) => {
   try {
     const { id } = req.params;
-    const { appliesTo, category, productId } = req.body;
+    const { title, type, value, appliesTo, category, productId, startDate, endDate } = req.body;
 
-    // Validation
+    // Basic validation if fields are provided
+    if (endDate && startDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (end <= start) {
+        return res.status(400).json({ error: "End date must be after start date" });
+      }
+    }
+
+    if (value !== undefined && value < 0) {
+      return res.status(400).json({ error: "Discount value cannot be negative" });
+    }
+    if (type === "percentage" && value > 100) {
+      return res.status(400).json({ error: "Percentage discount cannot exceed 100%" });
+    }
+
+    // Target validation
     if (appliesTo === "category" && !category) {
       return res.status(400).json({ error: "Category is required for category-specific offers" });
     }

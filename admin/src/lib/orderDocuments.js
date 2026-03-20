@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { formatCurrency } from "./currencyUtils";
 
 // ─── Shared Helpers ───────────────────────────────────────────────
 
@@ -23,8 +24,8 @@ function fmtDate(dateStr) {
   });
 }
 
-function fmtCurrency(amount) {
-  return `$${Number(amount || 0).toFixed(2)}`;
+function fmtCurrency(amount, currency = "USD") {
+  return formatCurrency(amount, currency);
 }
 
 function addFooter(doc) {
@@ -44,7 +45,7 @@ function addFooter(doc) {
 
 // ─── 1. INVOICE ───────────────────────────────────────────────────
 
-export function generateInvoice(data) {
+export function generateInvoice(data, currency = "USD") {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.width;
   let y = 16;
@@ -116,8 +117,8 @@ export function generateInvoice(data) {
     i + 1,
     item.name,
     item.quantity,
-    fmtCurrency(item.unitPrice),
-    fmtCurrency(item.subtotal),
+    fmtCurrency(item.unitPrice, currency),
+    fmtCurrency(item.subtotal, currency),
   ]);
 
   autoTable(doc, {
@@ -155,19 +156,19 @@ export function generateInvoice(data) {
     y += 6;
   };
 
-  drawTotalLine("Subtotal", fmtCurrency(data.pricing.subtotal));
+  drawTotalLine("Subtotal", fmtCurrency(data.pricing.subtotal, currency));
   if (data.pricing.shipping > 0) {
-    drawTotalLine("Shipping", fmtCurrency(data.pricing.shipping));
+    drawTotalLine("Shipping", fmtCurrency(data.pricing.shipping, currency));
   }
   if (data.pricing.tax > 0) {
-    drawTotalLine("Tax", fmtCurrency(data.pricing.tax));
+    drawTotalLine("Tax", fmtCurrency(data.pricing.tax, currency));
   }
 
   // Bold total line
   y += 2;
   doc.setDrawColor(...COLORS.dark);
   doc.line(totalsX, y - 4, pw - 14, y - 4);
-  drawTotalLine("TOTAL", fmtCurrency(data.pricing.total), true);
+  drawTotalLine("TOTAL", fmtCurrency(data.pricing.total, currency), true);
 
   // ── Footer ──
   addFooter(doc);

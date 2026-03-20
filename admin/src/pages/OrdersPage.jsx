@@ -5,6 +5,8 @@ import { formatDate, capitalizeText } from "../lib/utils";
 import { exportToCSV, exportToPDF } from "../lib/exportUtils";
 import { generateInvoice, generatePackingSlip, generateShippingLabel } from "../lib/orderDocuments";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCurrency } from "../components/CurrencyProvider";
+import { formatCurrency } from "../lib/currencyUtils";
 import { useSearchParams } from "react-router-dom";
 import {
   XIcon,
@@ -71,6 +73,7 @@ const DOC_AVAILABILITY = {
 };
 
 function DocumentActions({ order, variant = "row" }) {
+  const { currency } = useCurrency();
   const [loading, setLoading] = useState(null);
   const status = order?.status;
 
@@ -84,7 +87,7 @@ function DocumentActions({ order, variant = "row" }) {
     setLoading(type);
     try {
       const data = await orderApi.getDocumentData(order._id, type);
-      if (type === "invoice") generateInvoice(data);
+      if (type === "invoice") generateInvoice(data, currency);
       else if (type === "packing-slip") generatePackingSlip(data);
       else if (type === "shipping-label") generateShippingLabel(data);
     } catch (err) {
@@ -237,6 +240,7 @@ function CodDeliveryModal({ order, isOpen, onClose, onConfirm, isPending }) {
 }
 
 function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpdatingStatus, onApproveReturn, onDenyReturn, onRefund, isRefunding }) {
+  const { currency } = useCurrency();
   if (!order) return null;
 
   const totalQuantity = order.orderItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -427,7 +431,7 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
                         <p className="text-xs uppercase font-bold tracking-wide">Total</p>
                       </div>
                       <p className="text-xl font-black text-primary">
-                        ${order.totalPrice.toFixed(2)}
+                        {formatCurrency(order.totalPrice, currency)}
                       </p>
                       <p className="text-xs text-base-content/50 mt-1">Final order amount</p>
                     </div>
@@ -529,12 +533,12 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-sm truncate">{item.name}</p>
                           <p className="text-xs opacity-50 mt-1">
-                            Qty: {item.quantity} × ${item.price}
+                            Qty: {item.quantity} × {formatCurrency(item.price, currency)}
                           </p>
                         </div>
 
                         <p className="font-bold text-sm whitespace-nowrap">
-                          ${(item.price * item.quantity).toFixed(2)}
+                          {formatCurrency(item.price * item.quantity, currency)}
                         </p>
                       </div>
                     ))}
@@ -649,6 +653,7 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
 }
 
 function OrdersPage() {
+  const { currency } = useCurrency();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -773,7 +778,7 @@ function OrdersPage() {
         { label: "Order ID", accessor: (o) => o._id },
         { label: "Customer", accessor: (o) => o.shippingAddress?.fullName || "" },
         { label: "Items", accessor: (o) => o.orderItems.reduce((s, i) => s + i.quantity, 0) },
-        { label: "Total Price", accessor: (o) => `$${o.totalPrice.toFixed(2)}` },
+        { label: `Total (${currency})`, accessor: (o) => formatCurrency(o.totalPrice, currency) },
         { label: "Status", accessor: (o) => o.status },
         { label: "Payment Status", accessor: (o) => o.paymentStatus || "pending" },
         { label: "Date", accessor: (o) => formatDate(o.createdAt) },
@@ -788,15 +793,15 @@ function OrdersPage() {
       subtitle: `Filtered Status: ${filterStatus} | Date: ${new Date().toLocaleDateString()}`,
       summary: {
         "Total Count": filtered.length,
-        "Total Revenue": `$${filtered.reduce((sum, o) => sum + (o.status !== "cancelled" ? o.totalPrice : 0), 0).toLocaleString()}`,
-        "Avg Order Value": `$${(filtered.length > 0 ? filtered.reduce((sum, o) => sum + o.totalPrice, 0) / filtered.length : 0).toFixed(2)}`,
+        "Total Revenue": formatCurrency(filtered.reduce((sum, o) => sum + (o.status !== "cancelled" ? o.totalPrice : 0), 0), currency),
+        "Avg Order Value": formatCurrency((filtered.length > 0 ? filtered.reduce((sum, o) => sum + o.totalPrice, 0) / filtered.length : 0), currency),
       },
       data: filtered,
       columns: [
         { label: "Order ID", accessor: (o) => o._id.slice(-8).toUpperCase() },
         { label: "Customer", accessor: (o) => o.shippingAddress?.fullName || "—" },
         { label: "Items", accessor: (o) => o.orderItems.reduce((s, i) => s + i.quantity, 0) },
-        { label: "Total", accessor: (o) => `$${o.totalPrice.toFixed(2)}` },
+        { label: `Total (${currency})`, accessor: (o) => formatCurrency(o.totalPrice, currency) },
         { label: "Status", accessor: (o) => o.status.toUpperCase() },
         { label: "Date", accessor: (o) => formatDate(o.createdAt).split(",")[0] },
       ],
@@ -908,7 +913,7 @@ function OrdersPage() {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-base-content/40 pl-1">Min Price ($)</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-base-content/40 pl-1">Min Price ({currency === "USD" ? "$" : "Rs."})</label>
               <input 
                 type="number" 
                 placeholder="0"
@@ -918,7 +923,7 @@ function OrdersPage() {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-base-content/40 pl-1">Max Price ($)</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-base-content/40 pl-1">Max Price ({currency === "USD" ? "$" : "Rs."})</label>
               <input 
                 type="number" 
                 placeholder="Any"
@@ -1047,7 +1052,9 @@ function OrdersPage() {
                         </td>
 
                         <td>
-                          <div className="flex font-bold">${order.totalPrice.toFixed(2)}</div>
+                          <div className="flex font-bold">
+                            {formatCurrency(order.totalPrice, currency)}
+                          </div>
                         </td>
 
                         <td>

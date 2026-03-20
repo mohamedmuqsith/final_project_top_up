@@ -3,6 +3,8 @@ import useWishlist from "@/hooks/useWishlist";
 import { Product } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useCurrency } from "./CurrencyProvider";
+import { formatCurrency } from "../lib/currencyUtils";
 import {
   View,
   Text,
@@ -20,6 +22,7 @@ interface ProductsGridProps {
 }
 
 const ProductsGrid = ({ products, isLoading, isError }: ProductsGridProps) => {
+  const { currency } = useCurrency();
   const { isInWishlist, toggleWishlist, isAddingToWishlist, isRemovingFromWishlist } =
     useWishlist();
 
@@ -57,12 +60,12 @@ const ProductsGrid = ({ products, isLoading, isError }: ProductsGridProps) => {
           resizeMode="cover"
         />
 
-        {product.discountedPrice && product.discountedPrice < product.price && (
-          <View className="absolute top-3 left-3 bg-primary px-2 py-1 rounded-lg">
-            <Text className="text-background text-[10px] font-bold">
-              {product.appliedOffer?.type === "percentage" 
+        {product.hasActiveOffer && (
+          <View className="absolute top-3 left-3 bg-primary px-2 py-1.5 rounded-lg shadow-sm">
+            <Text className="text-background text-[10px] font-black uppercase tracking-wider">
+              {product.offerLabel || (product.appliedOffer?.type === "percentage" 
                 ? `-${product.appliedOffer.value}%` 
-                : `SAVE $${(product.price - product.discountedPrice).toFixed(0)}`}
+                : `SAVE ${formatCurrency(product.savingsAmount || 0, currency)}`)}
             </Text>
           </View>
         )}
@@ -102,11 +105,11 @@ const ProductsGrid = ({ products, isLoading, isError }: ProductsGridProps) => {
         <View className="flex-row items-center justify-between">
           <View>
             <Text className="text-primary font-bold text-lg">
-              ${(product.discountedPrice ?? product.price).toFixed(2)}
+              {formatCurrency(product.discountedPrice ?? product.price, currency)}
             </Text>
-            {product.discountedPrice && product.discountedPrice < product.price && (
-              <Text className="text-text-secondary text-[10px] line-through">
-                ${product.price.toFixed(2)}
+            {product.hasActiveOffer && product.originalPrice && (
+              <Text className="text-text-secondary text-[10px] line-through font-semibold opacity-70">
+                {formatCurrency(product.originalPrice, currency)}
               </Text>
             )}
           </View>

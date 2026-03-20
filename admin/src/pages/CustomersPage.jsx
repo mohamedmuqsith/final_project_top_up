@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { customerApi, orderApi } from "../lib/api";
 import { formatDate } from "../lib/utils";
 import { exportToCSV, exportToPDF } from "../lib/exportUtils";
+import { useCurrency } from "../components/CurrencyProvider";
+import { formatCurrency } from "../lib/currencyUtils";
 import {
   XIcon,
   ShoppingBagIcon,
@@ -33,6 +35,7 @@ const SEGMENT_CONFIG = {
 };
 
 function CustomerDetailModal({ customerId, onClose }) {
+  const { currency } = useCurrency();
   const navigate = useNavigate();
 
   const { data: statsData, isLoading } = useQuery({
@@ -184,7 +187,7 @@ function CustomerDetailModal({ customerId, onClose }) {
                             </div>
 
                             <div className="text-right shrink-0">
-                              <p className="font-black">${order.totalPrice.toFixed(2)}</p>
+                              <p className="font-black">{formatCurrency(order.totalPrice, currency)}</p>
                               <p className="text-xs opacity-60 uppercase mt-1">
                                 {order.status}
                               </p>
@@ -220,7 +223,7 @@ function CustomerDetailModal({ customerId, onClose }) {
                     <div className="rounded-2xl bg-base-200/40 p-4 text-center border border-base-300/30">
                       <DollarSignIcon className="size-5 mx-auto mb-2 opacity-60 text-success" />
                       <p className="text-2xl font-black">
-                        ${(stats?.totalSpend || 0).toFixed(0)}
+                        {formatCurrency(stats?.totalSpend || 0, currency)}
                       </p>
                       <p className="text-xs uppercase opacity-40 font-semibold mt-1">
                         Total Revenue
@@ -307,6 +310,7 @@ function CustomerDetailModal({ customerId, onClose }) {
 }
 
 function CustomersPage() {
+  const { currency } = useCurrency();
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSegment, setFilterSegment] = useState("All");
@@ -350,7 +354,7 @@ function CustomersPage() {
         { label: "Email", accessor: (c) => c.email },
         { label: "Segment", accessor: (c) => c.segment },
         { label: "Total Orders", accessor: (c) => c.orderStats?.totalOrders || 0 },
-        { label: "Total Spend", accessor: (c) => `$${(c.orderStats?.totalSpend || 0).toFixed(2)}` },
+        { label: `Total Spend (${currency})`, accessor: (c) => formatCurrency(c.orderStats?.totalSpend || 0, currency) },
         {
           label: "Last Order",
           accessor: (c) =>
@@ -369,7 +373,7 @@ function CustomersPage() {
       summary: {
         "Total Count": filtered.length,
         "VIP Count": filtered.filter(c => c.segment === "VIP").length,
-        "Total Revenue": `$${filtered.reduce((sum, c) => sum + (c.orderStats?.totalSpend || 0), 0).toLocaleString()}`,
+        "Total Revenue": formatCurrency(filtered.reduce((sum, c) => sum + (c.orderStats?.totalSpend || 0), 0), currency),
         "At-Risk Users": filtered.filter(c => c.segment === "At-Risk").length,
       },
       data: filtered,
@@ -377,7 +381,7 @@ function CustomersPage() {
         { label: "Customer Name", accessor: (c) => c.name },
         { label: "Segment", accessor: (c) => c.segment.toUpperCase() },
         { label: "Orders", accessor: (c) => c.orderStats?.totalOrders || 0 },
-        { label: "Total Spend", accessor: (c) => `$${(c.orderStats?.totalSpend || 0).toLocaleString()}` },
+        { label: `Total Spend (${currency})`, accessor: (c) => formatCurrency(c.orderStats?.totalSpend || 0, currency) },
         { label: "Last Order", accessor: (c) => c.orderStats?.lastOrderDate ? formatDate(c.orderStats.lastOrderDate).split(",")[0] : "—" },
       ],
       filename: "customers_export.pdf",
@@ -501,21 +505,21 @@ function CustomersPage() {
 
           <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
             <div className="relative flex-1 xl:w-32">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 text-xs font-bold">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 text-[10px] font-bold">{currency === "USD" ? "$" : "Rs."}</span>
               <input
                 type="number"
                 placeholder="Min Spend"
-                className="input input-bordered w-full pl-7 pr-2 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none h-11 text-sm font-medium"
+                className="input input-bordered w-full pl-9 pr-2 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none h-11 text-sm font-medium"
                 value={minSpend}
                 onChange={(e) => setMinSpend(e.target.value)}
               />
             </div>
             <div className="relative flex-1 xl:w-32">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 text-xs font-bold">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 text-[10px] font-bold">{currency === "USD" ? "$" : "Rs."}</span>
               <input
                 type="number"
                 placeholder="Max Spend"
-                className="input input-bordered w-full pl-7 pr-2 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none h-11 text-sm font-medium"
+                className="input input-bordered w-full pl-9 pr-2 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none h-11 text-sm font-medium"
                 value={maxSpend}
                 onChange={(e) => setMaxSpend(e.target.value)}
               />
@@ -621,7 +625,7 @@ function CustomersPage() {
 
                         <td>
                           <span className="font-bold text-success">
-                            ${(customer.orderStats?.totalSpend || 0).toFixed(2)}
+                            {formatCurrency(customer.orderStats?.totalSpend || 0, currency)}
                           </span>
                         </td>
 

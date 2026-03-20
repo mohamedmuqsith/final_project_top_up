@@ -71,16 +71,20 @@ LogBox.ignoreLogs([
   "`new NativeEventEmitter()` was called with a non-null argument without the required `removeListeners` method"
 ]);
 
+import { CurrencyProvider } from "@/components/CurrencyProvider";
+
 export default Sentry.wrap(function RootLayout() {
   return (
     <SafeAreaProvider>
-      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-        <QueryClientProvider client={queryClient}>
-          <StripeProvider publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!}>
-            <Stack screenOptions={{ headerShown: false }} />
-          </StripeProvider>
-        </QueryClientProvider>
-      </ClerkProvider>
+      <CurrencyProvider>
+        <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+          <QueryClientProvider client={queryClient}>
+            <StripeProvider publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!}>
+              <Stack screenOptions={{ headerShown: false }} />
+            </StripeProvider>
+          </QueryClientProvider>
+        </ClerkProvider>
+      </CurrencyProvider>
     </SafeAreaProvider>
   )
 });

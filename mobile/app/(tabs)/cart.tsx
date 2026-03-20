@@ -11,11 +11,14 @@ import { Image } from "expo-image";
 import OrderSummary from "@/components/OrderSummary";
 import AddressSelectionModal from "@/components/AddressSelectionModal";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCurrency } from "@/components/CurrencyProvider";
+import { formatCurrency } from "@/lib/currencyUtils";
 
 import * as Linking from "expo-linking";
 import * as Sentry from "@sentry/react-native";
 
 const CartScreen = () => {
+  const { currency } = useCurrency();
   const api = useApi();
   const queryClient = useQueryClient();
   const {
@@ -276,11 +279,16 @@ const CartScreen = () => {
                     </Text>
                     <View className="flex-row items-center mt-2">
                       <Text className="text-primary font-bold text-2xl">
-                        ${(item.product.price * item.quantity).toFixed(2)}
+                        {formatCurrency((item.product.discountedPrice ?? item.product.price) * item.quantity, currency)}
                       </Text>
                       <Text className="text-text-secondary text-sm ml-2">
-                        ${item.product.price.toFixed(2)} each
+                        {formatCurrency(item.product.discountedPrice ?? item.product.price, currency)} each
                       </Text>
+                      {item.product.hasActiveOffer && item.product.originalPrice && (
+                        <Text className="text-text-secondary text-xs line-through ml-2 font-semibold opacity-70">
+                          {formatCurrency(item.product.originalPrice, currency)}
+                        </Text>
+                      )}
                     </View>
                   </View>
 
@@ -389,7 +397,7 @@ const CartScreen = () => {
             </Text>
           </View>
           <View className="flex-row items-center">
-            <Text className="text-text-primary font-bold text-xl">${total.toFixed(2)}</Text>
+            <Text className="text-text-primary font-bold text-xl">{formatCurrency(total, currency)}</Text>
           </View>
         </View>
 

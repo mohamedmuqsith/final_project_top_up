@@ -10,8 +10,11 @@ import RatingModal from "@/components/RatingModal";
 import { useReviews } from "@/hooks/useReviews";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCurrency } from "@/components/CurrencyProvider";
+import { formatCurrency } from "@/lib/currencyUtils";
 
 export default function OrderDetailsScreen() {
+  const { currency } = useCurrency();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { data: orders, isLoading } = useOrders();
@@ -229,7 +232,7 @@ export default function OrderDetailsScreen() {
         "Invoice: " + invoice.invoiceNumber,
         `Date: ${formatDate(invoice.orderDate)}\n\n` +
         `Customer: ${invoice.customer.fullName}\n` +
-        `Total: $${invoice.pricing.total.toFixed(2)}\n\n` +
+        `Total: ${formatCurrency(invoice.pricing.total, currency)}\n\n` +
         `Store: ${invoice.store.name}\n` +
         `Location: ${invoice.store.city}, ${invoice.store.province}`,
         [{ text: "OK", onPress: () => {} }]
@@ -340,7 +343,7 @@ export default function OrderDetailsScreen() {
               </View>
             ) : null}
           </View>
-          <Text className="text-text-primary text-3xl font-bold">${order.totalPrice.toFixed(2)}</Text>
+          <Text className="text-text-primary text-3xl font-bold">{formatCurrency(order.totalPrice, currency)}</Text>
           <Text className="text-text-secondary mt-1">Order #{order._id.slice(-8).toUpperCase()}</Text>
           <Text className="text-text-secondary/70 text-xs mt-1">{formatDate(order.createdAt)}</Text>
         </View>
@@ -397,7 +400,9 @@ export default function OrderDetailsScreen() {
                   </Text>
                   <Text className="text-text-secondary text-sm">Qty: {item.quantity}</Text>
                 </View>
-                <Text className="text-text-primary font-bold">${(item.price * item.quantity).toFixed(2)}</Text>
+                <Text className="text-text-primary font-bold">
+                  {formatCurrency(item.price * item.quantity, currency)}
+                </Text>
               </View>
             ))}
           </View>
@@ -484,7 +489,7 @@ export default function OrderDetailsScreen() {
             <View className="flex-row justify-between mb-3">
               <Text className="text-text-secondary">Subtotal</Text>
               <Text className="text-text-primary font-medium">
-                ${order.orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}
+                {formatCurrency(order.orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0), currency)}
               </Text>
             </View>
             <View className="flex-row justify-between mb-3 border-b border-background pb-3">
@@ -493,7 +498,7 @@ export default function OrderDetailsScreen() {
             </View>
             <View className="flex-row justify-between items-center">
               <Text className="text-text-primary font-bold text-base">Total</Text>
-              <Text className="text-primary font-bold text-xl">${order.totalPrice.toFixed(2)}</Text>
+              <Text className="text-primary font-bold text-xl">{formatCurrency(order.totalPrice, currency)}</Text>
             </View>
           </View>
         </View>

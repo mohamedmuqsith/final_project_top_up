@@ -27,8 +27,10 @@ import {
 
 import { getCategoryColor } from "../lib/utils";
 import { exportToCSV, exportToPDF } from "../lib/exportUtils";
+import { useCurrency } from "../components/CurrencyProvider";
+import { formatCurrency } from "../lib/currencyUtils";
 
-const CustomPieTooltip = ({ active, payload, totalValue }) => {
+const CustomPieTooltip = ({ active, payload, totalValue, currency }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const percent =
@@ -47,11 +49,7 @@ const CustomPieTooltip = ({ active, payload, totalValue }) => {
         <div className="mb-1 flex justify-between gap-6">
           <span className="text-xs text-base-content/70">Inventory Value:</span>
           <span className="text-sm font-black">
-            $
-            {data.value.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+            {formatCurrency(data.value, currency)}
           </span>
         </div>
 
@@ -66,6 +64,7 @@ const CustomPieTooltip = ({ active, payload, totalValue }) => {
 };
 
 function InventoryReportsPage() {
+  const { currency } = useCurrency();
   const {
     data: report,
     isLoading,
@@ -110,7 +109,7 @@ function InventoryReportsPage() {
       stockByCategory,
       [
         { label: "Category", accessor: (c) => c.name },
-        { label: "Value ($)", accessor: (c) => c.value.toFixed(2) },
+        { label: `Value (${currency})`, accessor: (c) => formatCurrency(c.value, currency) },
         { label: "Units", accessor: (c) => c.units },
         { label: "Products", accessor: (c) => c.productCount },
       ],
@@ -123,7 +122,7 @@ function InventoryReportsPage() {
       title: "Inventory Report",
       subtitle: `Date: ${new Date().toLocaleDateString()}`,
       summary: {
-        "Total Value": `$${summary.totalInventoryValue.toLocaleString()}`,
+        "Total Value": formatCurrency(summary.totalInventoryValue, currency),
         "Total Units": summary.totalUnitsInStock.toLocaleString(),
         "Out of Stock": summary.outOfStockCount,
       },
@@ -131,7 +130,7 @@ function InventoryReportsPage() {
       columns: [
         { label: "Category", accessor: (c) => c.name },
         { label: "Units in Stock", accessor: (c) => c.units },
-        { label: "Total Value", accessor: (c) => `$${c.value.toLocaleString()}` },
+        { label: `Total Value (${currency})`, accessor: (c) => formatCurrency(c.value, currency) },
         { label: "Product Count", accessor: (c) => c.productCount },
       ],
       filename: "inventory_report.pdf",
@@ -143,9 +142,7 @@ function InventoryReportsPage() {
       name: "Inventory Value",
       value: isLoading
         ? "..."
-        : `$${summary.totalInventoryValue.toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-          })}`,
+        : formatCurrency(summary.totalInventoryValue, currency),
       icon: <DollarSignIcon className="size-7" />,
       desc: "Based on current prices",
       iconWrap: "bg-primary/10 text-primary",
@@ -394,7 +391,7 @@ function InventoryReportsPage() {
                       ))}
                     </Pie>
                     <Tooltip
-                      content={<CustomPieTooltip totalValue={summary.totalInventoryValue} />}
+                      content={<CustomPieTooltip totalValue={summary.totalInventoryValue} currency={currency} />}
                     />
                     <Legend />
                   </PieChart>
@@ -465,7 +462,7 @@ function InventoryReportsPage() {
                           </div>
                         </td>
                         <td className="text-right align-top font-bold">
-                          ${product.price.toFixed(2)}
+                          {formatCurrency(product.price, currency)}
                         </td>
                         <td className="text-right align-top">
                           <span className="badge badge-sm badge-error border-0 font-bold">

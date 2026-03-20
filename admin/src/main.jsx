@@ -33,12 +33,16 @@ Sentry.init({
   tracesSampleRate: 0.1,
 });
 
+import { CurrencyProvider } from "./components/CurrencyProvider.jsx";
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <App />
+          <CurrencyProvider>
+            <App />
+          </CurrencyProvider>
         </BrowserRouter>
       </QueryClientProvider>
     </ClerkProvider>

@@ -11,6 +11,11 @@ export interface Product {
   totalReviews?: number;
   originalPrice?: number;
   discountedPrice?: number;
+  hasActiveOffer?: boolean;
+  savingsAmount?: number;
+  savingsPercentage?: number;
+  offerLabel?: string | null;
+  offerScope?: string | null;
   appliedOffer?: {
     _id: string;
     title: string;

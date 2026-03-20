@@ -9,8 +9,11 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useCurrency } from "@/components/CurrencyProvider";
+import { formatCurrency } from "@/lib/currencyUtils";
 
 function OrdersScreen() {
+  const { currency } = useCurrency();
   const { data: orders, isLoading, isError } = useOrders();
   const { createReviewAsync, isCreatingReview } = useReviews();
 
@@ -212,7 +215,7 @@ function OrdersScreen() {
                     <View>
                       <Text className="text-text-secondary text-xs mb-1">{totalItems} items</Text>
                       <Text className="text-primary font-bold text-xl">
-                        ${order.totalPrice.toFixed(2)}
+                        {formatCurrency(order.totalPrice, currency)}
                       </Text>
                     </View>
 

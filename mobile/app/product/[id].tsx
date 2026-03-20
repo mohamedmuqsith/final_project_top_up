@@ -10,10 +10,13 @@ import { useState } from "react";
 import HorizontalProductList from "@/components/HorizontalProductList";
 import { useSimilarProducts, useFrequentlyBoughtTogether } from "@/hooks/useRecommendations";
 import { View, Text, Alert, ActivityIndicator, TouchableOpacity, ScrollView, Dimensions } from "react-native";
+import { useCurrency } from "@/components/CurrencyProvider";
+import { formatCurrency } from "@/lib/currencyUtils";
 
 const { width } = Dimensions.get("window");
 
 const ProductDetailScreen = () => {
+  const { currency } = useCurrency();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: product, isError, isLoading } = useProduct(id);
   const { data: similarData, isLoading: similarLoading, isError: similarError } = useSimilarProducts(id);
@@ -146,38 +149,37 @@ const ProductDetailScreen = () => {
             )}
           </View>
 
-          {/* Price */}
           <View className="flex-row items-center gap-4 mb-6">
             <View>
               <Text className="text-primary text-4xl font-bold">
-                ${(product.discountedPrice ?? product.price).toFixed(2)}
+                {formatCurrency(product.discountedPrice ?? product.price, currency)}
               </Text>
-              {product.discountedPrice && product.discountedPrice < product.price && (
-                <Text className="text-text-secondary text-lg line-through">
-                  ${product.price.toFixed(2)}
+              {product.hasActiveOffer && product.originalPrice && (
+                <Text className="text-text-secondary text-lg line-through font-semibold opacity-70">
+                  {formatCurrency(product.originalPrice, currency)}
                 </Text>
               )}
             </View>
 
-            {product.discountedPrice && product.discountedPrice < product.price && (
+            {product.hasActiveOffer && (
                <View className="bg-primary/20 border border-primary/30 px-3 py-2 rounded-2xl">
                  <Text className="text-primary font-bold text-sm">
                     {product.appliedOffer?.type === "percentage" 
                       ? `${product.appliedOffer.value}% OFF`
-                      : `SAVE $${(product.price - product.discountedPrice).toFixed(2)}`}
+                      : `SAVE ${formatCurrency(product.savingsAmount || 0, currency)}`}
                  </Text>
                </View>
             )}
           </View>
 
-          {product.appliedOffer && (
-            <View className="bg-surface p-4 rounded-3xl mb-6 border border-primary/20 flex-row items-center gap-4">
+          {product.hasActiveOffer && product.appliedOffer && (
+            <View className="bg-surface p-4 rounded-3xl mb-6 border border-primary/20 flex-row items-center gap-4 shadow-sm">
               <View className="bg-primary/10 p-3 rounded-2xl">
                 <Ionicons name="pricetag" size={24} color="#00D9FF" />
               </View>
               <View className="flex-1">
-                <Text className="text-text-primary font-bold text-lg">{product.appliedOffer.title}</Text>
-                <Text className="text-text-secondary text-xs mt-0.5">{product.appliedOffer.bannerText || "Limited time offer!"}</Text>
+                <Text className="text-text-primary font-bold text-lg">{product.offerLabel || product.appliedOffer.title}</Text>
+                <Text className="text-text-secondary text-xs mt-0.5">{product.appliedOffer.bannerText || "Limited time offer unlocked!"}</Text>
               </View>
             </View>
           )}
@@ -330,7 +332,7 @@ const ProductDetailScreen = () => {
           <View className="flex-1">
             <Text className="text-text-secondary text-sm mb-1">Total Price</Text>
             <Text className="text-primary text-2xl font-bold">
-              ${(product.price * quantity).toFixed(2)}
+              {formatCurrency((product.discountedPrice ?? product.price) * quantity, currency)}
             </Text>
           </View>
           <TouchableOpacity
