@@ -40,7 +40,9 @@ const notificationSchema = new mongoose.Schema(
         "ORDER_MARKED_SHIPPED",
         "ORDER_MARKED_DELIVERED",
         "ORDER_REFUNDED",
-        "OUT_OF_STOCK"
+        "OUT_OF_STOCK",
+        "PAYMENT_CONFIRMED",
+        "ORDER_PLACED_COD"
       ],
       required: true,
     },

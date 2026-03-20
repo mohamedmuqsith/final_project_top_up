@@ -96,6 +96,7 @@ const orderSchema = new mongoose.Schema(
     statusHistory: [
       {
         status: String,
+        oldStatus: String,
         timestamp: { type: Date, default: Date.now },
         comment: String,
         changedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
@@ -120,6 +121,10 @@ const orderSchema = new mongoose.Schema(
       type: String,
     },
     isFinalized: {
+      type: Boolean,
+      default: false,
+    },
+    isStockRestored: {
       type: Boolean,
       default: false,
     },
