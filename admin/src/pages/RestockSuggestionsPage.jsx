@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { restockApi } from "../lib/api";
+import { formatCurrency } from "../lib/currencyUtils";
+import { useCurrency } from "../components/CurrencyProvider";
 import {
   PackageIcon,
   AlertTriangleIcon,
@@ -21,6 +23,7 @@ const PRIORITY_CONFIG = {
 };
 
 function RestockSuggestionsPage() {
+  const { currency } = useCurrency();
   const [filterPriority, setFilterPriority] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -173,8 +176,8 @@ function RestockSuggestionsPage() {
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-base-content/60">Est. Cost</p>
-              <h3 className="mt-3 text-2xl font-black tracking-tight text-success truncate" title={`$${summary.totalEstimatedCost.toLocaleString()}`}>
-                {isLoading ? "..." : `$${summary.totalEstimatedCost.toLocaleString()}`}
+              <h3 className="mt-3 text-2xl font-black tracking-tight text-success truncate" title={formatCurrency(summary.totalEstimatedCost, currency)}>
+                {isLoading ? "..." : formatCurrency(summary.totalEstimatedCost, currency)}
               </h3>
               <p className="mt-2 text-xs text-base-content/50">
                 Estimated reorder spend
@@ -330,9 +333,9 @@ function RestockSuggestionsPage() {
                       </td>
 
                       <td>
-                        <span className="font-bold text-sm">
-                          ${item.estimatedRestockCost.toLocaleString()}
-                        </span>
+                          <p className="font-bold text-sm">
+                            {formatCurrency(item.estimatedRestockCost, currency)}
+                          </p>
                       </td>
                     </tr>
                   );

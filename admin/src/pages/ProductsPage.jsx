@@ -18,6 +18,8 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productApi, inventoryApi } from "../lib/api";
 import { getStockStatusBadge, formatDate } from "../lib/utils";
+import { useCurrency } from "../components/CurrencyProvider";
+import { formatCurrency } from "../lib/currencyUtils";
 
 const CATEGORIES = [
   "Smartphones", "Laptops", "Tablets", "Audio", "Headphones",
@@ -90,6 +92,7 @@ function HistoryModal({ productId, onClose }) {
 }
 
 function ProductsPage() {
+  const { currency } = useCurrency();
   const [showModal, setShowModal] = useState(false);
   const [historyProductId, setHistoryProductId] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -325,22 +328,22 @@ function ProductsPage() {
 
           <div className="flex items-center gap-2 w-full xl:w-auto">
             <div className="relative flex-1 xl:w-32">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 text-xs font-bold">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 text-[10px] font-bold">{currency === "USD" ? "$" : "Rs."}</span>
               <input
                 type="number"
                 placeholder="Min"
-                className="input input-bordered w-full pl-7 pr-2 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none"
+                className="input input-bordered w-full pl-9 pr-2 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none"
                 value={minPrice}
                 onChange={(e) => setMinPrice(e.target.value)}
               />
             </div>
             <span className="text-base-content/30">-</span>
             <div className="relative flex-1 xl:w-32">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 text-xs font-bold">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 text-[10px] font-bold">{currency === "USD" ? "$" : "Rs."}</span>
               <input
                 type="number"
                 placeholder="Max"
-                className="input input-bordered w-full pl-7 pr-2 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none"
+                className="input input-bordered w-full pl-9 pr-2 rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none"
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(e.target.value)}
               />
@@ -403,7 +406,7 @@ function ProductsPage() {
                           <p className="text-[11px] uppercase tracking-wide text-base-content/50 font-semibold">
                             Price
                           </p>
-                          <p className="mt-1 text-lg font-black">${product.price}</p>
+                          <p className="mt-1 text-lg font-black">{formatCurrency(product.price, currency)}</p>
                         </div>
 
                         <div className="rounded-2xl bg-base-200/40 px-4 py-3">

@@ -28,8 +28,11 @@ export const NAVIGATION = [
   { name: "Inventory Reports", path: "/inventory-reports", icon: <ClipboardListIcon className="size-5" /> },
 ];
 
+import { useCurrency } from "./CurrencyProvider";
+
 function Navbar() {
   const location = useLocation();
+  const { currency, setCurrency } = useCurrency();
   const currentPage =
     NAVIGATION.find((item) => item.path === location.pathname) || NAVIGATION[0];
 
@@ -59,7 +62,31 @@ function Navbar() {
           </div>
         </div>
 
-        <div className="ml-auto flex items-center gap-2 sm:gap-3">
+        <div className="ml-auto flex items-center gap-2 sm:gap-4">
+          {/* Currency Toggle */}
+          <div className="flex items-center gap-1 rounded-2xl border border-base-300/60 bg-base-100 p-1 shadow-sm">
+            <button
+              onClick={() => setCurrency("USD")}
+              className={`px-3 py-1.5 text-xs font-bold transition-all rounded-xl ${
+                currency === "USD"
+                  ? "bg-primary text-primary-content shadow-lg"
+                  : "text-base-content/40 hover:text-base-content/70"
+              }`}
+            >
+              USD
+            </button>
+            <button
+              onClick={() => setCurrency("LKR")}
+              className={`px-3 py-1.5 text-xs font-bold transition-all rounded-xl ${
+                currency === "LKR"
+                  ? "bg-primary text-primary-content shadow-lg"
+                  : "text-base-content/40 hover:text-base-content/70"
+              }`}
+            >
+              LKR
+            </button>
+          </div>
+
           <div className="rounded-2xl border border-base-300/60 bg-base-100 px-1.5 py-1 shadow-sm">
             <NotificationDropdown />
           </div>

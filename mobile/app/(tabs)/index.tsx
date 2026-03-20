@@ -60,6 +60,11 @@ const ShopScreen = () => {
     return filtered;
   }, [products, selectedCategory, searchQuery]);
 
+  const productsWithOffers = useMemo(() => {
+    if (!products) return [];
+    return products.filter(p => Boolean(p.hasActiveOffer));
+  }, [products]);
+
   return (
     <SafeScreen>
       <ScrollView
@@ -163,6 +168,16 @@ const ShopScreen = () => {
           isError={recError}
           aiEnhanced={recommendations?.aiEnhanced}
         />
+
+        {productsWithOffers.length > 0 && (
+          <HorizontalProductList 
+            title="🔥 Hot Deals"
+            products={productsWithOffers}
+            isLoading={isLoading}
+            isError={isError}
+            aiEnhanced={false}
+          />
+        )}
 
         {/* TRENDING PRODUCTS */}
         <HorizontalProductList 

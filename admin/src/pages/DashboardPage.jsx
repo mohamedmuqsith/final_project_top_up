@@ -1,22 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { statsApi } from "../lib/api";
-import {
-  DollarSignIcon,
-  PackageIcon,
-  ShoppingBagIcon,
-  UsersIcon,
-  AlertTriangleIcon,
-  TrendingDownIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  MessageSquareIcon,
-  StarHalfIcon,
-  LayoutDashboardIcon,
-  TrendingUpIcon,
-  BoxesIcon,
-} from "lucide-react";
+import { BoxesIcon, DollarSignIcon, PackageIcon, ShoppingBagIcon, UsersIcon, AlertTriangleIcon, TrendingDownIcon, CheckCircleIcon, XCircleIcon, MessageSquareIcon, StarHalfIcon, LayoutDashboardIcon, TrendingUpIcon } from "lucide-react";
 import { capitalizeText, formatDate, getOrderStatusBadge } from "../lib/utils";
+import { useCurrency } from "../components/CurrencyProvider";
+import { formatCurrency, convertToCurrency } from "../lib/currencyUtils";
 import { useNavigate } from "react-router";
 import {
   LineChart,
@@ -37,6 +25,7 @@ import {
 function DashboardPage() {
   const navigate = useNavigate();
   const [timeRange, setTimeRange] = useState("weekly");
+  const { currency } = useCurrency();
 
   const {
     data: statsData,
@@ -85,7 +74,7 @@ function DashboardPage() {
   const statsCards = [
     {
       name: "Total Revenue",
-      value: isLoading ? "..." : `$${totalRevenue.toFixed(2)}`,
+      value: isLoading ? "..." : formatCurrency(totalRevenue, currency),
       icon: <DollarSignIcon className="size-7" />,
       desc: "From confirmed sales",
       iconWrap: "bg-primary/10 text-primary",
@@ -282,6 +271,7 @@ function DashboardPage() {
                         padding: "12px 16px",
                       }}
                       itemStyle={{ color: "#f8fafc", fontWeight: "bold" }}
+                      formatter={(value) => [formatCurrency(value, currency), "Revenue"]}
                     />
                     <Legend />
                     <Line
@@ -290,7 +280,7 @@ function DashboardPage() {
                       stroke="var(--chart-primary)"
                       strokeWidth={3}
                       activeDot={{ r: 8 }}
-                      name="Confirmed Revenue ($)"
+                      name={currency === "USD" ? "Confirmed Revenue ($)" : "Confirmed Revenue (Rs.)"}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -513,7 +503,7 @@ function DashboardPage() {
                         </td>
                         <td>
                           <span className="font-bold">
-                            ${order.totalPrice?.toFixed(2)}
+                            {formatCurrency(order.totalPrice, currency)}
                           </span>
                         </td>
                         <td>

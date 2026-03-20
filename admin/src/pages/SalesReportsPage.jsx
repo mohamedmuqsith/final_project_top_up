@@ -29,6 +29,8 @@ import {
   AreaChart,
 } from "recharts";
 import { exportToCSV, exportToPDF } from "../lib/exportUtils";
+import { useCurrency } from "../components/CurrencyProvider";
+import { formatCurrency } from "../lib/currencyUtils";
 
 const RANGE_OPTIONS = [
   { value: "30d", label: "Last 30 Days" },
@@ -38,6 +40,7 @@ const RANGE_OPTIONS = [
 
 function SalesReportsPage() {
   const [range, setRange] = useState("30d");
+  const { currency } = useCurrency();
 
   const {
     data: report,
@@ -94,7 +97,7 @@ function SalesReportsPage() {
       chartData,
       [
         { label: "Date", accessor: (d) => d.date },
-        { label: "Revenue", accessor: (d) => `$${d.revenue.toFixed(2)}` },
+        { label: `Revenue (${currency})`, accessor: (d) => formatCurrency(d.revenue, currency) },
         { label: "Orders", accessor: (d) => d.orders },
       ],
       `sales_report_${range}.csv`
@@ -106,16 +109,16 @@ function SalesReportsPage() {
       title: "Sales Report",
       subtitle: `Range: ${RANGE_OPTIONS.find((o) => o.value === range)?.label} | Date: ${new Date().toLocaleDateString()}`,
       summary: {
-        "Total Revenue": `$${summary.totalRevenue.toLocaleString()}`,
+        "Total Revenue": formatCurrency(summary.totalRevenue, currency),
         "Total Orders": summary.totalOrders,
         "Confirmed Sales": summary.totalConfirmedSales,
-        "Avg Order Value": `$${summary.avgOrderValue.toFixed(2)}`,
+        "Avg Order Value": formatCurrency(summary.avgOrderValue, currency),
         "Cancellation Rate": `${summary.cancellationRate}%`,
       },
       data: chartData,
       columns: [
         { label: "Date", accessor: (d) => d.date },
-        { label: "Revenue", accessor: (d) => `$${d.revenue.toLocaleString()}` },
+        { label: `Revenue (${currency})`, accessor: (d) => formatCurrency(d.revenue, currency) },
         { label: "Orders", accessor: (d) => d.orders },
       ],
       filename: `sales_report_${range}.pdf`,
@@ -141,7 +144,7 @@ function SalesReportsPage() {
   const statsCards = [
     {
       name: "Total Revenue",
-      value: isLoading ? "..." : `$${summary.totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+      value: isLoading ? "..." : formatCurrency(summary.totalRevenue, currency),
       change: summary.comparison?.revenueChange,
       icon: <DollarSignIcon className="size-7" />,
       desc: "Confirmed sales revenue",
@@ -158,7 +161,7 @@ function SalesReportsPage() {
     },
     {
       name: "Avg Order Value",
-      value: isLoading ? "..." : `$${summary.avgOrderValue.toFixed(2)}`,
+      value: isLoading ? "..." : formatCurrency(summary.avgOrderValue, currency),
       change: summary.comparison?.avgOrderValueChange,
       icon: <ReceiptIcon className="size-7" />,
       desc: "Revenue ÷ Sales",
@@ -337,8 +340,8 @@ function SalesReportsPage() {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
                     <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "var(--chart-base-content)", opacity: 0.5 }} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "var(--chart-base-content)", opacity: 0.5 }} />
-                    <Tooltip contentStyle={{ backgroundColor: "var(--chart-base-100)", borderColor: "var(--chart-base-300)", color: "var(--chart-base-content)", borderRadius: "16px", boxShadow: "0 10px 30px rgba(0,0,0,0.12)", border: "1px solid rgba(255,255,255,0.05)", fontSize: "12px", padding: "12px" }} itemStyle={{ fontWeight: "700", padding: "2px 0" }} formatter={(value) => [`$${value.toLocaleString()}`, "Revenue"]} />
-                    <Area type="monotone" dataKey="revenue" stroke="var(--chart-primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" activeDot={{ r: 6, strokeWidth: 0 }} name="Revenue" />
+                    <Tooltip contentStyle={{ backgroundColor: "var(--chart-base-100)", borderColor: "var(--chart-base-300)", color: "var(--chart-base-content)", borderRadius: "16px", boxShadow: "0 10px 30px rgba(0,0,0,0.12)", border: "1px solid rgba(255,255,255,0.05)", fontSize: "12px", padding: "12px" }} itemStyle={{ fontWeight: "700", padding: "2px 0" }} formatter={(value) => [formatCurrency(value, currency), "Revenue"]} />
+                    <Area type="monotone" dataKey="revenue" stroke="var(--chart-primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" activeDot={{ r: 6, strokeWidth: 0 }} name={currency === "USD" ? "Revenue ($)" : "Revenue (Rs.)"} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -417,7 +420,7 @@ function SalesReportsPage() {
                           </div>
                         </td>
                         <td className="text-right font-black text-sm">{product.unitsSold.toLocaleString()}</td>
-                        <td className="text-right font-black text-sm text-primary">${product.revenue.toLocaleString()}</td>
+                        <td className="text-right font-black text-sm text-primary">{formatCurrency(product.revenue, currency)}</td>
                         <td className="text-right">
                           <span className={`badge badge-sm border-0 font-bold px-3 py-2 ${product.stock === 0 ? "bg-error/20 text-error" : product.stock <= 10 ? "bg-warning/20 text-warning" : "bg-success/20 text-success"}`}>
                             {product.stock === 0 ? "OUT" : product.stock}
@@ -467,7 +470,7 @@ function SalesReportsPage() {
                             <span className="font-bold text-sm tracking-tight">{cat.category}</span>
                           </div>
                         </td>
-                        <td className="text-right font-black text-sm text-secondary">${cat.revenue.toLocaleString()}</td>
+                        <td className="text-right font-black text-sm text-secondary">{formatCurrency(cat.revenue, currency)}</td>
                         <td className="text-right font-black text-sm">{cat.unitsSold.toLocaleString()}</td>
                         <td className="text-right">
                           <span className="badge badge-ghost badge-sm border-0 font-bold bg-base-200/60 text-base-content/60 px-3 py-2">{cat.productCount} SKU</span>

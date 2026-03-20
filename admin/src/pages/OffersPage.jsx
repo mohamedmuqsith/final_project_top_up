@@ -12,21 +12,25 @@ import {
   Edit,
   Percent,
   DollarSign,
+  Search,
+  Globe,
+  FolderTree,
 } from "lucide-react";
 import { useState } from "react";
 import StatCard from "../components/StatCard";
-
-const CATEGORIES = [
-  "Smartphones", "Laptops", "Tablets", "Audio", "Headphones",
-  "Speakers", "Gaming", "Accessories", "Smart Home", "Wearables",
-  "Cameras", "Storage", "Networking", "Monitors", "Computer Components"
-];
+import { useCurrency } from "../components/CurrencyProvider";
+import { formatCurrency } from "../lib/currencyUtils";
 
 const OffersPage = () => {
   const queryClient = useQueryClient();
+  const { currency } = useCurrency();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOffer, setEditingOffer] = useState(null);
   const [selectedAppliesTo, setSelectedAppliesTo] = useState("all");
+  const [selectedProductId, setSelectedProductId] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [productSearchStr, setProductSearchStr] = useState("");
+  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
@@ -38,9 +42,15 @@ const OffersPage = () => {
     }),
   });
 
-  const { data: productsData } = useQuery({
-    queryKey: ["products"],
-    queryFn: productApi.getAll,
+  const { data: allProductsData } = useQuery({
+    queryKey: ["all-products"],
+    queryFn: () => productApi.getAll(),
+  });
+
+  const { data: searchedProductsData, isLoading: isSearchingProducts } = useQuery({
+    queryKey: ["products-search", productSearchStr],
+    queryFn: () => productApi.getAll({ search: productSearchStr }),
+    enabled: isProductDropdownOpen && productSearchStr.length > 0,
   });
 
   const createMutation = useMutation({
@@ -84,6 +94,18 @@ const OffersPage = () => {
   const handleOpenModal = (offer = null) => {
     setEditingOffer(offer);
     setSelectedAppliesTo(offer?.appliesTo || "all");
+    setSelectedProductId(offer?.productId || "");
+    setSelectedCategory(offer?.category || "");
+    
+    if (offer?.productId && allProductsData) {
+      const p = allProductsData.find(prod => String(prod._id) === String(offer.productId));
+      if (p) setProductSearchStr(p.name);
+      else setProductSearchStr("");
+    } else {
+      setProductSearchStr("");
+    }
+    
+    setIsProductDropdownOpen(false);
     setIsModalOpen(true);
   };
 
@@ -91,6 +113,11 @@ const OffersPage = () => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData.entries());
+
+    if (data.appliesTo === "product" && !data.productId) {
+      alert("Please search and select a specific product from the list.");
+      return;
+    }
 
     data.value = parseFloat(data.value);
     data.isActive = data.isActive === "on";
@@ -112,10 +139,18 @@ const OffersPage = () => {
   };
 
   const offers = offersData?.offers || [];
-  const products = productsData?.products || [];
+  const allProducts = allProductsData || [];
+  const searchedProducts = searchedProductsData || [];
+  
   const activeOffersCount = offers.filter(
-    (o) => o.isActive && new Date(o.endDate) > new Date()
+    (o) => o.isActive && new Date(o.endDate) > new Date() && new Date(o.startDate) <= new Date()
   ).length;
+
+  const dynamicCategories = [...new Set(allProducts.map(p => p.category))].filter(Boolean).sort();
+
+  // Fix: server-side search results used here, fallback to local if needed for edit mode
+  const filteredTargetProducts = productSearchStr.length > 0 ? searchedProducts : [];
+
 
   return (
     <div className="p-6 space-y-8 text-base-content">
@@ -234,7 +269,7 @@ const OffersPage = () => {
                             </>
                           ) : (
                             <>
-                              <DollarSign className="size-4" /> ${offer.value} OFF
+                              <DollarSign className="size-4" /> {formatCurrency(offer.value, currency)} OFF
                             </>
                           )}
                         </div>
@@ -247,7 +282,7 @@ const OffersPage = () => {
                         </div>
                         <div className="text-xs mt-1 font-medium italic opacity-70">
                           {offer.appliesTo === "product" &&
-                            (products?.find((p) => p._id === offer.productId)?.name ||
+                            (allProducts?.find((p) => p._id === offer.productId)?.name ||
                               "Unknown Product")}
                           {offer.appliesTo === "category" && offer.category}
                         </div>
@@ -267,19 +302,30 @@ const OffersPage = () => {
                       </td>
 
                       <td>
-                        <button
-                          onClick={() => handleToggleActive(offer)}
-                          className={`badge ${
-                            offer.isActive ? "badge-success" : "badge-ghost opacity-50"
-                          } badge-md cursor-pointer hover:scale-105 transition-transform font-bold`}
-                        >
-                          {offer.isActive ? "Active" : "Inactive"}
-                        </button>
-                        {new Date(offer.endDate) < new Date() && (
-                          <div className="text-[10px] text-error font-bold mt-1 uppercase">
-                            Expired
-                          </div>
-                        )}
+                        {(() => {
+                          const now = new Date();
+                          const start = new Date(offer.startDate);
+                          const end = new Date(offer.endDate);
+                          
+                          if (!offer.isActive) {
+                            return <div className="badge badge-ghost opacity-50 badge-md font-bold">Inactive</div>;
+                          } else if (now > end) {
+                            return <div className="badge badge-error badge-md font-bold text-white">Expired</div>;
+                          } else if (now < start) {
+                            return <div className="badge badge-warning badge-md font-bold text-white">Scheduled</div>;
+                          } else {
+                            return <div className="badge badge-success badge-md font-bold text-white">Active</div>;
+                          }
+                        })()}
+                        
+                        <div className="mt-2 flex items-center gap-1">
+                          <button
+                            onClick={() => handleToggleActive(offer)}
+                            className="text-[10px] text-base-content/60 hover:text-primary font-bold uppercase underline cursor-pointer transition-colors"
+                          >
+                            {offer.isActive ? "Pause" : "Activate"}
+                          </button>
+                        </div>
                       </td>
 
                       <td>
@@ -441,85 +487,187 @@ const OffersPage = () => {
                           Decide where this offer should apply
                         </p>
                       </div>
+                      <div className="p-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="form-control">
+                            <label className="label pb-2 px-1">
+                              <span className="label-text font-bold text-base-content">
+                                Targets
+                              </span>
+                            </label>
+                            <select
+                              name="appliesTo"
+                              value={selectedAppliesTo}
+                              onChange={(e) => setSelectedAppliesTo(e.target.value)}
+                              className="select select-bordered w-full rounded-2xl h-14 bg-base-200/50 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                              required
+                            >
+                              <option value="all">Entire Store</option>
+                              <option value="category">Specific Category</option>
+                              <option value="product">Specific Product</option>
+                            </select>
+                          </div>
 
-                      <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div className="form-control">
-                          <label className="label pb-2">
-                            <span className="label-text font-semibold text-base-content">
-                              Targets
-                            </span>
-                          </label>
-                          <select
-                            name="appliesTo"
-                            value={selectedAppliesTo}
-                            onChange={(e) => setSelectedAppliesTo(e.target.value)}
-                            className="select select-bordered w-full rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                            required
-                          >
-                            <option value="all">Entire Store</option>
-                            <option value="category">Specific Category</option>
-                            <option value="product">Specific Product</option>
-                          </select>
+                          {selectedAppliesTo === "category" && (
+                            <div className="form-control">
+                              <label className="label pb-2 px-1">
+                                <span className="label-text font-bold text-base-content">
+                                  Select Category
+                                </span>
+                              </label>
+                              <select
+                                name="category"
+                                value={selectedCategory}
+                                onChange={(e) => setSelectedCategory(e.target.value)}
+                                className="select select-bordered w-full rounded-2xl h-14 bg-base-200/50 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                required
+                              >
+                                <option value="" disabled>Choose a category...</option>
+                                {dynamicCategories.map((c) => (
+                                  <option key={c} value={c}>{c}</option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+
+                          {selectedAppliesTo === "product" && (
+                            <div className="form-control">
+                              <label className="label pb-2 px-1">
+                                <span className="label-text font-bold text-base-content">
+                                  Search & Select Product
+                                </span>
+                              </label>
+                              <div className="relative">
+                                <input type="hidden" name="productId" value={selectedProductId} required />
+                                <input
+                                  type="text"
+                                  placeholder="Type to search products..."
+                                  value={productSearchStr}
+                                  onChange={(e) => {
+                                    setProductSearchStr(e.target.value);
+                                    setIsProductDropdownOpen(true);
+                                    if (selectedProductId) setSelectedProductId(""); // Clear true selection while typing
+                                  }}
+                                  onFocus={() => setIsProductDropdownOpen(true)}
+                                  onBlur={() => setTimeout(() => setIsProductDropdownOpen(false), 200)}
+                                  className="input input-bordered w-full rounded-2xl h-14 bg-base-200/50 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                />
+                                {isProductDropdownOpen && (
+                                  <div className="absolute z-50 left-0 right-0 mt-2 max-h-72 overflow-y-auto bg-base-200/95 backdrop-blur-xl border border-base-300 rounded-2xl shadow-2xl">
+                                    {filteredTargetProducts.length > 0 ? (
+                                      <div className="p-2 space-y-1">
+                                        {filteredTargetProducts.map(p => (
+                                          <div
+                                            key={p._id}
+                                            className="p-3 hover:bg-base-300 rounded-xl cursor-pointer flex items-center gap-4 transition-colors"
+                                            onClick={() => {
+                                              setSelectedProductId(p._id);
+                                              setProductSearchStr(p.name);
+                                              setIsProductDropdownOpen(false);
+                                            }}
+                                          >
+                                            <div className="size-10 rounded-lg bg-base-100 overflow-hidden shrink-0 border border-base-300/50">
+                                              <img src={p.images?.[0] || "/placeholder.jpg"} className="w-full h-full object-cover" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                              <p className="text-sm font-bold text-base-content truncate">{p.name}</p>
+                                              <p className="text-xs text-base-content/60 truncate mt-0.5">{p.category}</p>
+                                            </div>
+                                            <div className="text-right shrink-0">
+                                              <p className="text-sm font-bold text-primary">{formatCurrency(p.price, currency)}</p>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div className="p-6 flex flex-col items-center justify-center text-center">
+                                        <div className="size-12 rounded-full bg-base-300/50 flex items-center justify-center mb-3">
+                                          <Search className="size-5 text-base-content/40" />
+                                        </div>
+                                        <p className="text-sm font-semibold text-base-content">No products found</p>
+                                        <p className="text-xs text-base-content/50 mt-1">Try a different search term</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {selectedAppliesTo === "all" && (
+                            <div className="hidden md:block"></div>
+                          )}
                         </div>
 
-                        {selectedAppliesTo === "category" && (
-                          <div className="form-control">
-                            <label className="label pb-2">
-                              <span className="label-text font-semibold text-base-content">
-                                Select Category
-                              </span>
-                            </label>
-                            <select
-                              name="category"
-                              defaultValue={editingOffer?.category}
-                              className="select select-bordered w-full rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                              required
-                            >
-                              <option value="">Choose a category...</option>
-                              {CATEGORIES.map((c) => (
-                                <option key={c} value={c}>
-                                  {c}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-
-                        {selectedAppliesTo === "product" && (
-                          <div className="form-control">
-                            <label className="label pb-2">
-                              <span className="label-text font-semibold text-base-content">
-                                Select Product
-                              </span>
-                            </label>
-                            <select
-                              name="productId"
-                              defaultValue={editingOffer?.productId}
-                              className="select select-bordered w-full rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                              required
-                            >
-                              <option value="">Choose a product...</option>
-                              {products.map((p) => (
-                                <option key={p._id} value={p._id}>
-                                  {p.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-
-                        {selectedAppliesTo === "all" && (
-                          <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-4 py-4 flex items-center">
-                            <div>
-                              <p className="font-semibold text-sm text-primary">
-                                Entire store selected
-                              </p>
-                              <p className="text-xs text-base-content/60 mt-1">
-                                This offer will affect all eligible products
-                              </p>
+                        {/* Impact Preview Panels */}
+                        <div className="mt-6">
+                          {selectedAppliesTo === "category" && selectedCategory && (
+                            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5 flex items-center justify-between transition-all">
+                              <div className="flex items-center gap-4">
+                                <div className="size-12 rounded-full bg-primary/20 flex items-center justify-center">
+                                  <FolderTree className="size-6 text-primary" />
+                                </div>
+                                <div>
+                                  <h5 className="font-bold text-base-content">Category Targeted</h5>
+                                  <p className="text-sm text-base-content/60 mt-0.5">All products in "{selectedCategory}"</p>
+                                </div>
+                              </div>
+                                <div className="text-right">
+                                  <div className="text-2xl font-black text-primary">
+                                    {allProducts.filter(p => p.category === selectedCategory).length}
+                                  </div>
+                                  <p className="text-xs font-semibold text-base-content/50 uppercase tracking-wider mt-1">Products</p>
+                                </div>
                             </div>
-                          </div>
-                        )}
+                          )}
+
+                          {selectedAppliesTo === "product" && selectedProductId && (() => {
+                            const p = allProducts.find(prod => String(prod._id) === String(selectedProductId));
+                            if (!p) return null;
+                            return (
+                              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5 flex items-center gap-5 transition-all">
+                                <div className="size-14 rounded-xl bg-base-100 overflow-hidden shrink-0 border border-base-200 shadow-sm">
+                                  <img src={p.images?.[0] || "/placeholder.jpg"} alt={p.name} className="w-full h-full object-cover" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h5 className="font-bold text-base-content truncate">{p.name}</h5>
+                                  <div className="flex items-center gap-2 mt-1.5">
+                                    <span className="badge badge-sm border-base-300 bg-base-200/50 text-base-content/80 font-medium">{p.category}</span>
+                                    {p.stock > 0 ? (
+                                      <span className="text-xs font-medium text-emerald-500">{p.stock} in stock</span>
+                                    ) : (
+                                      <span className="text-xs font-medium text-red-500">Out of stock</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <p className="text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1">Current Price</p>
+                                  <p className="text-xl font-black text-primary">{formatCurrency(p.price, currency)}</p>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                          {selectedAppliesTo === "all" && (
+                            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5 flex items-center justify-between transition-all">
+                              <div className="flex items-center gap-4">
+                                <div className="size-12 rounded-full bg-primary/20 flex items-center justify-center">
+                                  <Globe className="size-6 text-primary" />
+                                </div>
+                                <div>
+                                  <h5 className="font-bold text-base-content">Entire Store Targeted</h5>
+                                  <p className="text-sm text-base-content/60 mt-0.5">This offer applies to all active products</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-2xl font-black text-primary">
+                                  {allProducts.length}
+                                </div>
+                                <p className="text-xs font-semibold text-base-content/50 uppercase tracking-wider mt-1">Total Items</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
