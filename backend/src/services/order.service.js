@@ -54,7 +54,7 @@ export const OrderService = {
     order.statusHistory.push({
       status: "pending",
       timestamp: new Date(),
-      comment: comment || "Payment confirmed. Order is now pending fulfillment.",
+      comment: comment || "Payment confirmed. Awaiting fulfillment.",
       changedByType: "system"
     });
 

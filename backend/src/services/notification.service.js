@@ -118,7 +118,6 @@ async function manageConditionState(product, type, isConditionActive) {
 
   if (isConditionActive) {
     // Condition is TRUE. Check if we need to alert.
-    // Condition is TRUE. Check if we need to alert.
     if (!activeNotification) {
       // Fire new operational notification
       let message = "";

@@ -76,5 +76,82 @@ export const useApi = () => {
   return api;
 };
 
+export interface OrderItem {
+  id: string;
+  name: string;
+  quantity: number;
+  image: string;
+  price: number;
+  product: string;
+}
+
+export interface ShippingAddress {
+  fullName: string;
+  streetAddress: string;
+  city: string;
+  province: string;
+  zipCode: string;
+  phoneNumber: string;
+  country?: string;
+}
+
+export interface StatusHistoryEvent {
+  status: string;
+  timestamp: string;
+  comment?: string;
+  changedBy?: string;
+  changedByType: "system" | "admin" | "customer" | "worker";
+}
+
+export interface Order {
+  _id: string;
+  orderItems: OrderItem[];
+  shippingAddress: ShippingAddress;
+  paymentMethod: string;
+  paymentResult?: {
+    id: string;
+    status: string;
+    update_time: string;
+    email_address: string;
+  };
+  pricing?: {
+    subtotal: number;
+    shippingFee: number;
+    tax: number;
+    discount?: number;
+    total: number;
+    currency: string;
+  };
+  shippingDetails?: {
+    method: string;
+    courierName?: string;
+    trackingNumber?: string;
+    trackingUrl?: string;
+    estimatedDeliveryDate?: string;
+    shippedAt?: string;
+    deliveredAt?: string;
+  };
+  delivery?: {
+    method: string;
+    courier?: string;
+    trackingNumber?: string;
+    estimatedDeliveryDate?: string;
+  };
+  totalPrice: number;
+  paymentStatus: "pending" | "paid" | "failed" | "refunded";
+  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+  isPaid: boolean;
+  paidAt?: string;
+  deliveredAt?: string;
+  shippedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  statusHistory: StatusHistoryEvent[];
+  returnStatus: "none" | "requested" | "approved" | "denied";
+  returnReason?: string;
+  returnNotes?: string;
+  hasReviewed?: boolean;
+}
+
 // on every single req, we would like have an auth token so that our backend knows that we're authenticated
 // we're including the auth token under the auth headers

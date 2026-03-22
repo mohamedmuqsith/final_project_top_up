@@ -20,7 +20,7 @@ export const InventoryService = {
       }
 
       const previousStock = product.stock;
-      product.stock -= item.quantity;
+      product.stock = Math.max(0, product.stock - item.quantity);
       await product.save();
       
       // Log Movement

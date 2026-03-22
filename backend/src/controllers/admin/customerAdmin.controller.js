@@ -130,14 +130,9 @@ export const getCustomerStats = async (req, res) => {
     const paidOrders = orders.filter(o => o.paymentStatus === "paid" && o.status !== "cancelled");
     const totalSpend = paidOrders.reduce((sum, o) => sum + o.totalPrice, 0);
 
-    // Calculate Top Category
-    const categoryCounts = {};
-    paidOrders.forEach(order => {
-      order.orderItems.forEach(item => {
-        categoryCounts[item.category] = (categoryCounts[item.category] || 0) + item.quantity;
-      });
-    });
-    const topCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "None";
+    // Top Category calculation omitted as category is not stored on orderItems
+    // and would require additional lookups per order.
+    const topCategory = "N/A";
 
     // Calculate Segment (Local Logic matches getAllCustomers)
     const thirtyDaysAgo = new Date();

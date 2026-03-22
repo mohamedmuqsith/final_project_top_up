@@ -4,17 +4,6 @@ import { notificationApi } from "../lib/api";
 import { useNavigate } from "react-router";
 import { formatDistanceToNow } from "date-fns";
 
-const ADMIN_ALLOWED_TYPES = [
-  "NEW_ORDER",
-  "ORDER_MARKED_SHIPPED",
-  "ORDER_MARKED_DELIVERED",
-  "LOW_STOCK",
-  "NEAR_STOCKOUT",
-  "PREDICTED_STOCKOUT",
-  "PAYMENT_FAILED",
-  "OUT_OF_STOCK",
-];
-
 function NotificationDropdown() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -45,9 +34,9 @@ function NotificationDropdown() {
     },
   });
 
-  const notifications = (notifData?.notifications || []).filter((n) =>
-    ADMIN_ALLOWED_TYPES.includes(n.type)
-  );
+  // Display ALL notifications returned by the backend (already scoped to recipientType: "admin")
+  // to ensure unread count and list are always in sync.
+  const notifications = notifData?.notifications || [];
   const unreadCount = countData?.unreadCount || 0;
 
   const handleNotificationClick = (notification) => {
@@ -60,29 +49,25 @@ function NotificationDropdown() {
       document.activeElement.blur();
     }
 
+    // Standardized navigation logic
     if (notification.entityModel === "Order" && notification.entityId) {
-      navigate(`/orders?search=${notification.entityId}`); // Search by ID to find relevant order
+      navigate(`/orders?search=${notification.entityId}`);
     } else if (notification.entityModel === "Product" && notification.entityId) {
-      navigate("/inventory-alerts"); // Products point to inventory dashboard
+      navigate("/inventory-alerts");
     } else if (notification.actionUrl) {
       navigate(notification.actionUrl);
     } else {
-      // Logic fallback
+      // Fallback by type
+      const type = notification.type;
       if (
-        notification.type === "NEAR_STOCKOUT" ||
-        notification.type === "LOW_STOCK" ||
-        notification.type === "OUT_OF_STOCK" ||
-        notification.type === "PREDICTED_STOCKOUT"
+        type === "LOW_STOCK" ||
+        type === "OUT_OF_STOCK" ||
+        type === "PREDICTED_STOCKOUT"
       ) {
         navigate("/inventory-alerts");
-      } else if (
-        notification.type === "NEW_ORDER" ||
-        notification.type === "PAYMENT_FAILED" ||
-        notification.type === "RETURN_REQUESTED" ||
-        notification.type === "ORDER_REFUNDED" ||
-        notification.type === "ORDER_MARKED_SHIPPED" ||
-        notification.type === "ORDER_MARKED_DELIVERED"
-      ) {
+      } else if (type === "NEW_REVIEW") {
+        navigate("/reviews");
+      } else {
         navigate("/orders");
       }
     }
@@ -93,13 +78,24 @@ function NotificationDropdown() {
       type === "LOW_STOCK" ||
       type === "OUT_OF_STOCK" ||
       type === "PAYMENT_FAILED" ||
-      type === "RETURN_REQUESTED"
+      type === "RETURN_REQUESTED" ||
+      type === "ORDER_CANCELLED"
     )
       return "badge-error";
-    if (type === "PREDICTED_STOCKOUT" || type === "ORDER_REFUNDED") return "badge-warning";
-    if (type === "NEW_ORDER" || type === "ORDER_MARKED_DELIVERED")
+    if (
+      type === "PREDICTED_STOCKOUT" ||
+      type === "ORDER_REFUNDED" ||
+      type === "RETURN_DENIED"
+    )
+      return "badge-warning";
+    if (
+      type === "NEW_ORDER" ||
+      type === "ORDER_DELIVERED" ||
+      type === "RETURN_APPROVED" ||
+      type === "NEW_REVIEW"
+    )
       return "badge-success";
-    if (type === "ORDER_MARKED_SHIPPED") return "badge-info";
+    if (type === "ORDER_SHIPPED" || type === "ORDER_PROCESSING") return "badge-info";
     return "badge-ghost";
   };
 

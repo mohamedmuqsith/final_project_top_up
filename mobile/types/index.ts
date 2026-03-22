@@ -64,20 +64,45 @@ export interface Order {
     zipCode: string;
     phoneNumber: string;
   };
-  paymentResult: {
+  paymentResult?: {
     id: string;
     status: string;
+    update_time?: string;
+    email_address?: string;
+  };
+  pricing?: {
+    subtotal: number;
+    shippingFee: number;
+    tax: number;
+    discount?: number;
+    total: number;
+    currency: string;
+  };
+  shippingDetails?: {
+    method: string;
+    courierName?: string;
+    trackingNumber?: string;
+    trackingUrl?: string;
+    estimatedDeliveryDate?: string;
+    shippedAt?: string;
+    deliveredAt?: string;
+  };
+  delivery?: {
+    method: string;
+    courier?: string;
+    trackingNumber?: string;
+    estimatedDeliveryDate?: string;
   };
   totalPrice: number;
   status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
-  paymentStatus?: "pending" | "paid" | "failed" | "refunded";
-  paymentMethod?: "online" | "cod";
-  statusHistory?: {
+  paymentStatus: "pending" | "paid" | "failed" | "refunded";
+  paymentMethod: "online" | "cod";
+  statusHistory: {
     status: string;
     timestamp: string;
     comment?: string;
     changedBy?: string;
-    source?: string;
+    changedByType?: "system" | "admin" | "customer" | "worker";
   }[];
   returnStatus?: "none" | "requested" | "approved" | "refunded" | "denied";
   returnReason?: string;

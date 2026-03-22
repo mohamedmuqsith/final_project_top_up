@@ -5,6 +5,7 @@ import { capitalizeFirstLetter, formatDate, getStatusColor } from "@/lib/utils";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ActivityIndicator, ScrollView, Text, View, TouchableOpacity, Alert } from "react-native";
+import * as Clipboard from 'expo-clipboard';
 import useCart from "@/hooks/useCart";
 import RatingModal from "@/components/RatingModal";
 import { useReviews } from "@/hooks/useReviews";
@@ -12,6 +13,8 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrency } from "@/components/CurrencyProvider";
 import { formatCurrency } from "@/lib/currencyUtils";
+import { Order, OrderDocumentData } from "@/types";
+import InvoiceModal from "@/components/InvoiceModal";
 
 export default function OrderDetailsScreen() {
   const { currency } = useCurrency();
@@ -24,6 +27,8 @@ export default function OrderDetailsScreen() {
   const { refetch: fetchInvoice, isFetching: isFetchingInvoice } = useOrderDocument(id, "invoice");
   const queryClient = useQueryClient();
 
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceData, setInvoiceData] = useState<OrderDocumentData | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [productRatings, setProductRatings] = useState<{ [key: string]: number }>({});
   const [productComments, setProductComments] = useState<{ [key: string]: string }>({});
@@ -60,7 +65,7 @@ export default function OrderDetailsScreen() {
 
   // Build a fixed 4-step sequence, mapping dates from history if they exist
   const getHistoryEntry = (statusToFind: string) => 
-    order.statusHistory?.find(h => h.status.toLowerCase() === statusToFind);
+    [...(order.statusHistory || [])].reverse().find(h => h.status.toLowerCase() === statusToFind);
 
   const pendingEntry = getHistoryEntry("pending");
   const processingEntry = getHistoryEntry("processing");
@@ -74,12 +79,14 @@ export default function OrderDetailsScreen() {
 
   const isCancelled = order.status === "cancelled";
 
-  const timelineEvents = [
+  const timelineEvents: any[] = [
     { 
       label: "Pending", 
       date: pendingEntry?.timestamp || order.createdAt, 
       active: true, 
-      comment: pendingEntry?.comment || "Order received", 
+      comment: (order.paymentMethod === "online" && order.paymentStatus === "paid") 
+        ? "Payment confirmed. Awaiting fulfillment." 
+        : (pendingEntry?.comment || "Order received"), 
       isError: false, 
       isReturn: false 
     },
@@ -164,8 +171,9 @@ export default function OrderDetailsScreen() {
   const handleReorder = () => {
     order.orderItems.forEach((item) => {
       // Add items back to cart
+      const productId = typeof item.product === 'object' ? item.product._id : item.product;
       addToCart({
-        productId: item.product._id || (item.product as any),
+        productId: productId,
         quantity: 1
       });
     });
@@ -191,7 +199,6 @@ export default function OrderDetailsScreen() {
               await requestReturn({ orderId: order._id, reason: reason.trim() });
               Alert.alert("Success", "Your return request has been submitted.");
             } catch (error: any) {
-              // Extraction happens in useRequestReturn hook, so error.message is the specific string
               Alert.alert("Request Denied", error?.message || "Failed to submit return request");
             }
           }
@@ -201,9 +208,7 @@ export default function OrderDetailsScreen() {
     );
   };
 
-
   const handleOpenRating = () => {
-    // init ratings for all products to 0
     const initialRatings: { [key: string]: number } = {};
     const initialComments: { [key: string]: string } = {};
     const initialTitles: { [key: string]: string } = {};
@@ -224,19 +229,8 @@ export default function OrderDetailsScreen() {
     try {
       const { data: invoice } = await fetchInvoice();
       if (!invoice) throw new Error("Could not fetch invoice data");
-
-      // Logic: Show summarized view or implement PDF printing if needed
-      // To satisfy "production-ready", we show a clean structured overview for now
-      // Real document apps would use expo-print here
-      Alert.alert(
-        "Invoice: " + invoice.invoiceNumber,
-        `Date: ${formatDate(invoice.orderDate)}\n\n` +
-        `Customer: ${invoice.customer.fullName}\n` +
-        `Total: ${formatCurrency(invoice.pricing.total, currency)}\n\n` +
-        `Store: ${invoice.store.name}\n` +
-        `Location: ${invoice.store.city}, ${invoice.store.province}`,
-        [{ text: "OK", onPress: () => {} }]
-      );
+      setInvoiceData(invoice);
+      setShowInvoiceModal(true);
     } catch (error: any) {
       Alert.alert("Invoice Unavailable", error?.message || "Failed to load invoice");
     }
@@ -251,7 +245,6 @@ export default function OrderDetailsScreen() {
     (order.deliveredAt ? (new Date().getTime() - new Date(order.deliveredAt).getTime()) < 14 * 24 * 60 * 60 * 1000 : false);
 
   const handleSubmitRating = async () => {
-    // check if any product has been rated
     const hasAnyRating = Object.values(productRatings).some((rating) => rating > 0);
     if (!hasAnyRating) {
       Alert.alert("Error", "Please rate at least one product");
@@ -277,9 +270,7 @@ export default function OrderDetailsScreen() {
         })
       );
       
-      // Force refresh of orders that might contain these products
       await queryClient.invalidateQueries({ queryKey: ["orders"] });
-      // Invalidate specific product reviews
       order.orderItems.forEach(item => {
         const productId = item.product._id || (item.product as any);
         queryClient.invalidateQueries({ queryKey: ["reviews", productId] });
@@ -308,7 +299,56 @@ export default function OrderDetailsScreen() {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         
-        {/* Header Summary */}
+        {/* Shipping Details */}
+        {order.status !== 'pending' && order.status !== 'cancelled' && (
+          <View className="mx-4 mt-6 bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
+            <View className="flex-row items-center gap-2 mb-4">
+              <View className="p-2 bg-primary/10 rounded-xl">
+                <Ionicons name="car-outline" size={18} color="#0D9488" />
+              </View>
+              <Text className="text-lg font-bold text-slate-900">Shipping Info</Text>
+            </View>
+
+            <View className="space-y-4">
+              <View className="flex-row justify-between items-center py-2 border-b border-slate-50">
+                <Text className="text-slate-500 font-medium">Method</Text>
+                <Text className="text-slate-900 font-bold uppercase">{order.shippingDetails?.method || order.delivery?.method || "Standard"}</Text>
+              </View>
+
+              {order.shippingDetails?.courierName && (
+                <>
+                  <View className="flex-row justify-between items-center py-2 border-b border-slate-50">
+                    <Text className="text-slate-500 font-medium">Courier</Text>
+                    <Text className="text-slate-900 font-bold">{order.shippingDetails.courierName}</Text>
+                  </View>
+                  <TouchableOpacity 
+                    onPress={async () => {
+                      await Clipboard.setStringAsync(order?.shippingDetails?.trackingNumber || "");
+                      Alert.alert("Success", "Tracking number copied to clipboard!");
+                    }}
+                    className="flex-row justify-between items-start py-2 border-b border-slate-50"
+                  >
+                    <Text className="text-slate-500 font-medium">Tracking Number</Text>
+                    <View className="items-end">
+                      <Text className="text-primary font-bold font-mono">{order.shippingDetails?.trackingNumber}</Text>
+                      <Text className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">Tap to copy</Text>
+                    </View>
+                  </TouchableOpacity>
+                  {order.shippingDetails?.estimatedDeliveryDate && (
+                    <View className="flex-row justify-between items-center py-2">
+                      <Text className="text-slate-500 font-medium">Estimated Delivery</Text>
+                      <Text className="text-slate-900 font-bold">
+                        {new Date(order.shippingDetails.estimatedDeliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Global Stats */}
         <View className="px-6 mt-6 mb-8 items-center">
           <View className="flex-row items-center gap-2 mb-2 flex-wrap">
             <View 
@@ -328,24 +368,9 @@ export default function OrderDetailsScreen() {
                 {order.paymentMethod === "cod" ? "COD" : "Online"} • {capitalizeFirstLetter(order.paymentStatus || "pending")}
               </Text>
             </View>
-            
-            {order.paymentStatus === "refunded" ? (
-              <View className="px-4 py-2 rounded-full bg-green-500/20">
-                <Text className="text-sm font-bold tracking-wide text-green-500">
-                  Refunded
-                </Text>
-              </View>
-            ) : order.returnStatus && order.returnStatus !== "none" ? (
-              <View className="px-4 py-2 rounded-full bg-amber-500/20">
-                <Text className="text-sm font-bold tracking-wide text-amber-500">
-                  Return: {capitalizeFirstLetter(order.returnStatus)}
-                </Text>
-              </View>
-            ) : null}
           </View>
           <Text className="text-text-primary text-3xl font-bold">{formatCurrency(order.totalPrice, currency)}</Text>
           <Text className="text-text-secondary mt-1">Order #{order._id.slice(-8).toUpperCase()}</Text>
-          <Text className="text-text-secondary/70 text-xs mt-1">{formatDate(order.createdAt)}</Text>
         </View>
 
         {/* Timeline */}
@@ -354,7 +379,7 @@ export default function OrderDetailsScreen() {
           <View className="bg-surface rounded-3xl p-5">
             {timelineEvents.map((event, index) => {
               const isLast = index === timelineEvents.length - 1;
-              const color = event.isError ? "#FF6B6B" : (event as any).isReturn ? "#FFC107" : event.active ? "#00D9FF" : "#333333";
+              const color = event.isError ? "#FF6B6B" : event.isReturn ? "#FFC107" : event.active ? "#00D9FF" : "#333333";
               
               return (
                 <View key={index} className="flex-row">
@@ -368,6 +393,11 @@ export default function OrderDetailsScreen() {
                     </Text>
                     {event.date && (
                       <Text className="text-text-secondary text-xs mt-1">{formatDate(event.date)}</Text>
+                    )}
+                    {event.label.toLowerCase() === "shipped" && order.shippingDetails?.courierName && (
+                      <Text className="text-[10px] text-primary/70 mt-0.5 font-medium italic">
+                        Via {order.shippingDetails.courierName} • {order.shippingDetails.trackingNumber}
+                      </Text>
                     )}
                     {event.comment && (
                       <Text className="text-text-secondary/60 text-[10px] mt-1 italic">
@@ -408,59 +438,24 @@ export default function OrderDetailsScreen() {
           </View>
         </View>
 
-        {/* Return Details */}
-        {order.returnStatus && order.returnStatus !== "none" && (
-          <View className="px-6 mb-8">
-            <Text className="text-text-primary font-bold text-lg mb-4">Return Details</Text>
-            <View className="bg-surface rounded-3xl p-5 border border-amber-500/30">
-              <View className="flex-row items-center mb-3">
-                <Ionicons name="refresh-circle" size={24} color="#FFC107" />
-                <Text className="text-amber-500 font-bold text-base ml-2">
-                  Status: {capitalizeFirstLetter(order.returnStatus)}
-                </Text>
-              </View>
-              {returnRequested && (
-                <View className="mb-2">
-                  <Text className="text-text-secondary text-xs uppercase tracking-wider mb-1">Requested On</Text>
-                  <Text className="text-text-primary font-medium">{formatDate(returnRequested.timestamp || new Date().toISOString())}</Text>
-                </View>
-              )}
-              {order.returnReason && (
-                <View className="mt-2">
-                  <Text className="text-text-secondary text-xs uppercase tracking-wider mb-1">Reason provided</Text>
-                  <Text className="text-text-primary font-medium italic">"{order.returnReason}"</Text>
-                </View>
-              )}
-              {order.returnNotes && (
-                <View className="mt-3 pt-3 border-t border-background/50">
-                  <Text className="text-text-secondary text-xs uppercase tracking-wider mb-1">Admin Notes</Text>
-                  <Text className="text-text-primary font-medium italic">"{order.returnNotes}"</Text>
-                </View>
-              )}
+        {/* Shipping Address Summary */}
+        <View className="px-6 mb-8">
+          <Text className="text-text-primary font-bold text-lg mb-4">Shipping To</Text>
+          <View className="bg-surface rounded-3xl p-5 flex-row items-start">
+            <View className="bg-primary/20 p-2 rounded-full mr-4 mt-1">
+              <Ionicons name="location" size={20} color="#00D9FF" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-text-primary font-semibold text-base mb-1">{order.shippingAddress.fullName}</Text>
+              <Text className="text-text-secondary text-sm leading-5">
+                {order.shippingAddress.streetAddress}
+              </Text>
+              <Text className="text-text-secondary text-sm leading-5">
+                {order.shippingAddress.city}, {order.shippingAddress.province} {order.shippingAddress.zipCode}
+              </Text>
             </View>
           </View>
-        )}
-
-        {/* Shipping Summary */}
-        {order.shippingAddress && (
-          <View className="px-6 mb-8">
-            <Text className="text-text-primary font-bold text-lg mb-4">Shipping To</Text>
-            <View className="bg-surface rounded-3xl p-5 flex-row items-start">
-              <View className="bg-primary/20 p-2 rounded-full mr-4 mt-1">
-                <Ionicons name="location" size={20} color="#00D9FF" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-text-primary font-semibold text-base mb-1">{order.shippingAddress.fullName}</Text>
-                <Text className="text-text-secondary text-sm leading-5">
-                  {order.shippingAddress.streetAddress}
-                </Text>
-                <Text className="text-text-secondary text-sm leading-5">
-                  {order.shippingAddress.city}, {order.shippingAddress.province} {order.shippingAddress.zipCode}
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
+        </View>
 
         {/* Payment Summary */}
         <View className="px-6 mb-8">
@@ -473,32 +468,28 @@ export default function OrderDetailsScreen() {
               </Text>
             </View>
             <View className="flex-row justify-between mb-3">
-              <Text className="text-text-secondary">Payment Status</Text>
-              <View 
-                className="px-3 py-1 rounded-full"
-                style={{ backgroundColor: getStatusColor(order.paymentStatus || "pending") + "20" }}
-              >
-                <Text 
-                  className="text-xs font-bold" 
-                  style={{ color: getStatusColor(order.paymentStatus || "pending") }}
-                >
-                  {capitalizeFirstLetter(order.paymentStatus || "pending")}
-                </Text>
-              </View>
-            </View>
-            <View className="flex-row justify-between mb-3">
               <Text className="text-text-secondary">Subtotal</Text>
               <Text className="text-text-primary font-medium">
-                {formatCurrency(order.orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0), currency)}
+                {formatCurrency(order.pricing?.subtotal || order.orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0), currency)}
               </Text>
             </View>
+            {typeof order.pricing?.tax === "number" && (
+              <View className="flex-row justify-between mb-3">
+                <Text className="text-text-secondary">Tax</Text>
+                <Text className="text-text-primary font-medium">
+                  {formatCurrency(order.pricing?.tax || 0, currency)}
+                </Text>
+              </View>
+            )}
             <View className="flex-row justify-between mb-3 border-b border-background pb-3">
               <Text className="text-text-secondary">Shipping</Text>
-              <Text className="text-[#1DB954] font-medium">Free</Text>
+              <Text className={((order.pricing?.shippingFee || 0) === 0) ? "text-[#1DB954] font-medium" : "text-text-primary font-medium"}>
+                {(order.pricing?.shippingFee || 0) === 0 ? "Free" : formatCurrency(order.pricing?.shippingFee || 0, currency)}
+              </Text>
             </View>
             <View className="flex-row justify-between items-center">
               <Text className="text-text-primary font-bold text-base">Total</Text>
-              <Text className="text-primary font-bold text-xl">{formatCurrency(order.totalPrice, currency)}</Text>
+              <Text className="text-primary font-bold text-xl">{formatCurrency(order.pricing?.total || order.totalPrice, currency)}</Text>
             </View>
           </View>
         </View>
@@ -507,20 +498,18 @@ export default function OrderDetailsScreen() {
         <View className="px-6 mb-10">
           <Text className="text-text-primary font-bold text-lg mb-4">Order Actions</Text>
           <View className="gap-4">
-            {/* Primary Action: Reorder */}
             {order.status !== "cancelled" && (
-            <TouchableOpacity
-              className="bg-[#00D9FF] rounded-2xl py-4 flex-row items-center justify-center shadow-lg shadow-[#00D9FF]/30"
-              activeOpacity={0.7}
-              onPress={handleReorder}
-            >
-              <Ionicons name="refresh" size={22} color="#000000" />
-              <Text className="text-[#000000] font-black text-base ml-2">Order Again</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                className="bg-[#00D9FF] rounded-2xl py-4 flex-row items-center justify-center shadow-lg shadow-[#00D9FF]/30"
+                activeOpacity={0.7}
+                onPress={handleReorder}
+              >
+                <Ionicons name="refresh" size={22} color="#000000" />
+                <Text className="text-[#000000] font-black text-base ml-2">Order Again</Text>
+              </TouchableOpacity>
             )}
 
             <View className="flex-row gap-3">
-              {/* View Invoice */}
               {isInvoiceEligible && (
                 <TouchableOpacity
                   className="flex-1 bg-surface-lighter border border-text-primary/10 rounded-2xl py-4 flex-row items-center justify-center"
@@ -529,11 +518,10 @@ export default function OrderDetailsScreen() {
                   disabled={isFetchingInvoice}
                 >
                   <Ionicons name="document-text-outline" size={20} color="#FFFFFF" />
-                  <Text className="text-white font-bold text-sm ml-2">View Invoice</Text>
+                  <Text className="text-white font-bold text-sm ml-2">Invoice</Text>
                 </TouchableOpacity>
               )}
 
-              {/* Leave/Edit Rating */}
               {order.status === "delivered" && (
                 <TouchableOpacity
                   className="flex-1 bg-surface-lighter border border-primary/20 rounded-2xl py-4 flex-row items-center justify-center"
@@ -548,7 +536,6 @@ export default function OrderDetailsScreen() {
               )}
             </View>
 
-            {/* Request Return */}
             {isReturnEligible && (
               <TouchableOpacity
                 className="bg-error/10 border border-error/30 rounded-2xl py-4 flex-row items-center justify-center"
@@ -566,8 +553,6 @@ export default function OrderDetailsScreen() {
                 )}
               </TouchableOpacity>
             )}
-            
-
           </View>
         </View>
       </ScrollView>
@@ -582,14 +567,20 @@ export default function OrderDetailsScreen() {
         onSubmit={handleSubmitRating}
         isSubmitting={isCreatingReview}
         onRatingChange={(productId, rating) =>
-          setProductRatings((prev) => ({ ...prev, [productId]: rating }))
+          setProductRatings((prev: { [key: string]: number }) => ({ ...prev, [productId]: rating }))
         }
         onCommentChange={(productId, comment) =>
-          setProductComments((prev) => ({ ...prev, [productId]: comment }))
+          setProductComments((prev: { [key: string]: string }) => ({ ...prev, [productId]: comment }))
         }
         onTitleChange={(productId, title) =>
-          setProductTitles((prev) => ({ ...prev, [productId]: title }))
+          setProductTitles((prev: { [key: string]: string }) => ({ ...prev, [productId]: title }))
         }
+      />
+
+      <InvoiceModal
+        visible={showInvoiceModal}
+        onClose={() => setShowInvoiceModal(false)}
+        data={invoiceData}
       />
     </SafeScreen>
   );

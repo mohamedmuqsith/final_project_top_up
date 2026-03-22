@@ -22,6 +22,7 @@ const app = express();
 
 const __dirname = path.resolve();
 
+app.use(cors({ origin: ENV.CLIENT_URL, credentials: true })); // credentials: true allows the browser to send the cookies to the server with the request
 app.use(
   "/api/payment",
   (req, res, next) => {
@@ -36,7 +37,6 @@ app.use(
 
 app.use(express.json())
 app.use(clerkMiddleware()) // add auth object under the request =>req.auth
-app.use(cors({ origin: ENV.CLIENT_URL, credentials: true })); // credentials: true allows the browser to send the cookies to the server with the request
 
 
 app.use("/api/inngest", serve({ client: inngest, functions }));
