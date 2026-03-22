@@ -1,4 +1,5 @@
 import { Offer } from "../models/offer.model.js";
+import { Product } from "../models/product.model.js";
 
 /**
  * Calculates the discounted price for a product based on active offers.
@@ -109,4 +110,57 @@ export async function enrichProductsWithPrices(products) {
     })
   );
   return enriched;
+}
+
+/**
+ * Validates cart items, checks stock, and calculates pricing details.
+ * Used by order creation and document generation flows.
+ */
+export async function validateCartItems(cartItems) {
+  if (!cartItems || cartItems.length === 0) {
+    throw new Error("Cart is empty");
+  }
+
+  let subtotal = 0;
+  const validatedItems = [];
+
+  for (const item of cartItems) {
+    const productId = item?.product?._id || item?.product;
+    if (!productId) {
+      throw new Error("Invalid cart item: missing product");
+    }
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      throw new Error("Product not found");
+    }
+
+    // Original stock check: ensure enough stock for the quantity requested
+    if (product.stock < item.quantity) {
+      throw new Error(`Insufficient stock for ${product.name}`);
+    }
+
+    // SERVER-SIDE PRICING: calculate effective price
+    const pricing = await getEffectivePrice(product);
+    const effectivePrice = pricing.discountedPrice;
+
+    subtotal += effectivePrice * item.quantity;
+    validatedItems.push({
+      product: product._id.toString(),
+      name: product.name,
+      price: effectivePrice,
+      quantity: item.quantity,
+      image: product.images[0] || "/placeholder.jpg",
+    });
+  }
+
+  const shipping = 10.0;
+  const tax = subtotal * 0.08;
+  const total = subtotal + shipping + tax;
+
+  if (total <= 0) {
+    throw new Error("Invalid order total");
+  }
+
+  return { validatedItems, subtotal, shipping, tax, total };
 }

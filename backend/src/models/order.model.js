@@ -128,9 +128,55 @@ const orderSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    pricing: {
+      subtotal: { type: Number, min: 0 },
+      shippingFee: { type: Number, min: 0 },
+      tax: { type: Number, min: 0 },
+      discount: { type: Number, default: 0, min: 0 },
+      total: { type: Number, min: 0 },
+      currency: { type: String, default: "usd" },
+    },
+    shippingDetails: {
+      method: { 
+        type: String, 
+        enum: ["standard", "express", "same-day", "pickup", "none"],
+        default: "standard"
+      },
+      courierName: { type: String },
+      trackingNumber: { type: String },
+      trackingUrl: { type: String },
+      estimatedDeliveryDate: { type: Date },
+      shippedAt: { type: Date },
+      deliveredAt: { type: Date },
+    },
   },
   { timestamps: true }
 );
+
+// Backward compatibility alias: order.delivery -> order.shippingDetails
+orderSchema.virtual("delivery").get(function() {
+  return this.shippingDetails;
+}).set(function(val) {
+  this.shippingDetails = val;
+});
+
+orderSchema.post("init", function(doc) {
+  if (!doc.pricing || !doc.pricing.total) {
+    const subtotal = doc.orderItems?.reduce((s, i) => s + (i.price * i.quantity), 0) || 0;
+    doc.pricing = {
+      subtotal: subtotal,
+      shippingFee: 0, // Fallback for legacy
+      tax: 0,         // Fallback for legacy
+      discount: 0,
+      total: doc.totalPrice || subtotal,
+      currency: "usd",
+      isLegacy: true
+    };
+  }
+});
+
+orderSchema.set("toJSON", { virtuals: true });
+orderSchema.set("toObject", { virtuals: true });
 
 // Fix duplicate key error: allow multiple null/missing IDs for COD orders
 orderSchema.index({ "paymentResult.id": 1 }, { unique: true, sparse: true });

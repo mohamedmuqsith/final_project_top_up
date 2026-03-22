@@ -54,8 +54,16 @@ export const updateReviewStatus = async (req, res) => {
     const review = await Review.findByIdAndUpdate(id, { status }, { new: true });
     if (!review) return res.status(404).json({ error: "Review not found" });
 
-    // Recalculate product rating if status changed to/from published
-    // (Assuming recalculateProductRating exists in a review service or helper)
+    // Recalculate product rating if status changed
+    const productReviews = await Review.find({ productId: review.productId, status: "published" });
+    const averageRating = productReviews.length > 0 
+      ? productReviews.reduce((sum, r) => sum + r.rating, 0) / productReviews.length 
+      : 0;
+
+    await Product.findByIdAndUpdate(review.productId, {
+      averageRating: parseFloat(averageRating.toFixed(1)),
+      reviewCount: productReviews.length,
+    });
     
     res.status(200).json(review);
   } catch (error) {

@@ -103,7 +103,7 @@ const CartScreen = () => {
       }
 
       const orderPayload = {
-        cartItems: cartItems.map(item => ({
+        cartItems: validCartItems.map(item => ({
           product: item.product._id,
           quantity: item.quantity
         })),

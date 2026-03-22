@@ -156,11 +156,13 @@ export function generateInvoice(data, currency = "USD") {
     y += 6;
   };
 
-  drawTotalLine("Subtotal", fmtCurrency(data.pricing.subtotal, currency));
-  if (data.pricing.shipping > 0) {
+  drawTotalLine("Subtotal", fmtCurrency(data.pricing?.subtotal || data.totalPrice, currency));
+  if (data.pricing?.shipping > 0) {
     drawTotalLine("Shipping", fmtCurrency(data.pricing.shipping, currency));
+  } else if (data.pricing?.shipping === 0) {
+    drawTotalLine("Shipping", "Free");
   }
-  if (data.pricing.tax > 0) {
+  if (typeof data.pricing?.tax === "number") {
     drawTotalLine("Tax", fmtCurrency(data.pricing.tax, currency));
   }
 
@@ -347,11 +349,19 @@ export function generateShippingLabel(data) {
     doc.text(`Ship Date: ${fmtDate(data.shippedAt)}`, 8, y + 4);
   }
 
-  // ── Tracking Placeholder (right) ──
+  // ── Tracking Section (right) ──
+  const tracking = data.shippingDetails?.trackingNumber || data.delivery?.trackingNumber || "";
+  const courier = data.shippingDetails?.courierName || data.delivery?.courier || "";
+
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...COLORS.dark);
+  doc.text(courier.toUpperCase(), pw - 8, y, { align: "right" });
+  
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(...COLORS.light);
-  doc.text("TRACKING: _______________", pw - 8, y, { align: "right" });
+  doc.setTextColor(...COLORS.mid);
+  doc.text(tracking ? `TRK: ${tracking}` : "NO TRACKING", pw - 8, y + 4, { align: "right" });
 
   doc.save(`shipping-label-${shortId(data)}.pdf`);
 }

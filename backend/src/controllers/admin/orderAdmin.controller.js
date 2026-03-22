@@ -87,19 +87,47 @@ export const updateOrderStatus = async (req, res) => {
 
       order.status = newStatus;
       
-      // COD Delivery Logic: Confirm payment collection
-      if (newStatus === "delivered" && order.paymentMethod === "cod") {
-        if (cashCollected === true) {
-          order.paymentStatus = "paid";
-        } else if (cashCollected === false) {
-          order.paymentStatus = "pending";
+      // Fulfillment Logic for Shipped/Delivered
+      if (newStatus === "shipped") {
+        const { courierName, trackingNumber, estimatedDeliveryDate, method } = req.body;
+        if (!courierName || !trackingNumber) {
+          throw new Error("Courier Name and Tracking Number are required to mark as Shipped.");
         }
+        order.shippingDetails = {
+          ...order.shippingDetails,
+          courierName,
+          trackingNumber,
+          estimatedDeliveryDate: estimatedDeliveryDate ? new Date(estimatedDeliveryDate) : order.shippingDetails?.estimatedDeliveryDate,
+          method: method || order.shippingDetails?.method || "standard",
+          shippedAt: new Date()
+        };
+        order.shippedAt = order.shippingDetails.shippedAt; // Standardize for existing docs
+      }
+
+      if (newStatus === "delivered") {
+        // COD Delivery Logic: Confirm payment collection
+        if (order.paymentMethod === "cod") {
+          if (cashCollected === true) {
+            order.paymentStatus = "paid";
+          } else if (cashCollected === false) {
+            order.paymentStatus = "pending";
+          }
+        }
+        
+        order.shippingDetails.deliveredAt = new Date();
+        order.deliveredAt = order.shippingDetails.deliveredAt;
       }
       
       const statusComment = adminComment || (
-        newStatus === "delivered" && order.paymentMethod === "cod"
-          ? `Order delivered. Cash collected: ${cashCollected === true ? "YES" : "NO"}`
-          : `Status updated to ${newStatus} via Admin Panel`
+        newStatus === "processing"
+          ? "Order is being prepared for shipment."
+          : newStatus === "shipped" 
+            ? `Order has been shipped and is in transit via ${order.shippingDetails.courierName} (Tracking: ${order.shippingDetails.trackingNumber})`
+            : newStatus === "delivered"
+              ? order.paymentMethod === "cod"
+                ? `Order delivered successfully. Cash collected: ${cashCollected === true ? "YES" : "NO"}`
+                : "Order delivered successfully."
+              : `Status updated to ${newStatus} via Admin Panel`
       );
 
       order.statusHistory.push({
@@ -111,16 +139,13 @@ export const updateOrderStatus = async (req, res) => {
         changedByType: "admin"
       });
 
-      if (newStatus === "shipped" && !order.shippedAt) order.shippedAt = new Date();
-      if (newStatus === "delivered" && !order.deliveredAt) order.deliveredAt = new Date();
-
       await order.save();
 
       // Notifications
       const notificationMap = {
-        processing: { title: "Order Processing", message: "Your order is now being prepared.", type: "ORDER_MARKED_PROCESSING" },
-        shipped: { title: "Order Shipped", message: "Your order has been shipped and is on its way!", type: "ORDER_MARKED_SHIPPED" },
-        delivered: { title: "Order Delivered", message: "Your order has been delivered. Enjoy your purchase!", type: "ORDER_MARKED_DELIVERED" }
+        processing: { title: "Order Processing", message: "Your order is now being prepared.", type: "ORDER_PROCESSING" },
+        shipped: { title: "Order Shipped", message: "Your order has been shipped and is on its way!", type: "ORDER_SHIPPED" },
+        delivered: { title: "Order Delivered", message: "Your order has been delivered. Enjoy your purchase!", type: "ORDER_DELIVERED" }
       };
 
       if (notificationMap[newStatus]) {

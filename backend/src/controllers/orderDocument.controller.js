@@ -57,12 +57,6 @@ export async function getOrderDocumentData(req, res) {
 
     const shortId = order._id.toString().slice(-8).toUpperCase();
 
-    // Calculate subtotal from line items
-    const subtotal = order.orderItems.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-
     const documentData = {
       orderId: order._id,
       orderShortId: shortId,
@@ -91,10 +85,10 @@ export async function getOrderDocumentData(req, res) {
       })),
 
       pricing: {
-        subtotal,
-        shipping: 0, // Not tracked separately in the current model
-        tax: 0, // Not tracked separately in the current model
-        total: order.totalPrice,
+        subtotal: order.pricing?.subtotal || order.totalPrice,
+        shipping: order.pricing?.shippingFee || 0,
+        tax: order.pricing?.tax || 0,
+        total: order.pricing?.total || order.totalPrice,
       },
 
       payment: {
@@ -112,4 +106,3 @@ export async function getOrderDocumentData(req, res) {
     res.status(500).json({ error: "Internal server error" });
   }
 }
-

@@ -173,6 +173,104 @@ function DocumentActions({ order, variant = "row" }) {
   );
 }
 
+// ─── Ship Order Modal ──────────────────────────────────────────
+function ShipOrderModal({ order, isOpen, onClose, onConfirm, isPending }) {
+  const [courierName, setCourierName] = useState("");
+  const [trackingNumber, setTrackingNumber] = useState("");
+  const [estimatedDeliveryDate, setEstimatedDeliveryDate] = useState("");
+  const [method, setMethod] = useState("standard");
+
+  if (!isOpen) return null;
+
+  return (
+    <dialog className="modal modal-open">
+      <div className="modal-box rounded-3xl border border-base-300 shadow-2xl">
+        <h3 className="font-black text-xl flex items-center gap-2">
+          <TruckIcon className="size-6 text-primary" />
+          Ship Order
+        </h3>
+        <p className="py-4 text-sm text-base-content/70">
+          Enter tracking details for Order <strong>#{order._id.slice(-8).toUpperCase()}</strong>.
+        </p>
+
+        <div className="space-y-4 py-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-xs font-bold uppercase opacity-50">Courier Name</span>
+              </label>
+              <input
+                type="text"
+                className="input input-bordered rounded-xl bg-base-200/50"
+                placeholder="e.g. FedEx, DHL"
+                value={courierName}
+                onChange={(e) => setCourierName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-xs font-bold uppercase opacity-50">Tracking Number</span>
+              </label>
+              <input
+                type="text"
+                className="input input-bordered rounded-xl bg-base-200/50"
+                placeholder="TRK12345678"
+                value={trackingNumber}
+                onChange={(e) => setTrackingNumber(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-xs font-bold uppercase opacity-50">Shipping Method</span>
+              </label>
+              <select
+                className="select select-bordered rounded-xl bg-base-200/50"
+                value={method}
+                onChange={(e) => setMethod(e.target.value)}
+              >
+                <option value="standard">Standard</option>
+                <option value="express">Express</option>
+                <option value="same-day">Same Day</option>
+                <option value="pickup">Pickup</option>
+              </select>
+            </div>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-xs font-bold uppercase opacity-50">Estimated Delivery</span>
+              </label>
+              <input
+                type="date"
+                className="input input-bordered rounded-xl bg-base-200/50"
+                value={estimatedDeliveryDate}
+                onChange={(e) => setEstimatedDeliveryDate(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="modal-action">
+          <button className="btn btn-ghost rounded-xl" onClick={onClose} disabled={isPending}>Cancel</button>
+          <button
+            className="btn btn-primary rounded-xl px-8"
+            onClick={() => onConfirm({ courierName, trackingNumber, estimatedDeliveryDate, method })}
+            disabled={isPending || !courierName || !trackingNumber}
+          >
+            {isPending ? <span className="loading loading-spinner loading-xs" /> : "Confirm Shipping"}
+          </button>
+        </div>
+      </div>
+      <form method="dialog" className="modal-backdrop">
+        <button onClick={onClose}>close</button>
+      </form>
+    </dialog>
+  );
+}
+
 // ─── COD Delivery Modal ──────────────────────────────────────────
 function CodDeliveryModal({ order, isOpen, onClose, onConfirm, isPending }) {
   const [cashCollected, setCashCollected] = useState(true);
@@ -188,19 +286,19 @@ function CodDeliveryModal({ order, isOpen, onClose, onConfirm, isPending }) {
           Confirm COD Delivery
         </h3>
         <p className="py-4 text-sm text-base-content/70">
-          You are marking Order <strong>#{order._id.slice(-8).toUpperCase()}</strong> as delivered. 
+          You are marking Order <strong>#{order._id.slice(-8).toUpperCase()}</strong> as delivered.
           Please confirm if the cash payment was collected from the customer.
         </p>
 
         <div className="space-y-4 py-2">
           <div className="form-control">
             <label className="label cursor-pointer justify-start gap-4 p-0">
-              <span className="label-text font-bold">Was cash collected?</span> 
-              <input 
-                type="checkbox" 
+              <span className="label-text font-bold">Was cash collected?</span>
+              <input
+                type="checkbox"
                 className={`toggle ${cashCollected ? 'toggle-success' : 'toggle-warning'}`}
-                checked={cashCollected} 
-                onChange={(e) => setCashCollected(e.target.checked)} 
+                checked={cashCollected}
+                onChange={(e) => setCashCollected(e.target.checked)}
               />
               <span className={`text-xs font-bold uppercase ${cashCollected ? 'text-success' : 'text-warning'}`}>
                 {cashCollected ? 'Yes (Mark as Paid)' : 'No (Stay Pending)'}
@@ -212,8 +310,8 @@ function CodDeliveryModal({ order, isOpen, onClose, onConfirm, isPending }) {
             <label className="label">
               <span className="label-text text-xs font-bold uppercase opacity-50">Delivery Note / Comment</span>
             </label>
-            <textarea 
-              className="textarea textarea-bordered rounded-2xl h-24 bg-base-200/50 focus:border-primary" 
+            <textarea
+              className="textarea textarea-bordered rounded-2xl h-24 bg-base-200/50 focus:border-primary"
               placeholder="e.g. Collected by driver John, customer was home..."
               value={comment}
               onChange={(e) => setComment(e.target.value)}
@@ -223,8 +321,8 @@ function CodDeliveryModal({ order, isOpen, onClose, onConfirm, isPending }) {
 
         <div className="modal-action">
           <button className="btn btn-ghost rounded-xl" onClick={onClose} disabled={isPending}>Cancel</button>
-          <button 
-            className="btn btn-primary rounded-xl px-8" 
+          <button
+            className="btn btn-primary rounded-xl px-8"
             onClick={() => onConfirm({ cashCollected, comment })}
             disabled={isPending}
           >
@@ -256,8 +354,8 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
   const isTerminal = ["delivered", "cancelled"].includes(order.status);
 
   // Build a fixed logical sequence for the admin timeline
-  const getHistoryEntry = (statusToFind) => 
-    order.statusHistory?.find(h => h.status.toLowerCase() === statusToFind);
+  const getHistoryEntry = (statusToFind) =>
+    [...(order.statusHistory || [])].reverse().find(h => h.status.toLowerCase() === statusToFind);
 
   const pendingEntry = getHistoryEntry("pending");
   const processingEntry = getHistoryEntry("processing");
@@ -268,37 +366,39 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
   const isCancelled = order.status === "cancelled";
 
   const timeline = [
-    { 
-      label: "Pending", 
-      date: pendingEntry?.timestamp || order.createdAt, 
-      status: "pending", 
-      comment: pendingEntry?.comment, 
-      by: pendingEntry?.changedByType || "system" 
+    {
+      label: "Pending",
+      date: pendingEntry?.timestamp || order.createdAt,
+      status: "pending",
+      comment: (order.paymentMethod === "online" && order.paymentStatus === "paid")
+        ? "Payment confirmed. Awaiting fulfillment."
+        : (pendingEntry?.comment || "Order received"),
+      by: pendingEntry?.changedByType || "system"
     }
   ];
 
   if (!isCancelled) {
     timeline.push(
-      { 
-        label: "Processing", 
-        date: processingEntry?.timestamp || null, 
-        status: "processing", 
-        comment: processingEntry?.comment, 
-        by: processingEntry?.changedByType || "system" 
+      {
+        label: "Processing",
+        date: processingEntry?.timestamp || null,
+        status: "processing",
+        comment: processingEntry?.comment,
+        by: processingEntry?.changedByType || "system"
       },
-      { 
-        label: "Shipped", 
-        date: shippedEntry?.timestamp || order.shippedAt || null, 
-        status: "shipped", 
-        comment: shippedEntry?.comment, 
-        by: shippedEntry?.changedByType || "admin" 
+      {
+        label: "Shipped",
+        date: shippedEntry?.timestamp || order.shippedAt || null,
+        status: "shipped",
+        comment: shippedEntry?.comment,
+        by: shippedEntry?.changedByType || "admin"
       },
-      { 
-        label: "Delivered", 
-        date: deliveredEntry?.timestamp || order.deliveredAt || null, 
-        status: "delivered", 
-        comment: deliveredEntry?.comment, 
-        by: deliveredEntry?.changedByType || "worker" 
+      {
+        label: "Delivered",
+        date: deliveredEntry?.timestamp || order.deliveredAt || null,
+        status: "delivered",
+        comment: deliveredEntry?.comment,
+        by: deliveredEntry?.changedByType || "worker"
       }
     );
   } else {
@@ -399,9 +499,9 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
                           </span>
                         </p>
                       </div>
-                      
+
                       {order.paymentMethod === "cod" && order.paymentStatus === "pending" && order.status !== "cancelled" && (
-                        <button 
+                        <button
                           className="btn btn-xs btn-primary mt-3 w-full rounded-lg"
                           onClick={() => onMarkAsPaid(order._id)}
                         >
@@ -428,12 +528,30 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
                     <div className="rounded-2xl bg-base-200/40 p-4">
                       <div className="flex items-center gap-2 mb-2 text-base-content/55">
                         <BadgeDollarSignIcon className="size-4" />
-                        <p className="text-xs uppercase font-bold tracking-wide">Total</p>
+                        <p className="text-xs uppercase font-bold tracking-wide">Financials</p>
                       </div>
-                      <p className="text-xl font-black text-primary">
-                        {formatCurrency(order.totalPrice, currency)}
-                      </p>
-                      <p className="text-xs text-base-content/50 mt-1">Final order amount</p>
+                      <div className="space-y-1 mt-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="opacity-60">Subtotal:</span>
+                          <span className="font-bold">{formatCurrency(order.pricing?.subtotal || order.orderItems.reduce((s, i) => s + (i.price * i.quantity), 0), currency)}</span>
+                        </div>
+                        {typeof order.pricing?.tax === "number" && (
+                          <div className="flex justify-between text-xs">
+                            <span className="opacity-60">Tax:</span>
+                            <span className="font-bold">{formatCurrency(order.pricing.tax, currency)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-xs">
+                          <span className="opacity-60">Shipping:</span>
+                          <span className={((order.pricing?.shippingFee || 0) === 0) ? "text-success font-bold" : "font-bold"}>
+                            {(order.pricing?.shippingFee || 0) === 0 ? "Free" : formatCurrency(order.pricing.shippingFee, currency)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm border-t border-base-content/5 pt-2 mt-2">
+                          <span className="font-black">TOTAL:</span>
+                          <span className="font-black text-primary">{formatCurrency(order.pricing?.total || order.totalPrice, currency)}</span>
+                        </div>
+                      </div>
                     </div>
 
                     {order.returnStatus !== "none" && (
@@ -596,6 +714,40 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
                     </p>
                   </div>
                   <div className="p-5 flex flex-col gap-6">
+                    {/* Shipping Info Card (Detailed) */}
+                    {order.status !== "pending" && order.status !== "cancelled" && (
+                      <div className="rounded-2xl bg-info/5 border border-info/20 p-4">
+                        <div className="flex items-center gap-2 mb-3 text-info font-bold">
+                          <TruckIcon className="size-4" />
+                          <p className="text-xs uppercase tracking-wide">Shipping Info</p>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-xs">
+                            <span className="opacity-50">Method:</span>
+                            <span className="font-bold uppercase">{order.shippingDetails?.method || order.delivery?.method || "Standard"}</span>
+                          </div>
+                          {order.shippedAt && (
+                            <>
+                              <div className="flex justify-between text-xs">
+                                <span className="opacity-50">Courier:</span>
+                                <span className="font-bold">{order.shippingDetails?.courierName || order.delivery?.courier || "N/A"}</span>
+                              </div>
+                              <div className="flex justify-between text-xs">
+                                <span className="opacity-50">Tracking:</span>
+                                <span className="font-bold font-mono text-primary">{order.shippingDetails?.trackingNumber || order.delivery?.trackingNumber || "N/A"}</span>
+                              </div>
+                              {order.shippingDetails?.estimatedDeliveryDate && (
+                                <div className="flex justify-between text-xs">
+                                  <span className="opacity-50">ETA:</span>
+                                  <span className="font-bold">{formatDate(order.shippingDetails.estimatedDeliveryDate).split(',')[0]}</span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Status Dropdown */}
                     {!isTerminal && (
                       <div className="form-control">
@@ -656,8 +808,9 @@ function OrdersPage() {
   const { currency } = useCurrency();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [codModalData, setCodModalData] = useState(null); // { orderId, newStatus } 
+  const [shipModalData, setShipModalData] = useState(null); // { orderId, newStatus }
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [startDate, setStartDate] = useState("");
@@ -675,79 +828,14 @@ function OrdersPage() {
 
   const { data: ordersData, isLoading } = useQuery({
     queryKey: ["orders", filterStatus, startDate, endDate, minPrice, maxPrice],
-    queryFn: () => orderApi.getAll({ 
-      status: filterStatus, 
-      startDate, 
-      endDate, 
-      minPrice, 
-      maxPrice 
+    queryFn: () => orderApi.getAll({
+      status: filterStatus,
+      startDate,
+      endDate,
+      minPrice,
+      maxPrice
     }),
   });
-
-  const updateStatusMutation = useMutation({
-    mutationFn: orderApi.updateStatus,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
-    },
-  });
-
-  const markAsPaidMutation = useMutation({
-    mutationFn: orderApi.markAsPaid,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
-    },
-  });
-
-  const returnRequestMutation = useMutation({
-    mutationFn: orderApi.handleReturnRequest,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
-    },
-  });
-
-  const refundMutation = useMutation({
-    mutationFn: orderApi.processRefund,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
-    },
-  });
-
-  const handleStatusChange = (orderId, newStatus) => {
-    // Intercept "delivered" transition for COD orders
-    const order = orders.find(o => o._id === orderId);
-    if (newStatus === "delivered" && order?.paymentMethod === "cod") {
-      setCodModalData({ orderId, newStatus });
-      return;
-    }
-    updateStatusMutation.mutate({ orderId, status: newStatus });
-  };
-
-  const handleCodDeliveryConfirm = ({ cashCollected, comment }) => {
-    if (!codModalData) return;
-    updateStatusMutation.mutate(
-      { 
-        orderId: codModalData.orderId, 
-        status: codModalData.newStatus, 
-        cashCollected, 
-        comment 
-      },
-      {
-        onSuccess: () => setCodModalData(null)
-      }
-    );
-  };
-
-  const handleMarkAsPaid = (orderId) => {
-    markAsPaidMutation.mutate(orderId);
-  };
 
   const orders = ordersData?.orders || [];
 
@@ -770,6 +858,105 @@ function OrdersPage() {
     }
     return true;
   });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: orderApi.updateStatus,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
+      alert("Order status updated successfully!");
+    },
+    onError: (err) => {
+      alert(err?.response?.data?.error || err?.message || "Failed to update status");
+    }
+  });
+
+  const markAsPaidMutation = useMutation({
+    mutationFn: orderApi.markAsPaid,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
+      alert("Order marked as paid!");
+    },
+    onError: (err) => {
+      alert(err?.response?.data?.error || err?.message || "Failed to mark as paid");
+    }
+  });
+
+  const returnRequestMutation = useMutation({
+    mutationFn: orderApi.handleReturnRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
+      alert("Return request processed!");
+    },
+    onError: (err) => {
+      alert(err?.response?.data?.error || err?.message || "Failed to process return request");
+    }
+  });
+
+  const refundMutation = useMutation({
+    mutationFn: orderApi.processRefund,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
+      alert("Refund processed successfully!");
+    },
+    onError: (err) => {
+      alert(err?.response?.data?.error || err?.message || "Failed to process refund");
+    }
+  });
+
+  const handleStatusChange = (orderId, newStatus) => {
+    // Intercept "delivered" transition for COD orders
+    const order = orders.find(o => o._id === orderId);
+    if (newStatus === "delivered" && order?.paymentMethod === "cod") {
+      setCodModalData({ orderId, newStatus });
+      return;
+    }
+    if (newStatus === "shipped") {
+      setShipModalData({ orderId, newStatus });
+      return;
+    }
+    updateStatusMutation.mutate({ orderId, status: newStatus });
+  };
+
+  const handleShipOrderConfirm = (shippingData) => {
+    if (!shipModalData) return;
+    updateStatusMutation.mutate(
+      {
+        orderId: shipModalData.orderId,
+        status: shipModalData.newStatus,
+        ...shippingData
+      },
+      {
+        onSuccess: () => setShipModalData(null)
+      }
+    );
+  };
+
+  const handleCodDeliveryConfirm = ({ cashCollected, comment }) => {
+    if (!codModalData) return;
+    updateStatusMutation.mutate(
+      {
+        orderId: codModalData.orderId,
+        status: codModalData.newStatus,
+        cashCollected,
+        comment
+      },
+      {
+        onSuccess: () => setCodModalData(null)
+      }
+    );
+  };
+
+  const handleMarkAsPaid = (orderId) => {
+    markAsPaidMutation.mutate(orderId);
+  };
 
   const handleExport = () => {
     exportToCSV(
@@ -817,7 +1004,7 @@ function OrdersPage() {
 
         <div className="relative flex flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/10 text-xs font-bold text-primary">
               <ShoppingBagIcon className="size-4" />
               Order Management
             </div>
@@ -896,8 +1083,8 @@ function OrdersPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-2 border-t border-base-200/60 mt-2">
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-bold uppercase tracking-widest text-base-content/40 pl-1">Min Date</label>
-              <input 
-                type="date" 
+              <input
+                type="date"
                 className="input input-bordered input-sm rounded-xl bg-base-200/40 border-base-300"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
@@ -905,8 +1092,8 @@ function OrdersPage() {
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-bold uppercase tracking-widest text-base-content/40 pl-1">Max Date</label>
-              <input 
-                type="date" 
+              <input
+                type="date"
                 className="input input-bordered input-sm rounded-xl bg-base-200/40 border-base-300"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
@@ -914,8 +1101,8 @@ function OrdersPage() {
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-bold uppercase tracking-widest text-base-content/40 pl-1">Min Price ({currency === "USD" ? "$" : "Rs."})</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 placeholder="0"
                 className="input input-bordered input-sm rounded-xl bg-base-200/40 border-base-300"
                 value={minPrice}
@@ -924,8 +1111,8 @@ function OrdersPage() {
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-bold uppercase tracking-widest text-base-content/40 pl-1">Max Price ({currency === "USD" ? "$" : "Rs."})</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 placeholder="Any"
                 className="input input-bordered input-sm rounded-xl bg-base-200/40 border-base-300"
                 value={maxPrice}
@@ -933,10 +1120,10 @@ function OrdersPage() {
               />
             </div>
           </div>
-          
+
           {(startDate || endDate || minPrice || maxPrice || filterStatus !== "All") && (
             <div className="flex justify-end mt-1">
-              <button 
+              <button
                 className="btn btn-ghost btn-xs text-error gap-1 hover:bg-error/10"
                 onClick={() => {
                   setFilterStatus("All");
@@ -1061,13 +1248,12 @@ function OrdersPage() {
                           {isTerminal ? (
                             <div className="flex flex-col gap-1 items-start">
                               <div
-                                className={`badge badge-sm font-semibold py-3 px-4 border-0 ${
-                                  order.status === "delivered"
+                                className={`badge badge-sm font-semibold py-3 px-4 border-0 ${order.status === "delivered"
                                     ? "badge-success text-success-content"
                                     : order.status === "cancelled"
-                                    ? "badge-error text-error-content"
-                                    : "badge-ghost"
-                                }`}
+                                      ? "badge-error text-error-content"
+                                      : "badge-ghost"
+                                  }`}
                               >
                                 {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                               </div>
@@ -1106,7 +1292,7 @@ function OrdersPage() {
                           <div className="flex items-center gap-1">
                             <button
                               className="btn btn-ghost btn-sm rounded-xl hover:bg-primary/10 hover:text-primary"
-                              onClick={() => setSelectedOrder(order)}
+                              onClick={() => setSelectedOrderId(order._id)}
                             >
                               View
                             </button>
@@ -1124,8 +1310,8 @@ function OrdersPage() {
       </div>
 
       <OrderDetailModal
-        order={selectedOrder}
-        onClose={() => setSelectedOrder(null)}
+        order={orders.find(o => o._id === selectedOrderId)}
+        onClose={() => setSelectedOrderId(null)}
         onMarkAsPaid={handleMarkAsPaid}
         onStatusChange={handleStatusChange}
         isUpdatingStatus={updateStatusMutation.isPending}
@@ -1133,6 +1319,14 @@ function OrdersPage() {
         onDenyReturn={(id) => returnRequestMutation.mutate({ orderId: id, action: "deny" })}
         onRefund={(id) => { if (window.confirm("Process refund for this order?")) refundMutation.mutate(id); }}
         isRefunding={returnRequestMutation.isPending || refundMutation.isPending}
+      />
+
+      <ShipOrderModal
+        isOpen={!!shipModalData}
+        order={orders.find(o => o._id === shipModalData?.orderId)}
+        onClose={() => setShipModalData(null)}
+        onConfirm={handleShipOrderConfirm}
+        isPending={updateStatusMutation.isPending}
       />
 
       <CodDeliveryModal 

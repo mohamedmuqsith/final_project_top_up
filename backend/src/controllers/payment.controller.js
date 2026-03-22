@@ -5,85 +5,42 @@ import { Product } from "../models/product.model.js";
 import { Order } from "../models/order.model.js";
 import { Cart } from "../models/cart.model.js";
 import { createNotification, checkAndCreateInventoryNotifications } from "../services/notification.service.js";
-import { getEffectivePrice } from "../services/pricing.service.js";
+import { getEffectivePrice, validateCartItems } from "../services/pricing.service.js";
 import { OrderService } from "../services/order.service.js";
 
 const stripe = new Stripe(ENV.STRIPE_SECRET_KEY);
 
 /**
- * Validates cart items, calculates totals, and prepares order items.
- * Centralized for consistent pricing and stock checks.
+ * GET /api/payment/create-intent
  */
-const validateCartItems = async (cartItems) => {
-  if (!cartItems || cartItems.length === 0) {
-    throw new Error("Cart is empty");
-  }
-
-  let subtotal = 0;
-  const validatedItems = [];
-
-  for (const item of cartItems) {
-    const productId = item?.product?._id || item?.product;
-    if (!productId) {
-      throw new Error("Invalid cart item: missing product");
-    }
-
-    const product = await Product.findById(productId);
-    if (!product) {
-      throw new Error("Product not found");
-    }
-
-    // Original stock check: ensure enough stock for the quantity requested
-    if (product.stock < item.quantity) {
-      throw new Error(`Insufficient stock for ${product.name}`);
-    }
-
-    // SERVER-SIDE PRICING: calculate effective price
-    const pricing = await getEffectivePrice(product);
-    const effectivePrice = pricing.discountedPrice;
-
-    subtotal += effectivePrice * item.quantity;
-    validatedItems.push({
-      product: product._id.toString(),
-      name: product.name,
-      price: effectivePrice,
-      quantity: item.quantity,
-      image: product.images[0],
-    });
-  }
-
-  const shipping = 10.0;
-  const tax = subtotal * 0.08;
-  const total = subtotal + shipping + tax;
-
-  if (total <= 0) {
-    throw new Error("Invalid order total");
-  }
-
-  return { validatedItems, subtotal, shipping, tax, total };
-};
-
 export async function createPaymentIntent(req, res) {
   try {
     const { cartItems, shippingAddress } = req.body;
     const user = req.user;
 
-    const { validatedItems, total } = await validateCartItems(cartItems);
+    const { validatedItems, subtotal, shipping, tax, total } = await validateCartItems(cartItems);
 
-    // 1. Create PENDING Order in DB (Source of Truth)
+    // 1. Create PENDING Order in DB (Source of Truth with Snapshot)
     const order = await Order.create({
       user: user._id,
       clerkId: user.clerkId,
       orderItems: validatedItems,
       shippingAddress,
       totalPrice: total,
+      pricing: {
+        subtotal,
+        shippingFee: shipping,
+        tax,
+        total,
+        currency: "usd"
+      },
       paymentMethod: "online",
       paymentStatus: "pending",
       status: "pending",
       statusHistory: [{
         status: "pending",
         timestamp: new Date(),
-        comment: "Order created and awaiting payment confirmation.",
+        comment: "Order received. Awaiting payment/confirmation.",
         changedByType: "system"
       }],
       paymentResult: {
@@ -142,8 +99,6 @@ export async function createPaymentIntent(req, res) {
   }
 }
 
-// Removed local finalizeOrder, now using OrderService.finalizeOrder
-
 // @desc    Confirm payment on server-side (Client-side fallback)
 // @route   POST /api/payment/confirm
 // @access  Private
@@ -171,7 +126,6 @@ export const confirmPayment = async (req, res) => {
       { _id: orderId, isFinalized: false },
       { 
         $set: { 
-          // We don't set isFinalized here yet, OrderService.finalizeOrder will do it correctly
           "paymentResult.id": paymentIntent.id,
           "paymentResult.status": paymentIntent.status
         } 
@@ -202,7 +156,7 @@ export const createCodOrder = async (req, res) => {
   try {
     const { cartItems, shippingAddress } = req.body;
 
-    const { validatedItems, total } = await validateCartItems(cartItems);
+    const { validatedItems, subtotal, shipping, tax, total } = await validateCartItems(cartItems);
 
     // 2. Create Order (starts as Pending/Pending per refined rules)
     const order = await Order.create({
@@ -211,6 +165,13 @@ export const createCodOrder = async (req, res) => {
       orderItems: validatedItems,
       shippingAddress,
       totalPrice: total,
+      pricing: {
+        subtotal,
+        shippingFee: shipping,
+        tax,
+        total,
+        currency: "usd"
+      },
       paymentMethod: "cod",
       paymentStatus: "pending",
       status: "pending",

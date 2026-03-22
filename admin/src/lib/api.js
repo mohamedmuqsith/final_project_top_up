@@ -87,7 +87,7 @@ export const notificationApi = {
     return data;
   },
   markAsRead: async (id) => {
-    const { data } = await axiosInstance.patch(`/notifications/${id}/read`);
+    const { data } = await axiosInstance.patch(`/notifications/${id}/read?recipientType=admin`);
     return data;
   },
   markAllAsRead: async () => {

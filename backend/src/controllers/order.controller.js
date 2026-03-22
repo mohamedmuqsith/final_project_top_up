@@ -4,40 +4,40 @@ import { Review } from "../models/review.model.js";
 import { createNotification } from "../services/notification.service.js";
 import { OrderService } from "../services/order.service.js";
 import { InventoryService } from "../services/inventory.service.js";
+import { validateCartItems } from "../services/pricing.service.js";
 
 export async function createOrder(req, res) {
   try {
     const user = req.user;
-    const { orderItems, shippingAddress, paymentResult, totalPrice } = req.body;
+    const { orderItems, shippingAddress, paymentResult } = req.body;
 
     if (!orderItems || orderItems.length === 0) {
       return res.status(400).json({ error: "No order items" });
     }
 
-    // validate products and stock
-    for (const item of orderItems) {
-      const product = await Product.findById(item.product._id);
-      if (!product) {
-        return res.status(404).json({ error: `Product ${item.name} not found` });
-      }
-      if (product.stock < item.quantity) {
-        return res.status(400).json({ error: `Insufficient stock for ${product.name}` });
-      }
-    }
+    // Use centralized validation and pricing calculation
+    const { validatedItems, subtotal, shipping, tax, total } = await validateCartItems(orderItems);
 
     const orderData = {
       user: user._id,
       clerkId: user.clerkId,
-      orderItems,
+      orderItems: validatedItems,
       shippingAddress,
-      totalPrice,
+      totalPrice: total,
+      pricing: {
+        subtotal,
+        shippingFee: shipping,
+        tax,
+        total,
+        currency: "usd"
+      },
       paymentMethod: "online", 
       paymentStatus: "pending", 
       status: "pending",
       statusHistory: [{
         status: "pending",
         timestamp: new Date(),
-        comment: "Order created and awaiting payment confirmation.",
+        comment: "Order received. Awaiting payment/confirmation.",
         changedByType: "system"
       }]
     };
@@ -55,7 +55,7 @@ export async function createOrder(req, res) {
     res.status(201).json({ message: "Order created successfully", order });
   } catch (error) {
     console.error("Error in createOrder controller:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: error.message || "Internal server error" });
   }
 }
 
