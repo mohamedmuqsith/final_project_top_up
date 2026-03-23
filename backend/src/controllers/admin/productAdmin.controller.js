@@ -11,10 +11,17 @@ export const createProduct = async (req, res) => {
     const { name, description, price, category, stock, lowStockThreshold, color, size, brand, isFeatured, discountPrice } = req.body;
     
     // Process images
-    const images = [];
+    let images = [];
     if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        images.push(file.path); // Cloudinary URL from multer-storage-cloudinary
+      // req.files.path is the URL, req.files.filename is the publicId (provided by multer-storage-cloudinary)
+      images = req.files.map(file => ({
+        url: file.path,
+        publicId: file.filename
+      }));
+      
+      // Enforce 3-image limit
+      if (images.length > 3) {
+        images = images.slice(0, 3);
       }
     }
 
@@ -68,11 +75,43 @@ export const updateProduct = async (req, res) => {
     const product = await Product.findById(id);
     if (!product) return res.status(404).json({ error: "Product not found" });
 
-    // Handle new images
-    if (req.files && req.files.length > 0) {
-      const newImages = req.files.map(f => f.path);
-      updateData.images = [...(product.images || []), ...newImages];
+    // ── Image Management Logic ──
+    let currentImages = [];
+    
+    // 1. Get existing images the user wants to keep
+    if (req.body.existingImages) {
+      try {
+        currentImages = typeof req.body.existingImages === "string" 
+          ? JSON.parse(req.body.existingImages) 
+          : req.body.existingImages;
+          
+        // Ensure they are normalized to objects if they were strings (migration safety)
+        currentImages = currentImages.map(img => 
+          typeof img === "string" ? { url: img, publicId: "unknown" } : img
+        );
+      } catch (e) {
+        console.error("Error parsing existingImages:", e);
+        currentImages = product.images || [];
+      }
+    } else {
+      currentImages = product.images || [];
     }
+
+    // 2. Add new uploads
+    if (req.files && req.files.length > 0) {
+      const newImages = req.files.map(f => ({
+        url: f.path,
+        publicId: f.filename
+      }));
+      currentImages = [...currentImages, ...newImages];
+    }
+
+    // 3. Enforce strict 3-image limit
+    if (currentImages.length > 3) {
+      currentImages = currentImages.slice(0, 3);
+    }
+    
+    updateData.images = currentImages;
 
     const oldStock = product.stock;
     const updatedProduct = await Product.findByIdAndUpdate(id, updateData, { new: true });
@@ -111,9 +150,14 @@ export const deleteProduct = async (req, res) => {
 
     // Delete images from Cloudinary
     if (product.images && product.images.length > 0) {
-      for (const imageUrl of product.images) {
-        const publicId = imageUrl.split("/").pop().split(".")[0];
-        await cloudinary.uploader.destroy(`products/${publicId}`);
+      for (const image of product.images) {
+        if (image.publicId && image.publicId !== "unknown") {
+          await cloudinary.uploader.destroy(image.publicId);
+        } else if (image.url) {
+          // Fallback parsing for legacy string-based assets
+          const publicId = image.url.split("/").pop().split(".")[0];
+          await cloudinary.uploader.destroy(`products/${publicId}`);
+        }
       }
     }
 

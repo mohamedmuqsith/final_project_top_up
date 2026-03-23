@@ -106,13 +106,20 @@ export const getDashboardStats = async (req, res) => {
       $expr: { $lte: ["$stock", "$lowStockThreshold"] }
     }).limit(5).select("_id name images stock price");
     
-    // Process images for frontend (array -> string if needed)
-    const formattedLowStock = lowStockProducts.map(p => ({
-      _id: p._id,
-      name: p.name,
-      image: p.images?.[0] || "/placeholder.jpg",
-      stock: p.stock
-    }));
+    // Process images for frontend (handle both legacy [string] and new [{url, publicId}])
+    const formattedLowStock = lowStockProducts.map(p => {
+      const firstImg = p.images?.[0];
+      const imageUrl = (typeof firstImg === "object" && firstImg?.url) 
+        ? firstImg.url 
+        : (typeof firstImg === "string" ? firstImg : "/placeholder.jpg");
+
+      return {
+        _id: p._id,
+        name: p.name,
+        image: imageUrl,
+        stock: p.stock
+      };
+    });
 
     // Predictive Stockouts (Based on 30-day velocity)
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);

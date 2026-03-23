@@ -104,8 +104,9 @@ function ProductsPage() {
     lowStockThreshold: "",
     description: "",
   });
-  const [images, setImages] = useState([]);
-  const [imagePreviews, setImagePreviews] = useState([]);
+  const [images, setImages] = useState([]); // File objects for new uploads
+  const [existingImages, setExistingImages] = useState([]); // URLs for already uploaded images
+  const [imagePreviews, setImagePreviews] = useState([]); // Generated blob URLs for new files
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("All");
@@ -171,6 +172,7 @@ function ProductsPage() {
     });
     setImages([]);
     setImagePreviews([]);
+    setExistingImages([]);
   };
 
   const handleEdit = (product) => {
@@ -185,26 +187,47 @@ function ProductsPage() {
         : "",
       description: product.description,
     });
-    setImagePreviews(product.images);
+    setExistingImages(product.images || []);
+    setImages([]);
+    setImagePreviews([]);
     setShowModal(true);
   };
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
-    if (files.length > 3) return alert("Maximum 3 images allowed");
+    const totalCurrent = existingImages.length + images.length;
+    const remaining = 3 - totalCurrent;
 
-    imagePreviews.forEach((url) => {
-      if (url.startsWith("blob:")) URL.revokeObjectURL(url);
-    });
+    if (files.length > remaining) {
+      alert(`You can only add ${remaining} more image(s). Total limit is 3.`);
+      return;
+    }
 
-    setImages(files);
-    setImagePreviews(files.map((file) => URL.createObjectURL(file)));
+    const newSetOfFiles = [...images, ...files];
+    setImages(newSetOfFiles);
+    setImagePreviews(newSetOfFiles.map((file) => URL.createObjectURL(file)));
+  };
+
+  const removeExistingImage = (imgToRemove) => {
+    // imgToRemove is the whole object {url, publicId}
+    setExistingImages(existingImages.filter(img => 
+      typeof img === "string" ? img !== imgToRemove : img.url !== imgToRemove.url
+    ));
+  };
+
+  const removeNewImage = (indexToRemove) => {
+    const newFiles = images.filter((_, i) => i !== indexToRemove);
+    setImages(newFiles);
+    // Cleanup blob URLs
+    URL.revokeObjectURL(imagePreviews[indexToRemove]);
+    setImagePreviews(newFiles.map(file => URL.createObjectURL(file)));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!editingProduct && imagePreviews.length === 0) {
+    const totalImages = existingImages.length + images.length;
+    if (totalImages === 0) {
       return alert("Please upload at least one image");
     }
 
@@ -218,6 +241,10 @@ function ProductsPage() {
     }
     formDataToSend.append("category", formData.category);
 
+    // Send existing images to keep
+    formDataToSend.append("existingImages", JSON.stringify(existingImages));
+
+    // Send new images
     if (images.length > 0) {
       images.forEach((image) => formDataToSend.append("images", image));
     }
@@ -378,9 +405,12 @@ function ProductsPage() {
                     <div className="shrink-0">
                       <div className="w-full sm:w-28">
                         <img
-                          src={product.images[0]}
+                          src={product.images?.[0]?.url || product.images?.[0] || "https://placehold.co/400x400/f3f4f6/94a3b8?text=No+Image"}
                           alt={product.name}
                           className="h-28 w-full rounded-2xl object-cover bg-base-300 ring-1 ring-base-300"
+                          onError={(e) => {
+                            e.target.src = "https://placehold.co/400x400/f3f4f6/94a3b8?text=Image+Error";
+                          }}
                         />
                       </div>
                     </div>
@@ -682,34 +712,65 @@ function ProductsPage() {
                               accept="image/*"
                               multiple
                               onChange={handleImageChange}
-                              className="file-input file-input-bordered w-full rounded-2xl bg-base-100/60 border-base-300 focus:border-primary"
-                              required={!editingProduct}
+                              className="file-input file-input-bordered w-full rounded-2xl bg-base-100/60 border-base-300 focus:border-primary disabled:opacity-30"
+                              required={!editingProduct && existingImages.length === 0}
+                              disabled={existingImages.length + images.length >= 3}
                             />
 
-                            <div className="mt-3 text-xs text-base-content/50">
-                              Maximum 3 images allowed
+                            <div className="mt-3 text-xs text-base-content/50 font-medium">
+                              {3 - (existingImages.length + images.length)} slots remaining (Max 3 total)
                             </div>
 
-                            {editingProduct && (
-                              <p className="text-[11px] font-medium uppercase tracking-wider text-base-content/40 mt-2">
-                                Keep current or upload new to replace
-                              </p>
-                            )}
+
                           </div>
                         </div>
 
-                        {imagePreviews.length > 0 && (
+                        {(existingImages.length > 0 || imagePreviews.length > 0) && (
                           <div className="grid grid-cols-3 gap-3 mt-5">
+                            {/* Existing Images */}
+                            {existingImages.map((img, index) => {
+                              const url = typeof img === "string" ? img : img.url;
+                              return (
+                                <div
+                                  key={`existing-${index}`}
+                                  className="group/img relative overflow-hidden rounded-2xl border border-base-300 bg-base-200/30 shadow-sm"
+                                >
+                                  <img
+                                    src={url}
+                                    alt="Existing"
+                                    className="h-24 w-full object-cover transition-transform group-hover/img:scale-105"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => removeExistingImage(img)}
+                                    className="absolute top-1 right-1 p-1 rounded-full bg-error text-white opacity-0 group-hover/img:opacity-100 transition-opacity z-10"
+                                  >
+                                    <XIcon className="size-3" />
+                                  </button>
+                                  <div className="absolute bottom-0 inset-x-0 bg-base-content/60 text-white text-[8px] font-black text-center py-0.5 uppercase tracking-widest">Saved</div>
+                                </div>
+                              );
+                            })}
+                            
+                            {/* New Previews */}
                             {imagePreviews.map((preview, index) => (
                               <div
-                                key={index}
-                                className="overflow-hidden rounded-2xl border border-base-300 bg-base-200/30 shadow-sm"
+                                key={`new-${index}`}
+                                className="group/img relative overflow-hidden rounded-2xl border border-primary/20 bg-primary/5 shadow-sm"
                               >
                                 <img
                                   src={preview}
-                                  alt={`Preview ${index + 1}`}
-                                  className="h-24 w-full object-cover"
+                                  alt="New Upload"
+                                  className="h-24 w-full object-cover transition-transform group-hover/img:scale-105"
                                 />
+                                <button
+                                  type="button"
+                                  onClick={() => removeNewImage(index)}
+                                  className="absolute top-1 right-1 p-1 rounded-full bg-error text-white opacity-0 group-hover/img:opacity-100 transition-opacity z-10"
+                                >
+                                  <XIcon className="size-3" />
+                                </button>
+                                <div className="absolute bottom-0 inset-x-0 bg-primary text-white text-[8px] font-black text-center py-0.5 uppercase tracking-widest">New</div>
                               </div>
                             ))}
                           </div>
