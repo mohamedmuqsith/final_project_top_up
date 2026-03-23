@@ -5,7 +5,7 @@ import { BoxesIcon, DollarSignIcon, PackageIcon, ShoppingBagIcon, UsersIcon, Ale
 import { capitalizeText, formatDate, getOrderStatusBadge } from "../lib/utils";
 import { useCurrency } from "../components/CurrencyProvider";
 import { formatCurrency } from "../lib/currencyUtils";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import {
   LineChart,
   Line,

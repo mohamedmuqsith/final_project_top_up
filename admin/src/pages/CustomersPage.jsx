@@ -25,7 +25,7 @@ import {
   FilterIcon,
   UserRoundIcon,
 } from "lucide-react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 
 const SEGMENT_CONFIG = {
   New: { badge: "badge-info", icon: <SparklesIcon className="size-3" /> },

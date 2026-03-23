@@ -1,5 +1,5 @@
 import { UserButton } from "@clerk/clerk-react";
-import { useLocation } from "react-router";
+import { useLocation } from "react-router-dom";
 import NotificationDropdown from "./NotificationDropdown";
 
 import {

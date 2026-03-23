@@ -10,7 +10,7 @@ import {
   SirenIcon,
   TriangleAlertIcon,
 } from "lucide-react";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 
 function InventoryAlertsPage() {
   const [filterSeverity, setFilterSeverity] = useState("All");
