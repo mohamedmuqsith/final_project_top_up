@@ -299,115 +299,198 @@ export function generatePackingSlip(data) {
 // ─── 3. SHIPPING LABEL ───────────────────────────────────────────
 
 export function generateShippingLabel(data) {
-  // Use a smaller page for labels (4x6 inch label format)
+  // ── Extract shipping fields with robust fallback chain ──
+  const courier = data.shipping?.courier || data.shippingDetails?.courierName || "";
+  const internalRef = data.shipping?.internalTrackingNumber || data.shippingDetails?.internalTrackingNumber || "";
+  const courierTracking = data.shipping?.trackingNumber || data.shippingDetails?.trackingNumber || "";
+  const shippingMethod = data.shipping?.method || data.shippingDetails?.method || "standard";
+  const estimatedDelivery = data.shipping?.estimatedDelivery || data.shippingDetails?.estimatedDeliveryDate || null;
+
+  // ── Validation: block broken labels ──
+  if (!courier && !internalRef) {
+    throw new Error(
+      "Shipping details are not yet available for this order. Ship the order first, then generate the label."
+    );
+  }
+
+  // 4×6 inch label format (landscape)
   const doc = new jsPDF({ unit: "mm", format: [152, 102] });
   const pw = doc.internal.pageSize.width;
   const ph = doc.internal.pageSize.height;
-  let y = 10;
+  let y = 0;
 
-  // ── Outer Border ──
+  // ── Outer Border (double-line effect) ──
   doc.setDrawColor(...COLORS.dark);
-  doc.setLineWidth(0.8);
-  doc.roundedRect(4, 4, pw - 8, ph - 8, 3, 3);
+  doc.setLineWidth(1.2);
+  doc.roundedRect(3, 3, pw - 6, ph - 6, 2, 2);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(5, 5, pw - 10, ph - 10, 1.5, 1.5);
 
-  // ── FROM Section ──
+  // ═══════════════════════════════════════════════════════════════
+  // ── FROM (Sender) Section — compact top band ──
+  // ═══════════════════════════════════════════════════════════════
+  y = 11;
+  doc.setFillColor(240, 240, 240);
+  doc.rect(6, 6, pw - 12, 18, "F");
+
+  doc.setFontSize(5.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...COLORS.mid);
+  doc.text("FROM", 9, y);
+
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...COLORS.dark);
+  doc.text(data.store?.name || "Store", 22, y);
+
+  // Store address line
+  y += 4;
+  doc.setFontSize(6);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...COLORS.mid);
+  const storeAddr = [
+    data.store?.streetAddress,
+    data.store?.addressLine2,
+    data.store?.city,
+    data.store?.district,
+    data.store?.province,
+    data.store?.postalCode,
+  ].filter(Boolean).join(", ");
+  doc.text(storeAddr || "", 22, y);
+
+  // Store phone
+  if (data.store?.phone) {
+    y += 3;
+    doc.text(`Tel: ${data.store.phone}`, 22, y);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ── SHIP TO (Recipient) Section ──
+  // ═══════════════════════════════════════════════════════════════
+  y = 30;
+  doc.setDrawColor(...COLORS.dark);
+  doc.setLineWidth(0.5);
+  doc.line(6, y - 2, pw - 6, y - 2);
+
   doc.setFontSize(6);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.mid);
-  doc.text("FROM:", 8, y);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.text(data.store.name, 22, y);
-  doc.setFontSize(5.5);
-  let storeLbl2 = data.store.addressLine2 || "";
-  if (data.store.district) storeLbl2 += (storeLbl2 ? ", " : "") + data.store.district;
-  doc.text(
-    `${data.store.streetAddress}${storeLbl2 ? ', ' + storeLbl2 : ''}`,
-    22,
-    y + 3.5
-  );
-  doc.text(
-    `${data.store.city}, ${data.store.province} ${data.store.postalCode || data.store.zipCode || ""}`,
-    22,
-    y + 6.5
-  );
+  doc.text("SHIP TO", 9, y + 2);
 
-  // ── Horizontal Divider ──
-  y += 11;
-  doc.setDrawColor(...COLORS.dark);
-  doc.setLineWidth(0.4);
-  doc.line(8, y, pw - 8, y);
-
-  // ── TO Section ──
-  y += 6;
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...COLORS.mid);
-  doc.text("SHIP TO:", 8, y);
-
-  y += 5;
-  doc.setFontSize(14);
+  // Recipient Name (large & bold)
+  y += 8;
+  doc.setFontSize(13);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.dark);
-  doc.text(data.customer.fullName, 8, y);
+  doc.text(data.customer?.fullName || "—", 9, y);
 
+  // Street Address
   y += 6;
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text(data.customer.streetAddress, 8, y);
-
-  let toAddr2 = data.customer.addressLine2 || "";
-  if (data.customer.district) toAddr2 += (toAddr2 ? ", " : "") + data.customer.district;
-  if (toAddr2) {
-    y += 5;
-    doc.setFont("helvetica", "normal");
-    doc.text(toAddr2, 8, y);
-  }
-
-  y += 5;
+  doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text(`${data.customer.city}, ${data.customer.province}`, 8, y);
+  doc.text(data.customer?.streetAddress || "", 9, y);
 
-  y += 5;
-  doc.setFont("helvetica", "bold");
-  doc.text(`${data.customer.postalCode || data.customer.zipCode || ""}`, 8, y);
-
-  if (data.customer.phoneNumber) {
-    y += 5;
-    doc.setFontSize(9);
-    doc.text(`Phone: ${data.customer.phoneNumber}`, 8, y);
+  // Address line 2 + District
+  let addrLine2 = data.customer?.addressLine2 || "";
+  if (data.customer?.district) addrLine2 += (addrLine2 ? ", " : "") + data.customer.district;
+  if (addrLine2) {
+    y += 4.5;
+    doc.text(addrLine2, 9, y);
   }
 
-  // ── Bottom Section (Tracking & Courier) ──
-  y = ph - 32;
+  // City, Province, Postal Code (Sri Lanka format)
+  y += 4.5;
+  const cityLine = [
+    data.customer?.city,
+    data.customer?.province,
+  ].filter(Boolean).join(", ");
+  doc.text(cityLine, 9, y);
+
+  const postalCode = data.customer?.postalCode || data.customer?.zipCode || "";
+  if (postalCode) {
+    y += 4.5;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(postalCode, 9, y);
+  }
+
+  // Phone
+  if (data.customer?.phoneNumber) {
+    y += 5;
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Tel: ${data.customer.phoneNumber}`, 9, y);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ── SHIPPING INFO — Bottom Block ──
+  // ═══════════════════════════════════════════════════════════════
+  const bottomBlockY = ph - 44;
   doc.setDrawColor(...COLORS.dark);
   doc.setLineWidth(0.8);
-  doc.line(8, y, pw - 8, y);
+  doc.line(6, bottomBlockY, pw - 6, bottomBlockY);
 
-  y += 8;
-  const tracking = data.shippingDetails?.trackingNumber || data.shipping?.trackingNumber || "";
-  const courier = data.shippingDetails?.courierName || data.shipping?.courier || "";
+  // Courier + Method row
+  let infoY = bottomBlockY + 6;
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...COLORS.mid);
+  doc.text("COURIER", 9, infoY);
+  doc.text("METHOD", pw / 2, infoY);
 
-  // Courier Name (Bold & Mid-Large)
-  doc.setFontSize(10);
+  infoY += 5;
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.dark);
-  doc.text(courier.toUpperCase() || "CARRIER", pw / 2, y, { align: "center" });
+  doc.text(courier.toUpperCase() || "—", 9, infoY);
 
-  // Tracking Number (Extra Large & Bold)
-  y += 10;
-  doc.setFontSize(18);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text(shippingMethod.charAt(0).toUpperCase() + shippingMethod.slice(1), pw / 2, infoY);
+
+  // ── Main Tracking Reference (large center block) ──
+  infoY += 9;
+  doc.setDrawColor(...COLORS.dark);
+  doc.setLineWidth(0.3);
+  doc.line(9, infoY - 3, pw - 9, infoY - 3);
+
+  doc.setFontSize(6);
   doc.setFont("helvetica", "bold");
-  doc.text(tracking || "NO TRACKING", pw / 2, y, { align: "center" });
+  doc.setTextColor(...COLORS.mid);
+  doc.text("TRACKING REF", 9, infoY);
 
-  // Order Ref (Small footer)
-  y += 8;
-  doc.setFontSize(7);
+  infoY += 6;
+  doc.setFontSize(15);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...COLORS.dark);
+  doc.text(internalRef || "PENDING", pw / 2, infoY, { align: "center" });
+
+  // Courier tracking (secondary, if provided)
+  if (courierTracking) {
+    infoY += 5;
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...COLORS.mid);
+    doc.text(`Courier TRK: ${courierTracking}`, pw / 2, infoY, { align: "center" });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ── Footer Bar ──
+  // ═══════════════════════════════════════════════════════════════
+  const footerY = ph - 9;
+  doc.setFontSize(6);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...COLORS.mid);
-  doc.text(`ORDER #${shortId(data)}`, 8, ph - 8);
+  doc.text(`ORDER #${shortId(data)}`, 9, footerY);
+
+  if (estimatedDelivery) {
+    doc.text(`ETA: ${fmtDate(estimatedDelivery)}`, pw / 2, footerY, { align: "center" });
+  }
+
   if (data.shippedAt) {
-    doc.text(`SHIP DATE: ${fmtDate(data.shippedAt)}`, pw - 8, ph - 8, { align: "right" });
+    doc.text(`SHIPPED: ${fmtDate(data.shippedAt)}`, pw - 9, footerY, { align: "right" });
+  } else {
+    doc.text(new Date().toLocaleDateString(), pw - 9, footerY, { align: "right" });
   }
 
   doc.save(`shipping-label-${shortId(data)}.pdf`);
