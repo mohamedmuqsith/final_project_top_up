@@ -4,8 +4,8 @@ import { Settings } from "../models/settings.model.js";
 // Server-side status validation per document type
 const DOC_STATUS_RULES = {
   invoice: ["pending", "processing", "shipped", "delivered", "cancelled"],
-  "packing-slip": ["processing", "shipped"],
-  "shipping-label": ["shipped"],
+  "packing-slip": ["processing", "shipped", "delivered"],
+  "shipping-label": ["processing", "shipped", "delivered"],
 };
 
 /**
@@ -67,6 +67,17 @@ export async function getOrderDocumentData(req, res) {
       }
     }
 
+    // Shipping label requires actual shipping data to exist
+    if (docType === "shipping-label") {
+      const hasCourier = order.shippingDetails?.courierName;
+      const hasRef = order.shippingDetails?.internalTrackingNumber;
+      if (!hasCourier && !hasRef) {
+        return res.status(400).json({
+          error: "Shipping details are not yet available. Ship the order first, then generate the label.",
+        });
+      }
+    }
+
     const shortId = order._id.toString().slice(-8).toUpperCase();
 
     const documentData = {
@@ -118,6 +129,7 @@ export async function getOrderDocumentData(req, res) {
         method: order.shippingDetails?.method || "standard",
         courier: order.shippingDetails?.courierName || null,
         trackingNumber: order.shippingDetails?.trackingNumber || null,
+        internalTrackingNumber: order.shippingDetails?.internalTrackingNumber || null,
         estimatedDelivery: order.shippingDetails?.estimatedDeliveryDate || null,
       },
 

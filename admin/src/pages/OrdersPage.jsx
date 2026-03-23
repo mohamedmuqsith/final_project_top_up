@@ -69,18 +69,19 @@ const PAYMENT_COLOR_MAP = {
 // ─── Document Actions Component ──────────────────────────────────
 const DOC_AVAILABILITY = {
   invoice: ["pending", "processing", "shipped", "delivered", "cancelled"],
-  "packing-slip": ["processing", "shipped"],
-  "shipping-label": ["shipped"],
+  "packing-slip": ["processing", "shipped", "delivered"],
+  "shipping-label": ["processing", "shipped", "delivered"],
 };
 
 function DocumentActions({ order, variant = "row" }) {
   const { currency } = useCurrency();
   const [loading, setLoading] = useState(null);
   const status = order?.status;
+  const hasShippingData = !!(order?.shippingDetails?.courierName || order?.shippingDetails?.internalTrackingNumber || order?.delivery?.courierName);
 
   const canInvoice = DOC_AVAILABILITY.invoice.includes(status);
   const canPackingSlip = DOC_AVAILABILITY["packing-slip"].includes(status);
-  const canShippingLabel = DOC_AVAILABILITY["shipping-label"].includes(status);
+  const canShippingLabel = DOC_AVAILABILITY["shipping-label"].includes(status) && hasShippingData;
 
   if (!canInvoice && !canPackingSlip && !canShippingLabel) return null;
 
@@ -93,6 +94,7 @@ function DocumentActions({ order, variant = "row" }) {
       else if (type === "shipping-label") generateShippingLabel(data);
     } catch (err) {
       console.error(`Failed to generate ${type}:`, err);
+      alert(err?.message || `Failed to generate ${type}. Please try again.`);
     } finally {
       setLoading(null);
     }
@@ -206,7 +208,7 @@ function ShipOrderModal({ order, isOpen, onClose, onConfirm, isPending }) {
       <div className="modal-box rounded-3xl border border-base-300 shadow-2xl">
         <h3 className="font-black text-xl flex items-center gap-2">
           <TruckIcon className="size-6 text-primary" />
-          Ship Order
+          {order?.status === "processing" ? "Prepare Shipment (RTS)" : "Ship Order"}
         </h3>
         <p className="py-4 text-sm text-base-content/70">
           Enter shipping details for Order <strong>#{order._id.slice(-8).toUpperCase()}</strong>.
@@ -293,7 +295,7 @@ function ShipOrderModal({ order, isOpen, onClose, onConfirm, isPending }) {
             })}
             disabled={isPending || !courierName.trim() || (trackingNumber.trim() && !getValidation(courierName.trim()).regex.test(trackingNumber.trim()))}
           >
-            {isPending ? <span className="loading loading-spinner loading-xs" /> : "Confirm Shipping"}
+            {isPending ? <span className="loading loading-spinner loading-xs" /> : (order?.status === "processing" ? "Confirm Preparation" : "Confirm Shipping")}
           </button>
         </div>
       </div>
@@ -768,15 +770,15 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
                             <span className="opacity-50">Method:</span>
                             <span className="font-bold uppercase">{order.shippingDetails?.method || order.delivery?.method || "Standard"}</span>
                           </div>
-                          {order.shippedAt && (
+                          {order.shippingDetails?.internalTrackingNumber ? (
                             <>
-                              <div className="flex justify-between text-xs">
+                              <div className="flex justify-between text-xs pt-1">
                                 <span className="opacity-50">Reference ID:</span>
-                                <span className="font-bold font-mono text-primary uppercase text-[10px]">{order.shippingDetails?.internalTrackingNumber || "PENDING"}</span>
+                                <span className="font-bold font-mono text-primary uppercase text-[10px]">{order.shippingDetails.internalTrackingNumber}</span>
                               </div>
                               <div className="flex justify-between text-xs pt-1">
                                 <span className="opacity-50">Courier:</span>
-                                <span className="font-bold">{order.shippingDetails?.courierName || order.delivery?.courier || "N/A"}</span>
+                                <span className="font-bold">{order.shippingDetails.courierName || "N/A"}</span>
                               </div>
                               {order.shippingDetails?.trackingNumber && (
                                 <div className="flex justify-between text-xs pt-1">
@@ -790,7 +792,25 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
                                   <span className="font-bold">{formatDate(order.shippingDetails.estimatedDeliveryDate).split(',')[0]}</span>
                                 </div>
                               )}
+                              {order.shippedAt && (
+                                <div className="flex justify-between text-xs pt-1">
+                                  <span className="opacity-50">Shipped At:</span>
+                                  <span className="font-bold">{formatDate(order.shippedAt)}</span>
+                                </div>
+                              )}
                             </>
+                          ) : (
+                            order.status === "processing" && (
+                              <button 
+                                className="btn btn-info btn-xs w-full mt-2 rounded-lg font-bold"
+                                onClick={() => {
+                                  onClose();
+                                  setShipModalData({ orderId: order._id, newStatus: 'processing' });
+                                }}
+                              >
+                                Prepare Shipment (RTS)
+                              </button>
+                            )
                           )}
                         </div>
                       </div>
@@ -1287,8 +1307,13 @@ function OrdersPage() {
 
                         {/* Shipping */}
                         <td>
-                          {order.shippingDetails?.courierName ? (
+                          {order.shippingDetails?.internalTrackingNumber ? (
                             <div className="flex flex-col gap-0.5 min-w-32">
+                              {order.status === "processing" && (
+                                <div className="badge badge-secondary badge-xs font-black text-[9px] px-1.5 mb-1 rounded-sm shadow-sm border-0">
+                                  READY TO SHIP
+                                </div>
+                              )}
                               <div className="flex items-center gap-1.5 text-xs font-black text-primary">
                                 <TruckIcon className="size-3.5" />
                                 {order.shippingDetails.courierName}
@@ -1301,7 +1326,16 @@ function OrdersPage() {
                               </div>
                             </div>
                           ) : (
-                            <span className="text-xs opacity-40 font-semibold italic">Not Shipped</span>
+                            order.status === "processing" ? (
+                              <button 
+                                className="btn btn-ghost btn-xs rounded-lg text-primary hover:bg-primary/10 font-bold lowercase italic text-[10px] h-auto min-h-0 py-1"
+                                onClick={() => setShipModalData({ orderId: order._id, newStatus: 'processing' })}
+                              >
+                                + prepare RTS
+                              </button>
+                            ) : (
+                              <span className="text-xs opacity-40 font-semibold italic">Not Shipped</span>
+                            )
                           )}
                         </td>
 
@@ -1371,6 +1405,14 @@ function OrdersPage() {
                         {/* Actions */}
                         <td className="text-right">
                           <div className="flex items-center justify-end gap-1">
+                            {order.status === 'processing' && !order.shippingDetails?.internalTrackingNumber && (
+                               <button
+                                 className="btn btn-primary btn-xs rounded-lg font-bold shadow-sm"
+                                 onClick={() => setShipModalData({ orderId: order._id, newStatus: 'processing' })}
+                               >
+                                 Prepare
+                               </button>
+                            )}
                             <button
                               className="btn btn-ghost btn-xs rounded-lg hover:bg-primary/10 hover:text-primary font-bold"
                               onClick={() => setSelectedOrderId(order._id)}

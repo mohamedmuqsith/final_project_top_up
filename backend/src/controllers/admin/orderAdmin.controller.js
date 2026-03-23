@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { Order } from "../../models/order.model.js";
 import { OrderService } from "../../services/order.service.js";
 import { InventoryService } from "../../services/inventory.service.js";
@@ -58,24 +59,16 @@ export const getAllOrders = async (req, res) => {
 };
 
 /**
- * Generates a unique internal tracking number: SS-{CODE}-{YYYYMMDD}-{SEQUENCE}
+ * Generates a unique internal tracking number: SS-{CODE}-{YYYYMMDD}-{RANDOM}
+ * Uses crypto randomness instead of count-based sequencing to prevent duplicates.
  * @param {string} courierName 
- * @returns {Promise<string>}
+ * @returns {string}
  */
-const generateInternalTrackingNumber = async (courierName) => {
-  const code = (courierName || "GEN").slice(0, 3).toUpperCase().padEnd(3, "X");
+const generateInternalTrackingNumber = (courierName) => {
+  const code = (courierName || "GEN").slice(0, 3).toUpperCase().replace(/[^A-Z]/g, "X").padEnd(3, "X");
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  
-  // Get count of orders with an internal tracking number generated today
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  
-  const count = await Order.countDocuments({
-    "shippingDetails.shippedAt": { $gte: todayStart }
-  });
-  
-  const sequence = (count + 1).toString().padStart(6, "0");
-  return `SS-${code}-${date}-${sequence}`;
+  const suffix = crypto.randomBytes(3).toString("hex").toUpperCase(); // 6 hex chars → ~16M combos
+  return `SS-${code}-${date}-${suffix}`;
 };
 
 // @desc    Update order status
@@ -106,6 +99,35 @@ export const updateOrderStatus = async (req, res) => {
         return res.status(200).json(order);
       }
 
+      // ── Daraz-style: Ready to Ship (RTS) Preparation ──
+      // If we are in or moving to 'processing' and courier info is provided, prepare the shipment.
+      if ((newStatus === "processing" || (currentStatus === "processing" && newStatus === "processing")) && req.body.courierName) {
+        const courier = (req.body.courierName || "").trim();
+        const tracking = (req.body.trackingNumber || "").trim();
+        const { estimatedDeliveryDate, method } = req.body;
+
+        if (courier) {
+          // Generate tracking ONLY if not already generated
+          if (!order.shippingDetails?.internalTrackingNumber) {
+            order.shippingDetails = {
+              ...(order.shippingDetails || {}),
+              courierName: courier,
+              trackingNumber: tracking || undefined,
+              internalTrackingNumber: generateInternalTrackingNumber(courier),
+              estimatedDeliveryDate: estimatedDeliveryDate ? new Date(estimatedDeliveryDate) : order.shippingDetails?.estimatedDeliveryDate,
+              method: method || order.shippingDetails?.method || "standard",
+              // shippedAt remains null until handover
+            };
+          } else {
+            // Just update existing RTS data
+            order.shippingDetails.courierName = courier;
+            if (tracking) order.shippingDetails.trackingNumber = tracking;
+            if (estimatedDeliveryDate) order.shippingDetails.estimatedDeliveryDate = new Date(estimatedDeliveryDate);
+            if (method) order.shippingDetails.method = method;
+          }
+        }
+      }
+
       order.status = newStatus;
       
       // Fulfillment Logic for Shipped/Delivered
@@ -114,41 +136,25 @@ export const updateOrderStatus = async (req, res) => {
         const tracking = (req.body.trackingNumber || "").trim(); // Courier tracking (optional)
         const { estimatedDeliveryDate, method } = req.body;
 
-        if (!courier) {
-          return res.status(400).json({ error: "Courier Name is required for shipping." });
+        // If not already prepared (RTS), set it now
+        if (!order.shippingDetails?.internalTrackingNumber) {
+          if (!courier) {
+            return res.status(400).json({ error: "Courier Name is required for shipping." });
+          }
+          order.shippingDetails = {
+            ...order.shippingDetails,
+            courierName: courier,
+            trackingNumber: tracking || undefined,
+            internalTrackingNumber: generateInternalTrackingNumber(courier),
+            estimatedDeliveryDate: estimatedDeliveryDate ? new Date(estimatedDeliveryDate) : order.shippingDetails?.estimatedDeliveryDate,
+            method: method || order.shippingDetails?.method || "standard",
+          };
+        } else {
+          // If already RTS, just update tracking if provided
+          if (tracking) order.shippingDetails.trackingNumber = tracking;
         }
 
-        // 1. Generate Internal Tracking Number
-        const internalTracking = await generateInternalTrackingNumber(courier);
-
-        // 2. Validate Courier Tracking (ONLY IF PROVIDED)
-        if (tracking) {
-          const existingTracking = await Order.findOne({ 
-            "shippingDetails.trackingNumber": tracking,
-            _id: { $ne: orderId } 
-          });
-          
-          if (existingTracking) {
-            return res.status(400).json({ error: "Courier tracking number already exists in another order" });
-          }
-
-          const fallbackRegex = /^[A-Za-z0-9-]{8,30}$/;
-          if (!fallbackRegex.test(tracking)) {
-            return res.status(400).json({ 
-              error: `Invalid courier tracking format. Expected 8-30 characters.` 
-            });
-          }
-        }
-
-        order.shippingDetails = {
-          ...order.shippingDetails,
-          courierName: courier,
-          trackingNumber: tracking || undefined, // Truly optional
-          internalTrackingNumber: internalTracking,
-          estimatedDeliveryDate: estimatedDeliveryDate ? new Date(estimatedDeliveryDate) : order.shippingDetails?.estimatedDeliveryDate,
-          method: method || order.shippingDetails?.method || "standard",
-          shippedAt: new Date()
-        };
+        order.shippingDetails.shippedAt = new Date();
         order.shippedAt = order.shippingDetails.shippedAt; 
       }
 
@@ -187,7 +193,30 @@ export const updateOrderStatus = async (req, res) => {
         changedByType: "admin"
       });
 
-      await order.save();
+      // Save with retry for duplicate internal tracking collisions
+      const MAX_RETRIES = 5;
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+          await order.save();
+          break; // success
+        } catch (saveErr) {
+          const isDupKey = saveErr.code === 11000 &&
+            saveErr.message?.includes("internalTrackingNumber");
+          if (isDupKey && newStatus === "shipped" && attempt < MAX_RETRIES - 1) {
+            // Regenerate and retry
+            order.shippingDetails.internalTrackingNumber = generateInternalTrackingNumber(
+              order.shippingDetails.courierName
+            );
+            // Update the status comment with new ref
+            const lastEntry = order.statusHistory[order.statusHistory.length - 1];
+            if (lastEntry) {
+              lastEntry.comment = `Order shipped via ${order.shippingDetails.courierName}. (Ref: ${order.shippingDetails.internalTrackingNumber}${order.shippingDetails.trackingNumber ? ` | Courier TRK: ${order.shippingDetails.trackingNumber}` : ""})`;
+            }
+            continue;
+          }
+          throw saveErr; // Not a dup-key or max retries reached
+        }
+      }
 
       // Notifications
       const notificationMap = {
