@@ -48,8 +48,8 @@ const HorizontalProductList = ({ products, isLoading, isError, title, aiEnhanced
       <View className="relative">
         <Image
           source={
-            product.images?.[0] 
-              ? { uri: product.images[0] } 
+            product.images?.[0]?.url 
+              ? { uri: product.images[0].url } 
               : require("../assets/images/auth-image.png") 
           }
           className="w-full h-40 bg-background-lighter"
