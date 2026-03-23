@@ -64,7 +64,7 @@ const InvoiceModal = ({ visible, onClose, data }: InvoiceModalProps) => {
                 <div class="store-name">${data.store.name}</div>
                 <div style="font-size: 12px; color: #666; margin-top: 5px;">
                   ${data.store.streetAddress}<br/>
-                  ${data.store.city}, ${data.store.province} ${data.store.zipCode}<br/>
+                  ${data.store.city}, ${data.store.province} ${data.store.postalCode || data.store.zipCode || ''}<br/>
                   ${data.store.email} | ${data.store.phone}
                 </div>
               </div>
@@ -86,7 +86,7 @@ const InvoiceModal = ({ visible, onClose, data }: InvoiceModalProps) => {
                 <div style="font-weight: bold; font-size: 16px;">${data.customer.fullName}</div>
                 <div style="font-size: 14px; color: #444; margin-top: 5px;">
                   ${data.customer.streetAddress}<br/>
-                  ${data.customer.city}, ${data.customer.province} ${data.customer.zipCode}<br/>
+                  ${data.customer.city}, ${data.customer.province} ${data.customer.postalCode || data.customer.zipCode || ''}<br/>
                   ${data.customer.phoneNumber}
                 </div>
               </div>
@@ -202,7 +202,7 @@ const InvoiceModal = ({ visible, onClose, data }: InvoiceModalProps) => {
             <Text className="text-primary font-black text-2xl mb-1">{data.store.name}</Text>
             <Text className="text-text-secondary text-sm leading-5">
               {data.store.streetAddress},{"\n"}
-              {data.store.city}, {data.store.province} {data.store.zipCode}
+              {data.store.city}, {data.store.province} {data.store.postalCode || data.store.zipCode || ''}
             </Text>
             <View className="flex-row mt-2 gap-4">
               <View className="flex-row items-center">
@@ -251,7 +251,7 @@ const InvoiceModal = ({ visible, onClose, data }: InvoiceModalProps) => {
             <Text className="text-text-primary font-bold text-lg mb-1">{data.customer.fullName}</Text>
             <Text className="text-text-secondary text-sm leading-5">
               {data.customer.streetAddress},{"\n"}
-              {data.customer.city}, {data.customer.province} {data.customer.zipCode}
+              {data.customer.city}, {data.customer.province} {data.customer.postalCode || data.customer.zipCode || ''}
             </Text>
             <Text className="text-text-secondary text-xs mt-2 italic">{data.customer.phoneNumber}</Text>
           </View>
@@ -267,7 +267,7 @@ const InvoiceModal = ({ visible, onClose, data }: InvoiceModalProps) => {
               {data.items.map((item, index) => (
                 <View key={index} className="flex-row items-center bg-surface-lighter/30 p-3 rounded-2xl border border-white/5">
                   <Image
-                    source={item.image}
+                    source={{ uri: typeof item.image === "string" ? item.image : (item.image as any)?.url || "https://placehold.co/100x100/1e1e1e/666?text=N/A" }}
                     style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: "#1e1e1e" }}
                   />
                   <View className="flex-1 ml-4 justify-center">
