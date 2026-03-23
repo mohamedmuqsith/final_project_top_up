@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "seed:products": "node src/seeds/index.js"
+    "seed:products": "node src/seeds/index.js",
+    "seed:production": "node src/seeds/production_seed.js"
   },
   "keywords": [],
   "author": "",
