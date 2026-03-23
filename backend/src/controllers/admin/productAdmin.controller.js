@@ -296,7 +296,7 @@ export const getInventoryAlerts = async (req, res) => {
         _id: `alert-${product._id}`, // unique id for frontend
         productId: product._id,
         productName: product.name,
-        image: product.images?.[0] || "/placeholder.jpg",
+        image: product.images?.[0]?.url || product.images?.[0] || "/placeholder.jpg",
         type,
         severity,
         currentStock: product.stock,
@@ -406,7 +406,7 @@ export const getRestockSuggestions = async (req, res) => {
       return {
         _id: product._id,
         name: product.name,
-        image: product.images?.[0] || "/placeholder.jpg",
+        image: product.images?.[0]?.url || product.images?.[0] || "/placeholder.jpg",
         category: product.category,
         currentStock: product.stock,
         avgDailySales: parseFloat(avgDailySales.toFixed(2)),
