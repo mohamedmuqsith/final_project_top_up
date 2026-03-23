@@ -13,6 +13,7 @@ import AddressSelectionModal from "@/components/AddressSelectionModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrency } from "@/components/CurrencyProvider";
 import { formatCurrency } from "@/lib/currencyUtils";
+import { useSettings } from "@/hooks/useSettings";
 
 import * as Linking from "expo-linking";
 import * as Sentry from "@sentry/react-native";
@@ -41,11 +42,18 @@ const CartScreen = () => {
   const [addressModalVisible, setAddressModalVisible] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"online" | "cod">("online");
 
+  const { data: settings } = useSettings();
   const cartItems = cart?.items || [];
   const subtotal = cartTotal;
-  const shipping = 10.0; // $10 shipping fee
-  const tax = subtotal * 0.08; // 8% tax
-  const total = subtotal + shipping + tax;
+  
+  // Use dynamic settings for shipping and tax
+  const shippingThreshold = settings?.shipping?.freeShippingThreshold ?? 5000;
+  const shippingFee = settings?.shipping?.baseFee ?? 350;
+  const taxRate = settings?.tax?.enabled ? (settings?.tax?.rate ?? 0) : 0;
+
+  const currentShipping = subtotal >= shippingThreshold ? 0 : shippingFee;
+  const taxAmount = (subtotal + currentShipping) * (taxRate / 100);
+  const total = subtotal + currentShipping + taxAmount;
 
   const handleQuantityChange = (productId: string, currentQuantity: number, change: number) => {
     const newQuantity = currentQuantity + change;
@@ -110,9 +118,11 @@ const CartScreen = () => {
         shippingAddress: {
           fullName: selectedAddress.fullName,
           streetAddress: selectedAddress.streetAddress,
+          addressLine2: selectedAddress.addressLine2,
           city: selectedAddress.city,
+          district: selectedAddress.district,
           province: selectedAddress.province,
-          zipCode: selectedAddress.zipCode,
+          postalCode: selectedAddress.postalCode || selectedAddress.zipCode,
           phoneNumber: selectedAddress.phoneNumber,
         },
       };
@@ -381,7 +391,7 @@ const CartScreen = () => {
           </View>
         </View>
 
-        <OrderSummary subtotal={subtotal} shipping={shipping} tax={tax} total={total} />
+        <OrderSummary subtotal={subtotal} shipping={currentShipping} tax={taxAmount} total={total} />
       </ScrollView>
 
       <View

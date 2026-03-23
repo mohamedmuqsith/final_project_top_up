@@ -17,6 +17,7 @@ import paymentRoutes from "./routes/payment.route.js";
 import notificationRoutes from "./routes/notification.route.js";
 import recommendationRoutes from "./routes/recommendation.route.js";
 import offerRoutes from "./routes/offer.route.js";
+import { getPublicSettings } from "./controllers/admin/settings.controller.js";
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/offers", offerRoutes);
+app.get("/api/settings", getPublicSettings);
 
 //  /api/payment/webhook =>
 

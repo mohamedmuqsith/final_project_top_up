@@ -44,9 +44,12 @@ export interface Address {
   label: string;
   fullName: string;
   streetAddress: string;
+  addressLine2?: string;
   city: string;
+  district?: string;
   province: string;
-  zipCode: string;
+  postalCode: string;
+  zipCode?: string; // Backward compatibility
   phoneNumber: string;
   isDefault: boolean;
 }
@@ -59,9 +62,12 @@ export interface Order {
   shippingAddress: {
     fullName: string;
     streetAddress: string;
+    addressLine2?: string;
     city: string;
+    district?: string;
     province: string;
-    zipCode: string;
+    postalCode: string;
+    zipCode?: string;
     phoneNumber: string;
   };
   paymentResult?: {
@@ -81,7 +87,8 @@ export interface Order {
   shippingDetails?: {
     method: string;
     courierName?: string;
-    trackingNumber?: string;
+    trackingNumber?: string; // Courier tracking
+    internalTrackingNumber?: string; // App-generated tracking
     trackingUrl?: string;
     estimatedDeliveryDate?: string;
     shippedAt?: string;
@@ -165,9 +172,12 @@ export interface OrderDocumentData {
   customer: {
     fullName: string;
     streetAddress: string;
+    addressLine2?: string;
     city: string;
+    district?: string;
     province: string;
-    zipCode: string;
+    postalCode: string;
+    zipCode?: string;
     phoneNumber: string;
   };
   items: {
@@ -183,17 +193,28 @@ export interface OrderDocumentData {
     shipping: number;
     tax: number;
     total: number;
+    currency?: string;
+    currencySymbol?: string;
   };
   payment: {
     status: string;
     transactionId: string | null;
   };
+  shipping: {
+    method: string;
+    courier: string | null;
+    trackingNumber: string | null;
+    estimatedDelivery: string | null;
+  };
   store: {
     name: string;
     streetAddress: string;
+    addressLine2?: string;
     city: string;
+    district?: string;
     province: string;
-    zipCode: string;
+    postalCode: string;
+    zipCode?: string;
     email: string;
     phone: string;
   };

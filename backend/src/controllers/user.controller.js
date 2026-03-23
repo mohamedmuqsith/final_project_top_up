@@ -2,13 +2,15 @@ import { User } from "../models/user.model.js";
 
 export async function addAddress(req, res) {
   try {
-    const { label, fullName, streetAddress, city, province, zipCode, phoneNumber, isDefault } =
+    const { label, fullName, streetAddress, city, district, province, postalCode, zipCode, phoneNumber, isDefault } =
       req.body;
 
     const user = req.user;
 
-    if (!fullName || !streetAddress || !city || !province || !zipCode) {
-      return res.status(400).json({ error: "Missing required address fields" });
+    const finalPostalCode = postalCode || zipCode;
+
+    if (!fullName || !streetAddress || !city || !province || !finalPostalCode || !district) {
+      return res.status(400).json({ error: "Missing required address fields (Name, Street, City, District, Province, or Postal Code)" });
     }
 
     // if this is set as default, unset all other defaults
@@ -23,8 +25,9 @@ export async function addAddress(req, res) {
       fullName,
       streetAddress,
       city,
+      district,
       province,
-      zipCode,
+      postalCode: finalPostalCode,
       phoneNumber,
       isDefault: isDefault || false,
     });
@@ -51,7 +54,7 @@ export async function getAddresses(req, res) {
 
 export async function updateAddress(req, res) {
   try {
-    const { label, fullName, streetAddress, city, province, zipCode, phoneNumber, isDefault } =
+    const { label, fullName, streetAddress, city, district, province, postalCode, zipCode, phoneNumber, isDefault } =
       req.body;
 
     const { addressId } = req.params;
@@ -73,8 +76,9 @@ export async function updateAddress(req, res) {
     address.fullName = fullName || address.fullName;
     address.streetAddress = streetAddress || address.streetAddress;
     address.city = city || address.city;
+    address.district = district || address.district;
     address.province = province || address.province;
-    address.zipCode = zipCode || address.zipCode;
+    address.postalCode = postalCode || zipCode || address.postalCode;
     address.phoneNumber = phoneNumber || address.phoneNumber;
     address.isDefault = isDefault !== undefined ? isDefault : address.isDefault;
 

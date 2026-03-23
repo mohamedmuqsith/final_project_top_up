@@ -35,7 +35,15 @@ const shippingAddressSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  addressLine2: {
+    type: String,
+    default: "",
+  },
   city: {
+    type: String,
+    required: true,
+  },
+  district: {
     type: String,
     required: true,
   },
@@ -43,7 +51,7 @@ const shippingAddressSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  zipCode: {
+  postalCode: {
     type: String,
     required: true,
   },
@@ -51,6 +59,12 @@ const shippingAddressSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+}, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
+
+shippingAddressSchema.virtual("zipCode").get(function() {
+  return this.postalCode;
+}).set(function(val) {
+  this.postalCode = val;
 });
 
 const orderSchema = new mongoose.Schema(
@@ -134,7 +148,8 @@ const orderSchema = new mongoose.Schema(
       tax: { type: Number, min: 0 },
       discount: { type: Number, default: 0, min: 0 },
       total: { type: Number, min: 0 },
-      currency: { type: String, default: "usd" },
+      currency: { type: String, default: "LKR" },
+      currencySymbol: { type: String, default: "Rs." },
     },
     shippingDetails: {
       method: { 
@@ -146,6 +161,7 @@ const orderSchema = new mongoose.Schema(
       trackingNumber: { type: String },
       trackingUrl: { type: String },
       estimatedDeliveryDate: { type: Date },
+      internalTrackingNumber: { type: String, unique: true, sparse: true },
       shippedAt: { type: Date },
       deliveredAt: { type: Date },
     },
@@ -169,7 +185,8 @@ orderSchema.post("init", function(doc) {
       tax: 0,         // Fallback for legacy
       discount: 0,
       total: doc.totalPrice || subtotal,
-      currency: "usd",
+      currency: "LKR",
+      currencySymbol: "Rs.",
       isLegacy: true
     };
   }

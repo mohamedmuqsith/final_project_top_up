@@ -57,6 +57,27 @@ export const getAllOrders = async (req, res) => {
   }
 };
 
+/**
+ * Generates a unique internal tracking number: SS-{CODE}-{YYYYMMDD}-{SEQUENCE}
+ * @param {string} courierName 
+ * @returns {Promise<string>}
+ */
+const generateInternalTrackingNumber = async (courierName) => {
+  const code = (courierName || "GEN").slice(0, 3).toUpperCase().padEnd(3, "X");
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  
+  // Get count of orders with an internal tracking number generated today
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  
+  const count = await Order.countDocuments({
+    "shippingDetails.shippedAt": { $gte: todayStart }
+  });
+  
+  const sequence = (count + 1).toString().padStart(6, "0");
+  return `SS-${code}-${date}-${sequence}`;
+};
+
 // @desc    Update order status
 // @route   PATCH /api/admin/orders/:orderId/status
 export const updateOrderStatus = async (req, res) => {
@@ -89,19 +110,46 @@ export const updateOrderStatus = async (req, res) => {
       
       // Fulfillment Logic for Shipped/Delivered
       if (newStatus === "shipped") {
-        const { courierName, trackingNumber, estimatedDeliveryDate, method } = req.body;
-        if (!courierName || !trackingNumber) {
-          throw new Error("Courier Name and Tracking Number are required to mark as Shipped.");
+        const courier = (req.body.courierName || "").trim();
+        const tracking = (req.body.trackingNumber || "").trim(); // Courier tracking (optional)
+        const { estimatedDeliveryDate, method } = req.body;
+
+        if (!courier) {
+          return res.status(400).json({ error: "Courier Name is required for shipping." });
         }
+
+        // 1. Generate Internal Tracking Number
+        const internalTracking = await generateInternalTrackingNumber(courier);
+
+        // 2. Validate Courier Tracking (ONLY IF PROVIDED)
+        if (tracking) {
+          const existingTracking = await Order.findOne({ 
+            "shippingDetails.trackingNumber": tracking,
+            _id: { $ne: orderId } 
+          });
+          
+          if (existingTracking) {
+            return res.status(400).json({ error: "Courier tracking number already exists in another order" });
+          }
+
+          const fallbackRegex = /^[A-Za-z0-9-]{8,30}$/;
+          if (!fallbackRegex.test(tracking)) {
+            return res.status(400).json({ 
+              error: `Invalid courier tracking format. Expected 8-30 characters.` 
+            });
+          }
+        }
+
         order.shippingDetails = {
           ...order.shippingDetails,
-          courierName,
-          trackingNumber,
+          courierName: courier,
+          trackingNumber: tracking || undefined, // Truly optional
+          internalTrackingNumber: internalTracking,
           estimatedDeliveryDate: estimatedDeliveryDate ? new Date(estimatedDeliveryDate) : order.shippingDetails?.estimatedDeliveryDate,
           method: method || order.shippingDetails?.method || "standard",
           shippedAt: new Date()
         };
-        order.shippedAt = order.shippingDetails.shippedAt; // Standardize for existing docs
+        order.shippedAt = order.shippingDetails.shippedAt; 
       }
 
       if (newStatus === "delivered") {
@@ -122,7 +170,7 @@ export const updateOrderStatus = async (req, res) => {
         newStatus === "processing"
           ? "Order is being prepared for shipment."
           : newStatus === "shipped" 
-            ? `Order has been shipped and is in transit via ${order.shippingDetails.courierName} (Tracking: ${order.shippingDetails.trackingNumber})`
+            ? `Order shipped via ${order.shippingDetails.courierName}. (Ref: ${order.shippingDetails.internalTrackingNumber}${order.shippingDetails.trackingNumber ? ` | Courier TRK: ${order.shippingDetails.trackingNumber}` : ""})`
             : newStatus === "delivered"
               ? order.paymentMethod === "cod"
                 ? `Order delivered successfully. Cash collected: ${cashCollected === true ? "YES" : "NO"}`
@@ -230,7 +278,7 @@ export const handleReturnRequest = async (req, res) => {
 export const processRefund = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { reason } = req.body;
+    const { reason = "" } = req.body || {};
     const adminId = req.user?._id;
 
     const order = await Order.findById(orderId);

@@ -1,21 +1,11 @@
 import { Order } from "../models/order.model.js";
-
-// Store info used across all documents
-const STORE_INFO = {
-  name: "SmartShop Electronics",
-  streetAddress: "100 Innovation Drive",
-  city: "San Francisco",
-  province: "CA",
-  zipCode: "94105",
-  email: "orders@smartshop.com",
-  phone: "+1 (800) 555-0199",
-};
+import { Settings } from "../models/settings.model.js";
 
 // Server-side status validation per document type
 const DOC_STATUS_RULES = {
-  invoice: ["pending", "processing", "shipped", "delivered"],
+  invoice: ["pending", "processing", "shipped", "delivered", "cancelled"],
   "packing-slip": ["processing", "shipped"],
-  "shipping-label": ["processing", "shipped"],
+  "shipping-label": ["shipped"],
 };
 
 /**
@@ -45,6 +35,28 @@ export async function getOrderDocumentData(req, res) {
     // Populate products for invoice/packing slip details
     await order.populate("orderItems.product", "name price category");
 
+    // Fetch store settings for document header
+    const settings = await Settings.findOne();
+    const storeInfo = settings ? {
+      name: settings.storeName,
+      streetAddress: settings.storeAddress.line1,
+      addressLine2: settings.storeAddress.line2,
+      city: settings.storeAddress.city,
+      district: settings.storeAddress.district,
+      province: settings.storeAddress.province,
+      postalCode: settings.storeAddress.postalCode,
+      email: settings.storeEmail,
+      phone: settings.storePhone,
+    } : {
+      name: "SmartShop Electronics",
+      streetAddress: "100 Innovation Drive",
+      city: "San Francisco",
+      province: "CA",
+      postalCode: "94105",
+      email: "orders@smartshop.com",
+      phone: "+1 (800) 555-0199",
+    };
+
     // Validate docType + status combination
     if (docType && DOC_STATUS_RULES[docType]) {
       const allowedStatuses = DOC_STATUS_RULES[docType];
@@ -69,9 +81,11 @@ export async function getOrderDocumentData(req, res) {
       customer: {
         fullName: order.shippingAddress.fullName,
         streetAddress: order.shippingAddress.streetAddress,
+        addressLine2: order.shippingAddress.addressLine2 || "",
         city: order.shippingAddress.city,
+        district: order.shippingAddress.district || "",
         province: order.shippingAddress.province,
-        zipCode: order.shippingAddress.zipCode,
+        postalCode: order.shippingAddress.postalCode || order.shippingAddress.zipCode,
         phoneNumber: order.shippingAddress.phoneNumber,
       },
 
@@ -86,9 +100,12 @@ export async function getOrderDocumentData(req, res) {
 
       pricing: {
         subtotal: order.pricing?.subtotal || order.totalPrice,
-        shipping: order.pricing?.shippingFee || 0,
+        shippingFee: order.pricing?.shippingFee || 0,
         tax: order.pricing?.tax || 0,
+        discount: order.pricing?.discount || 0,
         total: order.pricing?.total || order.totalPrice,
+        currency: order.pricing?.currency || "LKR",
+        currencySymbol: order.pricing?.currencySymbol || "Rs."
       },
 
       payment: {
@@ -97,7 +114,14 @@ export async function getOrderDocumentData(req, res) {
         transactionId: order.paymentResult?.id || null,
       },
 
-      store: STORE_INFO,
+      shipping: {
+        method: order.shippingDetails?.method || "standard",
+        courier: order.shippingDetails?.courierName || null,
+        trackingNumber: order.shippingDetails?.trackingNumber || null,
+        estimatedDelivery: order.shippingDetails?.estimatedDeliveryDate || null,
+      },
+
+      store: storeInfo,
     };
 
     res.status(200).json(documentData);

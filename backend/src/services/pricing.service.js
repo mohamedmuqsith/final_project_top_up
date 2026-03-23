@@ -1,5 +1,6 @@
 import { Offer } from "../models/offer.model.js";
 import { Product } from "../models/product.model.js";
+import { Settings } from "../models/settings.model.js";
 
 /**
  * Calculates the discounted price for a product based on active offers.
@@ -154,13 +155,30 @@ export async function validateCartItems(cartItems) {
     });
   }
 
-  const shipping = 10.0;
-  const tax = subtotal * 0.08;
+  // Fetch store settings for shipping and tax
+  const settings = await Settings.findOne();
+  const shippingConfig = settings?.shipping || { defaultFee: 350, freeThreshold: 5000 };
+  const taxConfig = settings?.tax || { rate: 15 };
+
+  let shipping = shippingConfig.defaultFee;
+  if (subtotal >= shippingConfig.freeThreshold) {
+    shipping = 0;
+  }
+
+  const tax = subtotal * (taxConfig.rate / 100);
   const total = subtotal + shipping + tax;
 
   if (total <= 0) {
     throw new Error("Invalid order total");
   }
 
-  return { validatedItems, subtotal, shipping, tax, total };
+  return { 
+    validatedItems, 
+    subtotal, 
+    shipping, 
+    tax, 
+    total,
+    currency: settings?.localization?.currency || "LKR",
+    currencySymbol: settings?.localization?.currencySymbol || "Rs."
+  };
 }

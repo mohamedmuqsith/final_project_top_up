@@ -28,7 +28,7 @@ const API_URL = getBaseUrl();
 
 console.log("[API] Using Base URL:", API_URL);
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",

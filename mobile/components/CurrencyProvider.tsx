@@ -1,51 +1,28 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import * as SecureStore from "expo-secure-store";
+import React, { createContext, useContext } from "react";
 import { Currency } from "../lib/currencyUtils";
+import { useSettings } from "../hooks/useSettings";
 
 interface CurrencyContextType {
   currency: Currency;
-  setCurrency: (currency: Currency) => void;
-  toggleCurrency: () => void;
+  currencySymbol: string;
   isLoaded: boolean;
 }
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
+/**
+ * CurrencyProvider — drives currency from backend settings.
+ * No client-side toggle. The store's configured currency is the single source of truth.
+ */
 export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currency, setCurrencyState] = useState<Currency>("USD");
-  const [isLoaded, setIsLoaded] = useState(false);
+  const { data: settings, isLoading } = useSettings();
 
-  useEffect(() => {
-    const loadCurrency = async () => {
-      try {
-        const stored = await SecureStore.getItemAsync("selected_currency");
-        if (stored === "USD" || stored === "LKR") {
-          setCurrencyState(stored as Currency);
-        }
-      } catch (error) {
-        console.error("Failed to load currency from SecureStore:", error);
-      } finally {
-        setIsLoaded(true);
-      }
-    };
-    loadCurrency();
-  }, []);
-
-  const setCurrency = async (newCurrency: Currency) => {
-    setCurrencyState(newCurrency);
-    try {
-      await SecureStore.setItemAsync("selected_currency", newCurrency);
-    } catch (error) {
-      console.error("Failed to save currency to SecureStore:", error);
-    }
-  };
-
-  const toggleCurrency = () => {
-    setCurrency(currency === "USD" ? "LKR" : "USD");
-  };
+  // Derive from backend settings, fallback to LKR
+  const currency: Currency = (settings?.localization?.currency as Currency) || "LKR";
+  const currencySymbol = settings?.localization?.currencySymbol || "Rs.";
 
   return (
-    <CurrencyContext.Provider value={{ currency, setCurrency, toggleCurrency, isLoaded }}>
+    <CurrencyContext.Provider value={{ currency, currencySymbol, isLoaded: !isLoading }}>
       {children}
     </CurrencyContext.Provider>
   );

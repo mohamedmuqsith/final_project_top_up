@@ -26,9 +26,11 @@ function AddressesScreen() {
     label: "",
     fullName: "",
     streetAddress: "",
+    addressLine2: "",
     city: "",
+    district: "",
     province: "",
-    zipCode: "",
+    postalCode: "",
     phoneNumber: "",
     isDefault: false,
   });
@@ -40,9 +42,11 @@ function AddressesScreen() {
       label: "",
       fullName: "",
       streetAddress: "",
+      addressLine2: "",
       city: "",
+      district: "",
       province: "",
-      zipCode: "",
+      postalCode: "",
       phoneNumber: "",
       isDefault: false,
     });
@@ -55,9 +59,11 @@ function AddressesScreen() {
       label: address.label,
       fullName: address.fullName,
       streetAddress: address.streetAddress,
+      addressLine2: address.addressLine2 || "",
       city: address.city,
+      district: address.district || "",
       province: address.province,
-      zipCode: address.zipCode,
+      postalCode: address.postalCode || address.zipCode || "",
       phoneNumber: address.phoneNumber,
       isDefault: address.isDefault,
     });
@@ -76,11 +82,12 @@ function AddressesScreen() {
       !addressForm.fullName ||
       !addressForm.streetAddress ||
       !addressForm.city ||
+      !addressForm.district ||
       !addressForm.province ||
-      !addressForm.zipCode ||
+      !addressForm.postalCode ||
       !addressForm.phoneNumber
     ) {
-      Alert.alert("Error", "Please fill in all fields");
+      Alert.alert("Error", "Please fill in all required fields (Label, Name, Address, City, District, Province, Postal Code, Phone)");
       return;
     }
 

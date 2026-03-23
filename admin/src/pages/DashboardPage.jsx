@@ -4,7 +4,7 @@ import { statsApi } from "../lib/api";
 import { BoxesIcon, DollarSignIcon, PackageIcon, ShoppingBagIcon, UsersIcon, AlertTriangleIcon, TrendingDownIcon, CheckCircleIcon, XCircleIcon, MessageSquareIcon, StarHalfIcon, LayoutDashboardIcon, TrendingUpIcon } from "lucide-react";
 import { capitalizeText, formatDate, getOrderStatusBadge } from "../lib/utils";
 import { useCurrency } from "../components/CurrencyProvider";
-import { formatCurrency, convertToCurrency } from "../lib/currencyUtils";
+import { formatCurrency } from "../lib/currencyUtils";
 import { useNavigate } from "react-router";
 import {
   LineChart,
@@ -280,7 +280,7 @@ function DashboardPage() {
                       stroke="var(--chart-primary)"
                       strokeWidth={3}
                       activeDot={{ r: 8 }}
-                      name={currency === "USD" ? "Confirmed Revenue ($)" : "Confirmed Revenue (Rs.)"}
+                      name={`Confirmed Revenue (${currency})`}
                     />
                   </LineChart>
                 </ResponsiveContainer>

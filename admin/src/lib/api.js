@@ -43,12 +43,12 @@ export const orderApi = {
     const { data } = await axiosInstance.post(`/orders/${orderId}/return`, returnData);
     return data;
   },
-  handleReturnRequest: async ({ orderId, action }) => {
-    const { data } = await axiosInstance.patch(`/admin/orders/${orderId}/return`, { action });
+  handleReturnRequest: async ({ orderId, action, adminComment }) => {
+    const { data } = await axiosInstance.patch(`/admin/orders/${orderId}/return`, { action, adminComment });
     return data;
   },
-  processRefund: async (orderId) => {
-    const { data } = await axiosInstance.post(`/admin/orders/${orderId}/refund`);
+  processRefund: async ({ id, reason }) => {
+    const { data } = await axiosInstance.post(`/admin/orders/${id}/refund`, { reason });
     return data;
   },
   markAsPaid: async (orderId) => {

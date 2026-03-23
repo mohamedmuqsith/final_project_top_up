@@ -18,7 +18,12 @@ export async function createPaymentIntent(req, res) {
     const { cartItems, shippingAddress } = req.body;
     const user = req.user;
 
-    const { validatedItems, subtotal, shipping, tax, total } = await validateCartItems(cartItems);
+    // Ensure Sri Lankan address fields are properly mapped
+    if (shippingAddress && !shippingAddress.postalCode && shippingAddress.zipCode) {
+      shippingAddress.postalCode = shippingAddress.zipCode;
+    }
+
+    const { validatedItems, subtotal, shipping, tax, total, currency, currencySymbol } = await validateCartItems(cartItems);
 
     // 1. Create PENDING Order in DB (Source of Truth with Snapshot)
     const order = await Order.create({
@@ -32,7 +37,8 @@ export async function createPaymentIntent(req, res) {
         shippingFee: shipping,
         tax,
         total,
-        currency: "usd"
+        currency: currency?.toLowerCase() || "lkr",
+        currencySymbol: currencySymbol || "Rs."
       },
       paymentMethod: "online",
       paymentStatus: "pending",
@@ -67,7 +73,7 @@ export async function createPaymentIntent(req, res) {
     // create payment intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(total * 100), // convert to cents
-      currency: "usd",
+      currency: currency?.toLowerCase() || "usd",
       customer: customer.id,
       automatic_payment_methods: {
         enabled: true,
@@ -121,7 +127,7 @@ export const confirmPayment = async (req, res) => {
       return res.status(400).json({ error: "Invalid payment intent metadata" });
     }
 
-    // Replaced local finalizeOrder with OrderService.finalizeOrder logic
+    // Update paymentResult fields first
     const order = await Order.findOneAndUpdate(
       { _id: orderId, isFinalized: false },
       { 
@@ -134,14 +140,18 @@ export const confirmPayment = async (req, res) => {
     );
 
     if (order) {
-      await OrderService.finalizeOrder(order, {
+      // finalizeOrder sets paymentStatus = "paid" and saves
+      const finalizedOrder = await OrderService.finalizeOrder(order, {
         paymentMethod: "online",
         paymentStatus: "paid",
         comment: "Payment confirmed via API. Order is now pending fulfillment."
       });
-      res.status(200).json({ message: "Order confirmed successfully", order });
+      // Return the FINALIZED order (after save), not the stale pre-save object
+      res.status(200).json({ message: "Order confirmed successfully", order: finalizedOrder });
     } else {
-      res.status(200).json({ message: "Order already processed or not found" });
+      // Already finalized — fetch the latest state to return accurate data
+      const existingOrder = await Order.findById(orderId);
+      res.status(200).json({ message: "Order already processed", order: existingOrder });
     }
   } catch (error) {
     console.error("Error in confirmPayment:", error);
@@ -155,6 +165,11 @@ export const confirmPayment = async (req, res) => {
 export const createCodOrder = async (req, res) => {
   try {
     const { cartItems, shippingAddress } = req.body;
+
+    // Ensure Sri Lankan address fields are properly mapped
+    if (shippingAddress && !shippingAddress.postalCode && shippingAddress.zipCode) {
+      shippingAddress.postalCode = shippingAddress.zipCode;
+    }
 
     const { validatedItems, subtotal, shipping, tax, total } = await validateCartItems(cartItems);
 
@@ -317,7 +332,7 @@ export async function handleWebhook(req, res) {
     await createNotification({
       recipientType: "admin",
       title: "Payment Failed",
-      message: `Operational Alert: A payment intent for $${(paymentIntent.amount / 100).toFixed(2)} just failed.`,
+      message: `Operational Alert: A payment intent for ${(paymentIntent.amount / 100).toFixed(2)} just failed.`,
       type: "PAYMENT_FAILED",
       entityId: orderId || paymentIntent.id,
       entityModel: orderId ? "Order" : undefined

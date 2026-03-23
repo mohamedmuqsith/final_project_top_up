@@ -4,7 +4,7 @@ import { useOrders, useRequestReturn, useOrderDocument } from "@/hooks/useOrders
 import { capitalizeFirstLetter, formatDate, getStatusColor } from "@/lib/utils";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ActivityIndicator, ScrollView, Text, View, TouchableOpacity, Alert } from "react-native";
+import { ActivityIndicator, ScrollView, Text, View, TouchableOpacity, Alert, Modal, TextInput } from "react-native";
 import * as Clipboard from 'expo-clipboard';
 import useCart from "@/hooks/useCart";
 import RatingModal from "@/components/RatingModal";
@@ -28,6 +28,9 @@ export default function OrderDetailsScreen() {
   const queryClient = useQueryClient();
 
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [returnReason, setReturnReason] = useState("");
+  const [returnNote, setReturnNote] = useState("");
   const [invoiceData, setInvoiceData] = useState<OrderDocumentData | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [productRatings, setProductRatings] = useState<{ [key: string]: number }>({});
@@ -182,30 +185,27 @@ export default function OrderDetailsScreen() {
 
   const handleRequestReturn = () => {
     if (!isReturnEligible) return;
+    setReturnReason("");
+    setReturnNote("");
+    setShowReturnModal(true);
+  };
 
-    Alert.prompt(
-      "Request Return",
-      "Please provide a reason for your return request:",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Submit",
-          onPress: async (reason?: string) => {
-            if (!reason?.trim()) {
-              Alert.alert("Error", "Reason is required for return request");
-              return;
-            }
-            try {
-              await requestReturn({ orderId: order._id, reason: reason.trim() });
-              Alert.alert("Success", "Your return request has been submitted.");
-            } catch (error: any) {
-              Alert.alert("Request Denied", error?.message || "Failed to submit return request");
-            }
-          }
-        }
-      ],
-      'plain-text'
-    );
+  const submitReturnRequest = async () => {
+    if (!returnReason.trim()) {
+      Alert.alert("Error", "Return reason is required");
+      return;
+    }
+    try {
+      await requestReturn({ 
+        orderId: order._id, 
+        reason: returnReason.trim(),
+        comment: returnNote.trim()
+      } as any);
+      Alert.alert("Success", "Your return request has been submitted.");
+      setShowReturnModal(false);
+    } catch (error: any) {
+      Alert.alert("Request Denied", error?.message || "Failed to submit return request");
+    }
   };
 
   const handleOpenRating = () => {
@@ -310,30 +310,48 @@ export default function OrderDetailsScreen() {
             </View>
 
             <View className="space-y-4">
+              <TouchableOpacity 
+                onPress={async () => {
+                  await Clipboard.setStringAsync(order?.shippingDetails?.internalTrackingNumber || "");
+                  Alert.alert("Success", "Internal reference copied to clipboard!");
+                }}
+                className="flex-row justify-between items-start py-2 border-b border-slate-50"
+              >
+                <View>
+                  <Text className="text-slate-500 font-medium">Internal Reference</Text>
+                  <Text className="text-[10px] text-slate-400 mt-0.5 uppercase font-bold tracking-wider italic">System Generated</Text>
+                </View>
+                <View className="items-end">
+                  <Text className="text-primary font-bold font-mono uppercase">{order.shippingDetails?.internalTrackingNumber || "PROCESSING"}</Text>
+                  <Text className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">Tap to copy</Text>
+                </View>
+              </TouchableOpacity>
+
               <View className="flex-row justify-between items-center py-2 border-b border-slate-50">
                 <Text className="text-slate-500 font-medium">Method</Text>
                 <Text className="text-slate-900 font-bold uppercase">{order.shippingDetails?.method || order.delivery?.method || "Standard"}</Text>
               </View>
 
-              {order.shippingDetails?.courierName && (
-                <>
-                  <View className="flex-row justify-between items-center py-2 border-b border-slate-50">
-                    <Text className="text-slate-500 font-medium">Courier</Text>
-                    <Text className="text-slate-900 font-bold">{order.shippingDetails.courierName}</Text>
+              <View className="flex-row justify-between items-center py-2 border-b border-slate-50">
+                <Text className="text-slate-500 font-medium">Courier</Text>
+                <Text className="text-slate-900 font-bold">{order.shippingDetails?.courierName || "N/A"}</Text>
+              </View>
+
+              {order.shippingDetails?.trackingNumber && (
+                <TouchableOpacity 
+                  onPress={async () => {
+                    await Clipboard.setStringAsync(order?.shippingDetails?.trackingNumber || "");
+                    Alert.alert("Success", "Tracking number copied to clipboard!");
+                  }}
+                  className="flex-row justify-between items-start py-2 border-b border-slate-50"
+                >
+                  <Text className="text-slate-500 font-medium">Courier Tracking</Text>
+                  <View className="items-end">
+                    <Text className="text-slate-600 font-bold font-mono">{order.shippingDetails.trackingNumber}</Text>
+                    <Text className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">Tap to copy</Text>
                   </View>
-                  <TouchableOpacity 
-                    onPress={async () => {
-                      await Clipboard.setStringAsync(order?.shippingDetails?.trackingNumber || "");
-                      Alert.alert("Success", "Tracking number copied to clipboard!");
-                    }}
-                    className="flex-row justify-between items-start py-2 border-b border-slate-50"
-                  >
-                    <Text className="text-slate-500 font-medium">Tracking Number</Text>
-                    <View className="items-end">
-                      <Text className="text-primary font-bold font-mono">{order.shippingDetails?.trackingNumber}</Text>
-                      <Text className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">Tap to copy</Text>
-                    </View>
-                  </TouchableOpacity>
+                </TouchableOpacity>
+              )}
                   {order.shippingDetails?.estimatedDeliveryDate && (
                     <View className="flex-row justify-between items-center py-2">
                       <Text className="text-slate-500 font-medium">Estimated Delivery</Text>
@@ -342,8 +360,6 @@ export default function OrderDetailsScreen() {
                       </Text>
                     </View>
                   )}
-                </>
-              )}
             </View>
           </View>
         )}
@@ -368,6 +384,17 @@ export default function OrderDetailsScreen() {
                 {order.paymentMethod === "cod" ? "COD" : "Online"} • {capitalizeFirstLetter(order.paymentStatus || "pending")}
               </Text>
             </View>
+
+            {(order.returnStatus && order.returnStatus !== "none") && (
+              <View 
+                className="px-4 py-2 rounded-full"
+                style={{ backgroundColor: getStatusColor(order.returnStatus) + "20" }}
+              >
+                <Text className="text-sm font-bold tracking-wide" style={{ color: getStatusColor(order.returnStatus) }}>
+                  Return: {capitalizeFirstLetter(order.returnStatus)}
+                </Text>
+              </View>
+            )}
           </View>
           <Text className="text-text-primary text-3xl font-bold">{formatCurrency(order.totalPrice, currency)}</Text>
           <Text className="text-text-secondary mt-1">Order #{order._id.slice(-8).toUpperCase()}</Text>
@@ -395,9 +422,14 @@ export default function OrderDetailsScreen() {
                       <Text className="text-text-secondary text-xs mt-1">{formatDate(event.date)}</Text>
                     )}
                     {event.label.toLowerCase() === "shipped" && order.shippingDetails?.courierName && (
-                      <Text className="text-[10px] text-primary/70 mt-0.5 font-medium italic">
-                        Via {order.shippingDetails.courierName} • {order.shippingDetails.trackingNumber}
-                      </Text>
+                      <View>
+                        <Text className="text-[10px] text-primary/70 mt-0.5 font-medium italic">
+                          Via {order.shippingDetails.courierName}
+                        </Text>
+                        <Text className="text-[10px] text-slate-400 mt-0.5 font-bold font-mono uppercase">
+                          Ref: {order.shippingDetails.internalTrackingNumber}
+                        </Text>
+                      </View>
                     )}
                     {event.comment && (
                       <Text className="text-text-secondary/60 text-[10px] mt-1 italic">
@@ -450,8 +482,16 @@ export default function OrderDetailsScreen() {
               <Text className="text-text-secondary text-sm leading-5">
                 {order.shippingAddress.streetAddress}
               </Text>
+              {order.shippingAddress.addressLine2 ? (
+                <Text className="text-text-secondary text-sm leading-5">
+                  {order.shippingAddress.addressLine2}
+                </Text>
+              ) : null}
               <Text className="text-text-secondary text-sm leading-5">
-                {order.shippingAddress.city}, {order.shippingAddress.province} {order.shippingAddress.zipCode}
+                {order.shippingAddress.city}{order.shippingAddress.district ? `, ${order.shippingAddress.district}` : ""}, {order.shippingAddress.province}
+              </Text>
+              <Text className="text-text-secondary font-bold text-sm leading-5 mt-1 tracking-widest">
+                {order.shippingAddress.postalCode || order.shippingAddress.zipCode || ""}
               </Text>
             </View>
           </View>
@@ -576,6 +616,53 @@ export default function OrderDetailsScreen() {
           setProductTitles((prev: { [key: string]: string }) => ({ ...prev, [productId]: title }))
         }
       />
+
+      {/* Return Request Modal */}
+      <Modal visible={showReturnModal} transparent animationType="slide" onRequestClose={() => setShowReturnModal(false)}>
+        <View className="flex-1 justify-end bg-black/50">
+          <View className="bg-background rounded-t-3xl p-6 h-3/4 shadow-2xl">
+            <View className="flex-row justify-between items-center mb-6">
+              <Text className="text-xl font-bold text-text-primary">Request Return</Text>
+              <TouchableOpacity onPress={() => setShowReturnModal(false)} className="p-2 -mr-2 bg-surface rounded-full">
+                <Ionicons name="close" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text className="text-text-secondary text-sm mb-6 leading-5">
+                Please provide details about why you are returning this order. Once submitted, our team will review your request.
+              </Text>
+
+              <Text className="text-text-primary font-bold mb-2 ml-1">Reason <Text className="text-error">*</Text></Text>
+              <TextInput
+                className="bg-surface text-text-primary p-4 rounded-2xl mb-4 border border-surface-lighter font-medium"
+                placeholder="e.g., Damaged item, Wrong product..."
+                placeholderTextColor="#666"
+                value={returnReason}
+                onChangeText={setReturnReason}
+              />
+
+              <Text className="text-text-primary font-bold mb-2 ml-1">Additional Note (Optional)</Text>
+              <TextInput
+                className="bg-surface text-text-primary p-4 rounded-2xl mb-8 border border-surface-lighter h-32 font-medium"
+                placeholder="Provide any additional details or context here..."
+                placeholderTextColor="#666"
+                multiline
+                textAlignVertical="top"
+                value={returnNote}
+                onChangeText={setReturnNote}
+              />
+
+              <TouchableOpacity
+                className="bg-[#FF6666] p-4 rounded-full flex-row justify-center items-center shadow-lg shadow-[#FF6666]/30 mb-8"
+                onPress={submitReturnRequest}
+              >
+                <Text className="text-white font-black text-lg tracking-wide uppercase">Submit Request</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       <InvoiceModal
         visible={showInvoiceModal}
