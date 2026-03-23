@@ -1,6 +1,6 @@
 import { useUser } from "@clerk/clerk-react";
 import { ShoppingBagIcon } from "lucide-react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation } from "react-router-dom";
 import { NAVIGATION } from "./Navbar";
 
 function Sidebar() {

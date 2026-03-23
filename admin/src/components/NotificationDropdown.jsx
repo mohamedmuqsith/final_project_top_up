@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { BellIcon, CheckIcon } from "lucide-react";
 import { notificationApi } from "../lib/api";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 
 function NotificationDropdown() {
