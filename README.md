@@ -19,35 +19,271 @@
 
 ```mermaid
 graph TB
-    subgraph "Client Layer"
-        ADMIN["🖥️ Admin Dashboard<br/>React + Vite + DaisyUI"]
-        MOBILE["📱 Mobile App<br/>Expo + React Native"]
+    subgraph "Presentation Layer"
+        ADMIN["🖥️ Admin Dashboard<br/>React 19 + Vite + DaisyUI 5<br/>TanStack Query + Recharts"]
+        MOBILE["📱 Mobile App<br/>React Native + Expo SDK 53<br/>NativeWind + Expo Router"]
     end
 
-    subgraph "API Gateway"
-        API["⚡ REST API<br/>Node.js + Express"]
+    subgraph "API Layer"
+        API["⚡ REST API Server<br/>Node.js + Express.js"]
+        MW["🛡️ Middleware<br/>Auth + CORS + Validation"]
     end
 
-    subgraph "Services Layer"
-        AUTH["🔐 Clerk Auth"]
-        PAYMENT["💳 Stripe Payments"]
-        CLOUD["☁️ Cloudinary CDN"]
-        AI["🤖 Gemini AI"]
-        MONITOR["📊 Sentry Monitoring"]
+    subgraph "Business Logic Layer"
+        CTRL["📋 Controllers<br/>Product, Order, Cart, Review<br/>Payment, User, Notification, Offer"]
+        SVC["⚙️ Services<br/>OrderService, PricingService<br/>InventoryService, NotificationService"]
+    end
+
+    subgraph "External Services"
+        AUTH["🔐 Clerk<br/>Auth + JWT + RBAC"]
+        STRIPE["💳 Stripe<br/>Payments + Webhooks"]
+        CDN["☁️ Cloudinary<br/>Image CDN"]
+        GEMINI["🤖 Google Gemini<br/>AI Recommendations"]
+        SENTRY["📊 Sentry<br/>Error Monitoring"]
     end
 
     subgraph "Data Layer"
-        DB[("🗄️ MongoDB Atlas")]
+        DB[("🗄️ MongoDB Atlas<br/>9 Collections")]
+    end
+
+    subgraph "Deployment"
+        DOCKER["🐳 Docker"]
+        SEVALLA["☁️ Sevalla Cloud"]
     end
 
     ADMIN -->|HTTPS| API
     MOBILE -->|HTTPS| API
-    API --> AUTH
-    API --> PAYMENT
-    API --> CLOUD
-    API --> AI
-    API --> MONITOR
-    API --> DB
+    API --> MW --> CTRL --> SVC
+    SVC --> DB
+    CTRL --> AUTH
+    CTRL --> STRIPE
+    CTRL --> CDN
+    SVC --> GEMINI
+    API --> SENTRY
+    DOCKER --> SEVALLA
+```
+
+---
+
+## 👤 Use Case Diagram
+
+```mermaid
+graph LR
+    subgraph "Actors"
+        C["👤 Customer"]
+        A["🔑 Admin"]
+        S["⚙️ System"]
+    end
+
+    subgraph "Customer Use Cases"
+        UC1["Browse Products"]
+        UC2["Search & Filter"]
+        UC3["View Product Details"]
+        UC4["Manage Cart"]
+        UC5["Manage Wishlist"]
+        UC6["Checkout with Stripe"]
+        UC7["Checkout with COD"]
+        UC8["Track Orders"]
+        UC9["View Digital Invoice"]
+        UC10["Write Reviews"]
+        UC11["Manage Addresses"]
+        UC12["View Notifications"]
+        UC13["Request Return/Refund"]
+        UC14["Get AI Recommendations"]
+    end
+
+    subgraph "Admin Use Cases"
+        UA1["Dashboard Analytics"]
+        UA2["Manage Products (CRUD)"]
+        UA3["Process Orders"]
+        UA4["Update Shipping & Tracking"]
+        UA5["Manage Offers & Promotions"]
+        UA6["Moderate Reviews"]
+        UA7["Monitor Inventory"]
+        UA8["View Sales Reports"]
+        UA9["Manage Customers"]
+        UA10["Configure Store Settings"]
+        UA11["Generate Documents"]
+        UA12["Handle Returns/Refunds"]
+        UA13["Mark COD as Paid"]
+    end
+
+    subgraph "System Use Cases"
+        US1["Send Notifications"]
+        US2["Process Webhooks"]
+        US3["Track Inventory Changes"]
+        US4["Calculate Dynamic Pricing"]
+        US5["Generate Stock Alerts"]
+    end
+
+    C --> UC1
+    C --> UC2
+    C --> UC3
+    C --> UC4
+    C --> UC5
+    C --> UC6
+    C --> UC7
+    C --> UC8
+    C --> UC9
+    C --> UC10
+    C --> UC11
+    C --> UC12
+    C --> UC13
+    C --> UC14
+
+    A --> UA1
+    A --> UA2
+    A --> UA3
+    A --> UA4
+    A --> UA5
+    A --> UA6
+    A --> UA7
+    A --> UA8
+    A --> UA9
+    A --> UA10
+    A --> UA11
+    A --> UA12
+    A --> UA13
+
+    S --> US1
+    S --> US2
+    S --> US3
+    S --> US4
+    S --> US5
+```
+
+---
+
+## 🗄️ MongoDB Database Schema
+
+```mermaid
+erDiagram
+    USER {
+        ObjectId _id PK
+        String email UK
+        String name
+        String imageUrl
+        String clerkId UK
+        String stripeCustomerId
+        String role "user | admin"
+        Array addresses "Embedded"
+        Array wishlist "Product refs"
+    }
+
+    PRODUCT {
+        ObjectId _id PK
+        String name
+        String description
+        Number price
+        Number stock
+        Number lowStockThreshold
+        String category "15 categories"
+        Array images "url + publicId"
+        Number averageRating "0-5"
+        Number reviewCount
+    }
+
+    ORDER {
+        ObjectId _id PK
+        ObjectId user FK
+        String clerkId
+        Array orderItems "Embedded snapshots"
+        Object shippingAddress "Embedded"
+        String paymentMethod "online | cod"
+        String paymentStatus "pending | paid | failed | refunded"
+        Number totalPrice
+        String status "pending | processing | shipped | delivered | cancelled"
+        Object pricing "subtotal, shipping, tax, total, currency"
+        Object shippingDetails "courier, tracking, dates"
+        String returnStatus "none | requested | approved | denied"
+        Boolean isFinalized
+        Boolean isStockRestored
+        Array statusHistory "Embedded log"
+    }
+
+    CART {
+        ObjectId _id PK
+        ObjectId user FK
+        String clerkId UK
+        Array items "product ref + quantity"
+    }
+
+    REVIEW {
+        ObjectId _id PK
+        ObjectId productId FK
+        ObjectId userId FK
+        ObjectId orderId FK
+        Number rating "1-5"
+        String comment
+        String title
+        Boolean isVerifiedPurchase
+        String status "published | hidden | flagged"
+    }
+
+    OFFER {
+        ObjectId _id PK
+        String title
+        String description
+        String type "percentage | fixed"
+        Number value
+        String appliesTo "product | category | all"
+        ObjectId productId FK "optional"
+        String category "optional"
+        Date startDate
+        Date endDate
+        Boolean isActive
+        String bannerText
+    }
+
+    NOTIFICATION {
+        ObjectId _id PK
+        String recipientType "admin | customer"
+        ObjectId recipientId FK "optional"
+        String title
+        String message
+        String type "17 enum types"
+        ObjectId entityId "Product or Order ref"
+        String entityModel "Product | Order"
+        Boolean isRead
+        Boolean isResolved
+    }
+
+    INVENTORY_HISTORY {
+        ObjectId _id PK
+        ObjectId product FK
+        ObjectId order FK "optional"
+        String actionType "purchase | cancel | return | manual"
+        Number quantityDelta
+        Number previousStock
+        Number newStock
+        String reason
+        ObjectId changedBy FK
+        String changedByType "admin | system | customer"
+    }
+
+    SETTINGS {
+        ObjectId _id PK
+        String storeName
+        String storeEmail
+        String storePhone
+        Object storeAddress "line1, city, district, province, postalCode"
+        Object localization "currency, currencySymbol, timezone"
+        Object shipping "defaultFee, freeThreshold, couriers"
+        Object tax "label, rate"
+    }
+
+    USER ||--o{ ORDER : "places"
+    USER ||--o| CART : "owns"
+    USER ||--o{ REVIEW : "writes"
+    USER }o--o{ PRODUCT : "wishlists"
+    USER ||--o{ NOTIFICATION : "receives"
+    PRODUCT ||--o{ REVIEW : "has"
+    PRODUCT ||--o{ INVENTORY_HISTORY : "tracks"
+    ORDER ||--o{ REVIEW : "enables"
+    ORDER ||--o{ INVENTORY_HISTORY : "triggers"
+    ORDER ||--o{ NOTIFICATION : "generates"
+    OFFER }o--o| PRODUCT : "applies to"
+    CART }o--o{ PRODUCT : "contains"
 ```
 
 ---
