@@ -16,6 +16,7 @@ import {
   RefreshCcwIcon,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-hot-toast";
 import { productApi, inventoryApi } from "../lib/api";
 import { getStockStatusBadge, formatDate } from "../lib/utils";
 import { useCurrency } from "../components/CurrencyProvider";
@@ -138,6 +139,11 @@ function ProductsPage() {
       closeModal();
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-alerts"] });
+      toast.success("Product created successfully");
+    },
+    onError: (error) => {
+      console.error("Error creating product:", error);
+      toast.error(error.response?.data?.message || "Failed to create product");
     },
   });
 
@@ -147,15 +153,24 @@ function ProductsPage() {
       closeModal();
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-alerts"] });
+      toast.success("Product updated successfully");
+    },
+    onError: (error) => {
+      console.error("Error updating product:", error);
+      toast.error(error.response?.data?.message || "Failed to update product");
     },
   });
 
   const deleteProductMutation = useMutation({
     mutationFn: productApi.delete,
     onSuccess: () => {
-      closeModal();
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-alerts"] });
+      toast.success("Product deleted successfully");
+    },
+    onError: (error) => {
+      console.error("Error deleting product:", error);
+      toast.error(error.response?.data?.message || "Failed to delete product");
     },
   });
 
@@ -485,11 +500,15 @@ function ProductsPage() {
 
                       <button
                         className="btn btn-square btn-ghost btn-sm text-error hover:bg-error/10 rounded-xl"
-                        onClick={() => deleteProductMutation.mutate(product._id)}
-                        disabled={deleteProductMutation.isPending}
+                        onClick={() => {
+                          if (window.confirm(`Are you sure you want to delete "${product.name}"?`)) {
+                            deleteProductMutation.mutate(product._id);
+                          }
+                        }}
+                        disabled={deleteProductMutation.isPending && deleteProductMutation.variables === product._id}
                         title="Delete Product"
                       >
-                        {deleteProductMutation.isPending ? (
+                        {deleteProductMutation.isPending && deleteProductMutation.variables === product._id ? (
                           <span className="loading loading-spinner loading-xs"></span>
                         ) : (
                           <Trash2Icon className="w-5 h-5" />
