@@ -51,4 +51,19 @@ tmp/
 
 # Exports / User Temp
 *.csv
-*.xlsx
+*.xlsx
+
+# Debug / Test / Utility Scripts (Dev-only, not for production)
+check_ascii.mjs
+check_casing.mjs
+check_encoding.mjs
+analyze_reviews.js
+cleanup_reviews.js
+debug_reviews.js
+deep_debug_reviews.js
+inspect_data.js
+backend/verify_seed.js
+backend/src/check_latest_order.js
+mobile/ts_errors.txt
+mobile/tsc_output.txt
+mobile/tsc_output_2.txt
