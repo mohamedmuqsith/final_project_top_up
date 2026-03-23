@@ -1,23 +1,30 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import axiosInstance from '../lib/axios';
 
 const CurrencyContext = createContext();
 
+/**
+ * CurrencyProvider — drives currency from backend settings.
+ * No client-side toggle. The store's configured currency is the single source of truth.
+ */
 export const CurrencyProvider = ({ children }) => {
-  // Persist currency in localStorage
-  const [currency, setCurrency] = useState(() => {
-    return localStorage.getItem('admin_currency') || 'USD';
+  const { data: settings } = useQuery({
+    queryKey: ['store-settings-currency'],
+    queryFn: async () => {
+      const { data } = await axiosInstance.get('/settings');
+      return data;
+    },
+    staleTime: 1000 * 60 * 30, // 30 minutes
+    retry: 2,
   });
 
-  useEffect(() => {
-    localStorage.setItem('admin_currency', currency);
-  }, [currency]);
-
-  const toggleCurrency = () => {
-    setCurrency((prev) => (prev === 'USD' ? 'LKR' : 'USD'));
-  };
+  // Derive currency from backend settings, fallback to LKR
+  const currency = settings?.localization?.currency || 'LKR';
+  const currencySymbol = settings?.localization?.currencySymbol || 'Rs.';
 
   return (
-    <CurrencyContext.Provider value={{ currency, setCurrency, toggleCurrency }}>
+    <CurrencyContext.Provider value={{ currency, currencySymbol }}>
       {children}
     </CurrencyContext.Provider>
   );

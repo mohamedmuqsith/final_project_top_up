@@ -67,7 +67,7 @@ export const OrderService = {
       title: paymentMethod === "cod" ? "Order Placed (Cash on Delivery)" : "Order Placed Successfully",
       message: paymentMethod === "cod" 
         ? "Your COD order has been received and is currently pending. Please have the amount ready at delivery."
-        : `Your order for $${order.totalPrice.toFixed(2)} has been received and is currently pending.`,
+        : `Your order for ${order.pricing?.currencySymbol || 'Rs.'}${order.totalPrice.toFixed(2)} has been received and is currently pending.`,
       type: "ORDER_PLACED",
       entityId: order._id,
       entityModel: "Order",
@@ -178,7 +178,7 @@ export const OrderService = {
       recipientType: "customer",
       recipientId: order.user.toString(),
       title: "Refund Processed",
-      message: `A refund of $${order.totalPrice.toFixed(2)} has been processed for your order.`,
+      message: `A refund of ${order.pricing?.currencySymbol || 'Rs.'}${order.totalPrice.toFixed(2)} has been processed for your order.`,
       type: "ORDER_REFUNDED",
       entityId: order._id,
       entityModel: "Order",

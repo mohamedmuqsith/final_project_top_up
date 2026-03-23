@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import { orderApi } from "../lib/api";
 import { formatDate, capitalizeText } from "../lib/utils";
 import { exportToCSV, exportToPDF } from "../lib/exportUtils";
@@ -67,9 +68,9 @@ const PAYMENT_COLOR_MAP = {
 
 // ─── Document Actions Component ──────────────────────────────────
 const DOC_AVAILABILITY = {
-  invoice: ["pending", "processing", "shipped", "delivered"],
+  invoice: ["pending", "processing", "shipped", "delivered", "cancelled"],
   "packing-slip": ["processing", "shipped"],
-  "shipping-label": ["processing", "shipped"],
+  "shipping-label": ["shipped"],
 };
 
 function DocumentActions({ order, variant = "row" }) {
@@ -174,6 +175,24 @@ function DocumentActions({ order, variant = "row" }) {
 }
 
 // ─── Ship Order Modal ──────────────────────────────────────────
+const TRACKING_PATTERNS = {
+  dhl: { name: "DHL Express", regex: /^\d{10}$/, hint: "10 digits" },
+  fedex: { name: "FedEx", regex: /^(\d{12}|\d{15})$/, hint: "12 or 15 digits" },
+  ups: { name: "UPS", regex: /^1Z[A-Z0-9]{16}$/i, hint: "Starts with 1Z + 16 characters" },
+  usps: { name: "USPS", regex: /^\d{20,22}$/, hint: "20-22 digits" },
+  generic: { name: "Generic", regex: /^[A-Za-z0-9-]{8,30}$/, hint: "8-30 characters (letters, numbers, hyphens)" }
+};
+
+const getValidation = (courier) => {
+  const c = (courier || "").trim().toLowerCase();
+  if (!c) return TRACKING_PATTERNS.generic;
+  if (c.includes("dhl")) return TRACKING_PATTERNS.dhl;
+  if (c.includes("fedex")) return TRACKING_PATTERNS.fedex;
+  if (c.includes("ups")) return TRACKING_PATTERNS.ups;
+  if (c.includes("usps")) return TRACKING_PATTERNS.usps;
+  return TRACKING_PATTERNS.generic;
+};
+
 function ShipOrderModal({ order, isOpen, onClose, onConfirm, isPending }) {
   const [courierName, setCourierName] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
@@ -190,7 +209,9 @@ function ShipOrderModal({ order, isOpen, onClose, onConfirm, isPending }) {
           Ship Order
         </h3>
         <p className="py-4 text-sm text-base-content/70">
-          Enter tracking details for Order <strong>#{order._id.slice(-8).toUpperCase()}</strong>.
+          Enter shipping details for Order <strong>#{order._id.slice(-8).toUpperCase()}</strong>.
+          <br />
+          <span className="text-[10px] text-primary font-bold italic">Note: System will automatically generate an Internal Tracking Number.</span>
         </p>
 
         <div className="space-y-4 py-2">
@@ -210,16 +231,23 @@ function ShipOrderModal({ order, isOpen, onClose, onConfirm, isPending }) {
             </div>
             <div className="form-control">
               <label className="label">
-                <span className="label-text text-xs font-bold uppercase opacity-50">Tracking Number</span>
+                <span className="label-text text-xs font-bold uppercase opacity-50">Courier Tracking (Optional)</span>
               </label>
               <input
                 type="text"
-                className="input input-bordered rounded-xl bg-base-200/50"
+                className={`input input-bordered rounded-xl bg-base-200/50 ${trackingNumber.trim() && !getValidation(courierName).regex.test(trackingNumber.trim()) ? 'border-error ring-1 ring-error/20' : ''}`}
                 placeholder="TRK12345678"
                 value={trackingNumber}
                 onChange={(e) => setTrackingNumber(e.target.value)}
-                required
               />
+              <div className="flex justify-between items-center mt-1 px-1">
+                <p className={`text-[10px] font-bold ${trackingNumber.trim() && !getValidation(courierName).regex.test(trackingNumber.trim()) ? 'text-error' : 'opacity-50'}`}>
+                  Format: {getValidation(courierName).hint}
+                </p>
+                {trackingNumber.trim() && getValidation(courierName).regex.test(trackingNumber.trim()) && (
+                   <span className="text-[10px] text-success font-bold uppercase tracking-widest">Valid Format</span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -257,8 +285,13 @@ function ShipOrderModal({ order, isOpen, onClose, onConfirm, isPending }) {
           <button className="btn btn-ghost rounded-xl" onClick={onClose} disabled={isPending}>Cancel</button>
           <button
             className="btn btn-primary rounded-xl px-8"
-            onClick={() => onConfirm({ courierName, trackingNumber, estimatedDeliveryDate, method })}
-            disabled={isPending || !courierName || !trackingNumber}
+            onClick={() => onConfirm({ 
+              courierName: courierName.trim(), 
+              trackingNumber: trackingNumber.trim() || undefined, 
+              estimatedDeliveryDate, 
+              method 
+            })}
+            disabled={isPending || !courierName.trim() || (trackingNumber.trim() && !getValidation(courierName.trim()).regex.test(trackingNumber.trim()))}
           >
             {isPending ? <span className="loading loading-spinner loading-xs" /> : "Confirm Shipping"}
           </button>
@@ -584,13 +617,19 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
                     {/* NEW REFUND/RETURN BUTTONS */}
                     {order.returnStatus === "requested" && (
                       <div className="md:col-span-2 flex flex-wrap gap-2 mt-2">
-                        <button className="btn btn-sm btn-success" onClick={() => onApproveReturn(order._id)} disabled={isRefunding}>Approve Return</button>
-                        <button className="btn btn-sm btn-error" onClick={() => onDenyReturn(order._id)} disabled={isRefunding}>Deny Return</button>
+                        <button className="btn btn-sm btn-success text-success-content" onClick={() => onApproveReturn(order._id)} disabled={isRefunding}>
+                          Approve Return
+                        </button>
+                        <button className="btn btn-sm btn-error text-error-content" onClick={() => onDenyReturn(order._id)} disabled={isRefunding}>
+                          Deny Return
+                        </button>
                       </div>
                     )}
                     {(order.paymentStatus === "paid" && (order.status === "cancelled" || order.returnStatus === "approved")) && (
                       <div className="md:col-span-2 mt-2">
-                        <button className="btn btn-sm btn-warning" onClick={() => onRefund(order._id)} disabled={isRefunding}>Process Refund</button>
+                        <button className="btn btn-sm btn-warning" onClick={() => onRefund(order._id)} disabled={isRefunding || order.paymentStatus === "refunded"}>
+                          Process Refund
+                        </button>
                       </div>
                     )}
                   </div>
@@ -612,13 +651,16 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
                       </div>
 
                       <div className="text-sm space-y-1">
-                        <p className="font-bold">{order.shippingAddress?.fullName}</p>
+                        <p className="font-bold text-base">{order.shippingAddress?.fullName}</p>
                         <p className="opacity-70">{order.shippingAddress?.streetAddress}</p>
+                        {order.shippingAddress?.addressLine2 && <p className="opacity-70">{order.shippingAddress?.addressLine2}</p>}
                         <p className="opacity-70">
-                          {order.shippingAddress?.city}, {order.shippingAddress?.province}{" "}
-                          {order.shippingAddress?.zipCode}
+                          {order.shippingAddress?.city}{order.shippingAddress?.district && `, ${order.shippingAddress?.district}`}, {order.shippingAddress?.province}
                         </p>
-                        <p className="opacity-60 text-xs mt-3">
+                        <p className="opacity-70 font-mono tracking-wider">
+                          {order.shippingAddress?.postalCode || order.shippingAddress?.zipCode}
+                        </p>
+                        <p className="opacity-60 text-xs mt-3 font-semibold">
                           {order.shippingAddress?.phoneNumber}
                         </p>
                       </div>
@@ -729,15 +771,21 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
                           {order.shippedAt && (
                             <>
                               <div className="flex justify-between text-xs">
+                                <span className="opacity-50">Reference ID:</span>
+                                <span className="font-bold font-mono text-primary uppercase text-[10px]">{order.shippingDetails?.internalTrackingNumber || "PENDING"}</span>
+                              </div>
+                              <div className="flex justify-between text-xs pt-1">
                                 <span className="opacity-50">Courier:</span>
                                 <span className="font-bold">{order.shippingDetails?.courierName || order.delivery?.courier || "N/A"}</span>
                               </div>
-                              <div className="flex justify-between text-xs">
-                                <span className="opacity-50">Tracking:</span>
-                                <span className="font-bold font-mono text-primary">{order.shippingDetails?.trackingNumber || order.delivery?.trackingNumber || "N/A"}</span>
-                              </div>
+                              {order.shippingDetails?.trackingNumber && (
+                                <div className="flex justify-between text-xs pt-1">
+                                  <span className="opacity-50">Courier Tracking:</span>
+                                  <span className="font-bold font-mono opacity-80">{order.shippingDetails.trackingNumber}</span>
+                                </div>
+                              )}
                               {order.shippingDetails?.estimatedDeliveryDate && (
-                                <div className="flex justify-between text-xs">
+                                <div className="flex justify-between text-xs pt-1">
                                   <span className="opacity-50">ETA:</span>
                                   <span className="font-bold">{formatDate(order.shippingDetails.estimatedDeliveryDate).split(',')[0]}</span>
                                 </div>
@@ -773,7 +821,7 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
                     )}
 
                     {/* Document Actions */}
-                    {["processing", "shipped", "delivered"].includes(order.status) && (
+                    {["pending", "processing", "shipped", "delivered"].includes(order.status) && (
                       <div className="form-control">
                         <label className="label">
                           <span className="label-text text-xs font-bold uppercase opacity-50">Generate Documents</span>
@@ -861,14 +909,19 @@ function OrdersPage() {
 
   const updateStatusMutation = useMutation({
     mutationFn: orderApi.updateStatus,
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
-      alert("Order status updated successfully!");
+      
+      if (variables.status === "shipped") {
+        toast.success(`Order shipped via ${variables.courierName}!`);
+      } else {
+        toast.success(`Order status updated to ${variables.status} successfully!`);
+      }
     },
     onError: (err) => {
-      alert(err?.response?.data?.error || err?.message || "Failed to update status");
+      toast.error(err?.response?.data?.error || err?.message || "Failed to update status");
     }
   });
 
@@ -878,23 +931,27 @@ function OrdersPage() {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
-      alert("Order marked as paid!");
+      toast.success("Order marked as paid!");
     },
     onError: (err) => {
-      alert(err?.response?.data?.error || err?.message || "Failed to mark as paid");
+      toast.error(err?.response?.data?.error || err?.message || "Failed to mark as paid");
     }
   });
 
   const returnRequestMutation = useMutation({
     mutationFn: orderApi.handleReturnRequest,
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
-      alert("Return request processed!");
+      if (variables.action === "approve") {
+        toast.success("Return request approved!");
+      } else {
+        toast.error("Return request denied.", { icon: "🚫" });
+      }
     },
     onError: (err) => {
-      alert(err?.response?.data?.error || err?.message || "Failed to process return request");
+      toast.error(err?.response?.data?.error || err?.message || "Failed to process return request");
     }
   });
 
@@ -904,10 +961,10 @@ function OrdersPage() {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
-      alert("Refund processed successfully!");
+      toast.success("Refund processed successfully!");
     },
     onError: (err) => {
-      alert(err?.response?.data?.error || err?.message || "Failed to process refund");
+      toast.error(err?.response?.data?.error || err?.message || "Failed to process refund");
     }
   });
 
@@ -1174,27 +1231,22 @@ function OrdersPage() {
             </div>
           ) : (
             <div className="overflow-x-auto rounded-2xl border border-base-200">
-              <table className="table">
+              <table className="table table-sm lg:table-md">
                 <thead className="bg-base-200/50">
                   <tr>
-                    <th>Order ID</th>
+                    <th>Order & Date</th>
                     <th>Customer</th>
-                    <th>Method</th>
+                    <th>Shipping</th>
                     <th>Payment</th>
                     <th>Logistics</th>
+                    <th>Return</th>
                     <th>Total</th>
-                    <th>Date</th>
-                    <th>Actions</th>
+                    <th className="text-right">Actions</th>
                   </tr>
                 </thead>
 
                 <tbody>
                   {filtered.map((order) => {
-                    const totalQuantity = order.orderItems.reduce(
-                      (sum, item) => sum + item.quantity,
-                      0
-                    );
-
                     const ALLOWED_TRANSITIONS = {
                       pending: ["processing", "cancelled"],
                       processing: ["shipped", "cancelled"],
@@ -1208,90 +1260,119 @@ function OrdersPage() {
 
                     return (
                       <tr key={order._id} className="hover:bg-base-200/30 transition-colors">
+                        {/* Order & Date */}
                         <td>
-                          <span className="font-mono text-sm font-semibold">
-                            #{order._id.slice(-8).toUpperCase()}
-                          </span>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-mono text-sm font-black">
+                              #{order._id.slice(-8).toUpperCase()}
+                            </span>
+                            <span className="text-[10px] opacity-60 font-semibold uppercase tracking-wider">
+                              {formatDate(order.createdAt).split(",")[0]}
+                            </span>
+                          </div>
                         </td>
 
+                        {/* Customer */}
                         <td>
-                          <div className="min-w-45">
-                            <div className="flex items-center gap-2 font-semibold">
-                              <UserIcon className="size-4 opacity-45" />
-                              {order.shippingAddress.fullName}
+                          <div className="min-w-32">
+                            <div className="flex items-center gap-1.5 font-bold text-sm">
+                              <UserIcon className="size-3.5 opacity-50" />
+                              <span className="truncate max-w-[120px]">{order.shippingAddress.fullName}</span>
                             </div>
-                            <div className="text-xs opacity-60 mt-1 pl-6">
-                              {order.shippingAddress.city}
+                            <div className="text-[10px] opacity-70 mt-0.5 pl-5 truncate max-w-[120px]">
+                              {order.shippingAddress.city}{order.shippingAddress.district && `, ${order.shippingAddress.district}`}
                             </div>
                           </div>
                         </td>
 
+                        {/* Shipping */}
                         <td>
-                          <div className={`badge badge-ghost badge-xs font-bold ${order.paymentMethod === 'cod' ? 'text-orange-500' : 'text-blue-500'}`}>
-                            {order.paymentMethod?.toUpperCase() || "ONLINE"}
+                          {order.shippingDetails?.courierName ? (
+                            <div className="flex flex-col gap-0.5 min-w-32">
+                              <div className="flex items-center gap-1.5 text-xs font-black text-primary">
+                                <TruckIcon className="size-3.5" />
+                                {order.shippingDetails.courierName}
+                              </div>
+                              <div className="flex flex-col text-[9px] font-mono opacity-60 pl-5 mt-0.5">
+                                <span>REF: {order.shippingDetails.internalTrackingNumber}</span>
+                                {order.shippingDetails.trackingNumber && (
+                                  <span>TRK: {order.shippingDetails.trackingNumber}</span>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-xs opacity-40 font-semibold italic">Not Shipped</span>
+                          )}
+                        </td>
+
+                        {/* Payment */}
+                        <td>
+                          <div className="flex flex-col items-start gap-1">
+                            <span className={`text-[10px] font-black tracking-widest uppercase ${order.paymentMethod === 'cod' ? 'text-orange-500' : 'opacity-50'}`}>
+                              {order.paymentMethod || "ONLINE"}
+                            </span>
+                            <div className={`badge badge-sm border-0 font-bold ${PAYMENT_COLOR_MAP[order.paymentStatus] || "badge-ghost"}`}>
+                              {order.paymentStatus || "PENDING"}
+                            </div>
                           </div>
                         </td>
 
-                        <td>
-                          <div className={`badge badge-xs ${PAYMENT_COLOR_MAP[order.paymentStatus] || "badge-ghost"} font-extrabold uppercase`}>
-                            {order.paymentStatus || "PENDING"}
-                          </div>
-                        </td>
-
-                        <td>
-                          <div className="flex font-bold">
-                            {formatCurrency(order.totalPrice, currency)}
-                          </div>
-                        </td>
-
+                        {/* Logistics */}
                         <td>
                           {isTerminal ? (
-                            <div className="flex flex-col gap-1 items-start">
-                              <div
-                                className={`badge badge-sm font-semibold py-3 px-4 border-0 ${order.status === "delivered"
-                                    ? "badge-success text-success-content"
-                                    : order.status === "cancelled"
-                                      ? "badge-error text-error-content"
-                                      : "badge-ghost"
-                                  }`}
-                              >
-                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                              </div>
-                              {order.returnStatus !== "none" && (
-                                <div className={`badge badge-sm font-bold py-3 px-4 border-0 mt-1 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] ${STATUS_COLOR_MAP[order.returnStatus] || "badge-warning"}`}>
-                                  Return: {order.returnStatus.toUpperCase()}
-                                </div>
-                              )}
+                            <div
+                              className={`badge badge-sm font-bold border-0 ${
+                                order.status === "delivered"
+                                  ? "bg-success/20 text-success"
+                                  : order.status === "cancelled"
+                                  ? "bg-error/20 text-error"
+                                  : "badge-ghost"
+                              }`}
+                            >
+                              {capitalizeText(order.status)}
                             </div>
                           ) : (
                             <select
                               value={order.status}
                               onChange={(e) => handleStatusChange(order._id, e.target.value)}
-                              className="select select-bordered select-sm w-full max-w-35 rounded-xl bg-base-100 border-base-300 focus:outline-none focus:border-primary"
+                              className="select select-bordered select-sm w-full max-w-[140px] rounded-xl bg-base-100 border-base-300 focus:outline-none focus:border-primary text-xs font-bold"
                               disabled={updateStatusMutation.isPending}
                             >
                               <option value={order.status}>
-                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                                {capitalizeText(order.status)}
                               </option>
                               {validNextStatuses.map((status) => (
                                 <option key={status} value={status}>
-                                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                                  {capitalizeText(status)}
                                 </option>
                               ))}
                             </select>
                           )}
                         </td>
 
+                        {/* Return */}
                         <td>
-                          <span className="text-xs opacity-60 whitespace-nowrap">
-                            {formatDate(order.createdAt)}
-                          </span>
+                          {order.returnStatus && order.returnStatus !== "none" ? (
+                            <div className={`badge badge-sm font-bold border-0 shadow-sm ${STATUS_COLOR_MAP[order.returnStatus] || "bg-warning/20 text-warning"}`}>
+                              {order.returnStatus.toUpperCase()}
+                            </div>
+                          ) : (
+                            <span className="text-base-content/20 font-black pl-4">-</span>
+                          )}
                         </td>
 
+                        {/* Total */}
                         <td>
-                          <div className="flex items-center gap-1">
+                          <div className="flex font-black text-primary">
+                            {formatCurrency(order.totalPrice, currency)}
+                          </div>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="text-right">
+                          <div className="flex items-center justify-end gap-1">
                             <button
-                              className="btn btn-ghost btn-sm rounded-xl hover:bg-primary/10 hover:text-primary"
+                              className="btn btn-ghost btn-xs rounded-lg hover:bg-primary/10 hover:text-primary font-bold"
                               onClick={() => setSelectedOrderId(order._id)}
                             >
                               View
@@ -1315,9 +1396,15 @@ function OrdersPage() {
         onMarkAsPaid={handleMarkAsPaid}
         onStatusChange={handleStatusChange}
         isUpdatingStatus={updateStatusMutation.isPending}
-        onApproveReturn={(id) => returnRequestMutation.mutate({ orderId: id, action: "approve" })}
-        onDenyReturn={(id) => returnRequestMutation.mutate({ orderId: id, action: "deny" })}
-        onRefund={(id) => { if (window.confirm("Process refund for this order?")) refundMutation.mutate(id); }}
+        onApproveReturn={(id, reason) => {
+           returnRequestMutation.mutate({ orderId: id, action: "approve", adminComment: reason });
+        }}
+        onDenyReturn={(id, reason) => {
+           returnRequestMutation.mutate({ orderId: id, action: "deny", adminComment: reason });
+        }}
+        onRefund={(id, reason) => { 
+           refundMutation.mutate({ id, reason });
+        }}
         isRefunding={returnRequestMutation.isPending || refundMutation.isPending}
       />
 

@@ -13,8 +13,10 @@ import InventoryReportsPage from "./pages/InventoryReportsPage";
 import RestockSuggestionsPage from "./pages/RestockSuggestionsPage";
 import ReviewsPage from "./pages/ReviewsPage";
 import OffersPage from "./pages/OffersPage";
+import SettingsPage from "./pages/SettingsPage";
 import PageLoader from "./components/PageLoader";
 import axiosInstance from "./lib/axios";
+import { Toaster } from "react-hot-toast";
 
 function App() {
   const { isSignedIn, isLoaded, getToken } = useAuth();
@@ -40,28 +42,32 @@ function App() {
   if (!isLoaded) return <PageLoader />;
   
   return (
-    <Routes>
-      <Route
-        path="/login"
-        element={isSignedIn ? <Navigate to={"/dashboard"} /> : <LoginPage />}
-      />
+    <>
+      <Routes>
+        <Route
+          path="/login"
+          element={isSignedIn ? <Navigate to={"/dashboard"} /> : <LoginPage />}
+        />
 
-      <Route path="/"
-        element={isSignedIn ? <DashboardLayout /> : <Navigate to={"/login"} />}
-      >
-        <Route index element={<Navigate to={"dashboard"} />} />
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="products" element={<ProductsPage />} />
-        <Route path="inventory-alerts" element={<InventoryAlertsPage />} />
-        <Route path="orders" element={<OrdersPage />} />
-        <Route path="customers" element={<CustomersPage />} />
-        <Route path="sales-reports" element={<SalesReportsPage />} />
-        <Route path="inventory-reports" element={<InventoryReportsPage />} />
-        <Route path="restock-suggestions" element={<RestockSuggestionsPage />} />
-        <Route path="reviews" element={<ReviewsPage />} />
-        <Route path="offers" element={<OffersPage />} />
-      </Route>
-    </Routes>
+        <Route path="/"
+          element={isSignedIn ? <DashboardLayout /> : <Navigate to={"/login"} />}
+        >
+          <Route index element={<Navigate to={"dashboard"} />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="products" element={<ProductsPage />} />
+          <Route path="inventory-alerts" element={<InventoryAlertsPage />} />
+          <Route path="orders" element={<OrdersPage />} />
+          <Route path="customers" element={<CustomersPage />} />
+          <Route path="sales-reports" element={<SalesReportsPage />} />
+          <Route path="inventory-reports" element={<InventoryReportsPage />} />
+          <Route path="restock-suggestions" element={<RestockSuggestionsPage />} />
+          <Route path="reviews" element={<ReviewsPage />} />
+          <Route path="offers" element={<OffersPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+        </Route>
+      </Routes>
+      <Toaster position="top-right" />
+    </>
   );
 }
 

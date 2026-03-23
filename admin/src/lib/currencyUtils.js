@@ -1,40 +1,27 @@
-export const EXCHANGE_RATE = 300; // 1 USD = 300 LKR (Safe constant)
-
 /**
- * Formats a number as a currency string based on the selected currency.
- * @param {number} amount - The amount in USD (base currency).
- * @param {string} currency - The target currency ('USD' or 'LKR').
- * @returns {string} - Formatted currency string.
+ * Formats a number as a currency string.
+ * Uses the store's currency code and symbol — no client-side conversion.
+ *
+ * @param {number} amount - The amount (already in the store's base currency).
+ * @param {string} currencyCode - Currency code, e.g. 'LKR' or 'USD'.
+ * @param {string|null} currencySymbol - Optional override for the symbol.
+ * @returns {string} Formatted string like "Rs. 1,499.00" or "$14.99".
  */
-export const formatCurrency = (amount, currency = 'USD') => {
+export const formatCurrency = (amount, currencyCode = 'LKR', currencySymbol = null) => {
   if (amount === null || amount === undefined || isNaN(amount)) {
-    return currency === 'USD' ? '$0.00' : 'Rs. 0.00';
+    return currencyCode?.toUpperCase() === 'USD' ? '$0.00' : 'Rs. 0.00';
   }
 
-  if (currency === 'LKR') {
-    const lkrAmount = amount * EXCHANGE_RATE;
-    return new Intl.NumberFormat('en-LK', {
-      style: 'currency',
-      currency: 'LKR',
-      minimumFractionDigits: 2,
-    }).format(lkrAmount).replace('LKR', 'Rs.');
-  }
+  const code = currencyCode?.toUpperCase() || 'LKR';
 
-  // Default USD
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
+  const formatted = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
-};
 
-/**
- * Converts an amount from USD to the target currency.
- * @param {number} amount - The amount in USD.
- * @param {string} currency - The target currency.
- * @returns {number} - Converted value.
- */
-export const convertToCurrency = (amount, currency = 'USD') => {
-  if (!amount || isNaN(amount)) return 0;
-  if (currency === 'LKR') return amount * EXCHANGE_RATE;
-  return amount;
+  if (code === 'LKR') {
+    return `${currencySymbol || 'Rs.'} ${formatted}`;
+  }
+
+  return `${currencySymbol || '$'}${formatted}`;
 };

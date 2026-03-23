@@ -17,7 +17,7 @@ const MENU_ITEMS = [
 const ProfileScreen = () => {
   const { signOut } = useAuth();
   const { user } = useUser();
-  const { currency, setCurrency } = useCurrency();
+  const { currency } = useCurrency();
 
   const handleMenuPress = (action: (typeof MENU_ITEMS)[number]["action"]) => {
     if (action === "/profile") return;
@@ -118,7 +118,7 @@ const ProfileScreen = () => {
           </TouchableOpacity>
         </View>
         
-        {/* CURRENCY SELECTOR */}
+        {/* CURRENCY DISPLAY */}
         <View className="mb-3 mx-6 bg-surface rounded-2xl p-4">
            <View className="flex-row items-center justify-between py-2">
              <View className="flex-row items-center">
@@ -128,19 +128,8 @@ const ProfileScreen = () => {
                <Text className="text-text-primary font-semibold ml-4">Currency</Text>
              </View>
              
-             <View className="flex-row items-center bg-background rounded-xl p-1">
-                <TouchableOpacity 
-                   onPress={() => setCurrency("USD")}
-                   className={`px-4 py-1.5 rounded-lg ${currency === "USD" ? "bg-primary" : "bg-transparent"}`}
-                >
-                   <Text className={`text-xs font-bold ${currency === "USD" ? "text-background" : "text-text-secondary"}`}>USD</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                   onPress={() => setCurrency("LKR")}
-                   className={`px-4 py-1.5 rounded-lg ${currency === "LKR" ? "bg-primary" : "bg-transparent"}`}
-                >
-                   <Text className={`text-xs font-bold ${currency === "LKR" ? "text-background" : "text-text-secondary"}`}>LKR</Text>
-                </TouchableOpacity>
+             <View className="bg-primary/10 px-4 py-2 rounded-xl border border-primary/20">
+               <Text className="text-primary text-xs font-bold">{currency}</Text>
              </View>
            </View>
         </View>

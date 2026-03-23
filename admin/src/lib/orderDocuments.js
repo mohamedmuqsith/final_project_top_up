@@ -19,13 +19,13 @@ function shortId(data) {
 
 function fmtDate(dateStr) {
   if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("en-US", {
+  return new Date(dateStr).toLocaleDateString("en-GB", {
     year: "numeric", month: "short", day: "numeric",
   });
 }
 
-function fmtCurrency(amount, currency = "USD") {
-  return formatCurrency(amount, currency);
+function fmtCurrency(amount, currency = "LKR", symbol = null) {
+  return formatCurrency(amount, currency, symbol);
 }
 
 function addFooter(doc) {
@@ -45,7 +45,7 @@ function addFooter(doc) {
 
 // ─── 1. INVOICE ───────────────────────────────────────────────────
 
-export function generateInvoice(data, currency = "USD") {
+export function generateInvoice(data, currency = "LKR") {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.width;
   let y = 16;
@@ -60,10 +60,14 @@ export function generateInvoice(data, currency = "USD") {
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...COLORS.mid);
   doc.text(data.store.streetAddress, 14, y + 7);
-  doc.text(`${data.store.city}, ${data.store.province} ${data.store.zipCode}`, 14, y + 11);
-  doc.text(`${data.store.email}  |  ${data.store.phone}`, 14, y + 15);
+  let storeAddr2 = data.store.addressLine2 || "";
+  if (data.store.district) storeAddr2 += (storeAddr2 ? ", " : "") + data.store.district;
+  doc.text(`${storeAddr2}`, 14, y + 11);
+  doc.text(`${data.store.city}, ${data.store.province} ${data.store.postalCode || data.store.zipCode || ""}`, 14, y + 15);
+  doc.text(`${data.store.email}  |  ${data.store.phone}`, 14, y + 19);
 
   // ── Invoice Badge (right) ──
+  y += 4;
   doc.setFontSize(28);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.primary);
@@ -74,6 +78,13 @@ export function generateInvoice(data, currency = "USD") {
   doc.text(`Invoice #: ${data.invoiceNumber}`, pw - 14, y + 10, { align: "right" });
   doc.text(`Order #: ${shortId(data)}`, pw - 14, y + 15, { align: "right" });
   doc.text(`Date: ${fmtDate(data.orderDate)}`, pw - 14, y + 20, { align: "right" });
+
+  const trackingNum = data.shipping?.trackingNumber || data.shippingDetails?.trackingNumber;
+  if (trackingNum) {
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "italic");
+    doc.text(`Tracking: ${trackingNum}`, pw - 14, y + 25, { align: "right" });
+  }
 
   // ── Divider ──
   y += 26;
@@ -92,9 +103,12 @@ export function generateInvoice(data, currency = "USD") {
   doc.setTextColor(...COLORS.mid);
   doc.text(data.customer.fullName, 14, y);
   doc.text(data.customer.streetAddress, 14, y + 4);
-  doc.text(`${data.customer.city}, ${data.customer.province} ${data.customer.zipCode}`, 14, y + 8);
+  let custAddr2 = data.customer.addressLine2 || "";
+  if (data.customer.district) custAddr2 += (custAddr2 ? ", " : "") + data.customer.district;
+  doc.text(custAddr2, 14, y + 8);
+  doc.text(`${data.customer.city}, ${data.customer.province} ${data.customer.postalCode || data.customer.zipCode || ""}`, 14, y + 12);
   if (data.customer.phoneNumber) {
-    doc.text(`Phone: ${data.customer.phoneNumber}`, 14, y + 12);
+    doc.text(`Phone: ${data.customer.phoneNumber}`, 14, y + 16);
   }
 
   // ── Payment Info (right column) ──
@@ -146,6 +160,8 @@ export function generateInvoice(data, currency = "USD") {
   // ── Totals ──
   y = doc.lastAutoTable.finalY + 10;
   const totalsX = pw - 80;
+  const docCurrency = data.pricing?.currency || currency;
+  const docSymbol = data.pricing?.currencySymbol || null;
 
   const drawTotalLine = (label, value, bold = false) => {
     doc.setFontSize(9);
@@ -156,21 +172,30 @@ export function generateInvoice(data, currency = "USD") {
     y += 6;
   };
 
-  drawTotalLine("Subtotal", fmtCurrency(data.pricing?.subtotal || data.totalPrice, currency));
-  if (data.pricing?.shipping > 0) {
-    drawTotalLine("Shipping", fmtCurrency(data.pricing.shipping, currency));
-  } else if (data.pricing?.shipping === 0) {
-    drawTotalLine("Shipping", "Free");
+  drawTotalLine("Subtotal", fmtCurrency(data.pricing?.subtotal || data.totalPrice, docCurrency, docSymbol));
+  
+  if (data.pricing?.shippingFee !== undefined || data.pricing?.shipping !== undefined) {
+    const shipValue = data.pricing.shippingFee ?? data.pricing.shipping;
+    if (shipValue > 0) {
+      drawTotalLine("Shipping", fmtCurrency(shipValue, docCurrency, docSymbol));
+    } else {
+      drawTotalLine("Shipping", "Free");
+    }
   }
-  if (typeof data.pricing?.tax === "number") {
-    drawTotalLine("Tax", fmtCurrency(data.pricing.tax, currency));
+
+  if (data.pricing?.tax > 0) {
+    drawTotalLine("Tax", fmtCurrency(data.pricing.tax, docCurrency, docSymbol));
+  }
+
+  if (data.pricing?.discount > 0) {
+    drawTotalLine("Discount", `-${fmtCurrency(data.pricing.discount, docCurrency, docSymbol)}`);
   }
 
   // Bold total line
   y += 2;
   doc.setDrawColor(...COLORS.dark);
   doc.line(totalsX, y - 4, pw - 14, y - 4);
-  drawTotalLine("TOTAL", fmtCurrency(data.pricing.total, currency), true);
+  drawTotalLine("TOTAL", fmtCurrency(data.pricing?.total || data.totalPrice, docCurrency, docSymbol), true);
 
   // ── Footer ──
   addFooter(doc);
@@ -213,9 +238,12 @@ export function generatePackingSlip(data) {
   doc.setTextColor(...COLORS.mid);
   doc.text(data.customer.fullName, 14, y);
   doc.text(data.customer.streetAddress, 14, y + 4);
-  doc.text(`${data.customer.city}, ${data.customer.province} ${data.customer.zipCode}`, 14, y + 8);
+  let pkgAddr2 = data.customer.addressLine2 || "";
+  if (data.customer.district) pkgAddr2 += (pkgAddr2 ? ", " : "") + data.customer.district;
+  doc.text(pkgAddr2, 14, y + 8);
+  doc.text(`${data.customer.city}, ${data.customer.province} ${data.customer.postalCode || data.customer.zipCode || ""}`, 14, y + 12);
   if (data.customer.phoneNumber) {
-    doc.text(`Phone: ${data.customer.phoneNumber}`, 14, y + 12);
+    doc.text(`Phone: ${data.customer.phoneNumber}`, 14, y + 16);
   }
 
   // ── Items Table (no prices) ──
@@ -290,15 +318,22 @@ export function generateShippingLabel(data) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.text(data.store.name, 22, y);
-  doc.setFontSize(6);
+  doc.setFontSize(5.5);
+  let storeLbl2 = data.store.addressLine2 || "";
+  if (data.store.district) storeLbl2 += (storeLbl2 ? ", " : "") + data.store.district;
   doc.text(
-    `${data.store.streetAddress}, ${data.store.city}, ${data.store.province} ${data.store.zipCode}`,
+    `${data.store.streetAddress}${storeLbl2 ? ', ' + storeLbl2 : ''}`,
     22,
     y + 3.5
   );
+  doc.text(
+    `${data.store.city}, ${data.store.province} ${data.store.postalCode || data.store.zipCode || ""}`,
+    22,
+    y + 6.5
+  );
 
   // ── Horizontal Divider ──
-  y += 9;
+  y += 11;
   doc.setDrawColor(...COLORS.dark);
   doc.setLineWidth(0.4);
   doc.line(8, y, pw - 8, y);
@@ -318,50 +353,62 @@ export function generateShippingLabel(data) {
 
   y += 6;
   doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
+  doc.setFont("helvetica", "bold");
   doc.text(data.customer.streetAddress, 8, y);
 
+  let toAddr2 = data.customer.addressLine2 || "";
+  if (data.customer.district) toAddr2 += (toAddr2 ? ", " : "") + data.customer.district;
+  if (toAddr2) {
+    y += 5;
+    doc.setFont("helvetica", "normal");
+    doc.text(toAddr2, 8, y);
+  }
+
   y += 5;
-  doc.text(`${data.customer.city}, ${data.customer.province} ${data.customer.zipCode}`, 8, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(`${data.customer.city}, ${data.customer.province}`, 8, y);
+
+  y += 5;
+  doc.setFont("helvetica", "bold");
+  doc.text(`${data.customer.postalCode || data.customer.zipCode || ""}`, 8, y);
 
   if (data.customer.phoneNumber) {
     y += 5;
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.text(`Phone: ${data.customer.phoneNumber}`, 8, y);
   }
 
-  // ── Bottom Section ──
-  y = ph - 20;
+  // ── Bottom Section (Tracking & Courier) ──
+  y = ph - 32;
   doc.setDrawColor(...COLORS.dark);
-  doc.setLineWidth(0.4);
+  doc.setLineWidth(0.8);
   doc.line(8, y, pw - 8, y);
 
-  y += 4;
-  doc.setFontSize(8);
+  y += 8;
+  const tracking = data.shippingDetails?.trackingNumber || data.shipping?.trackingNumber || "";
+  const courier = data.shippingDetails?.courierName || data.shipping?.courier || "";
+
+  // Courier Name (Bold & Mid-Large)
+  doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.dark);
-  doc.text(`ORDER #${shortId(data)}`, 8, y);
+  doc.text(courier.toUpperCase() || "CARRIER", pw / 2, y, { align: "center" });
 
-  if (data.shippedAt) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(...COLORS.mid);
-    doc.text(`Ship Date: ${fmtDate(data.shippedAt)}`, 8, y + 4);
-  }
-
-  // ── Tracking Section (right) ──
-  const tracking = data.shippingDetails?.trackingNumber || data.delivery?.trackingNumber || "";
-  const courier = data.shippingDetails?.courierName || data.delivery?.courier || "";
-
-  doc.setFontSize(8);
+  // Tracking Number (Extra Large & Bold)
+  y += 10;
+  doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(...COLORS.dark);
-  doc.text(courier.toUpperCase(), pw - 8, y, { align: "right" });
-  
+  doc.text(tracking || "NO TRACKING", pw / 2, y, { align: "center" });
+
+  // Order Ref (Small footer)
+  y += 8;
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...COLORS.mid);
-  doc.text(tracking ? `TRK: ${tracking}` : "NO TRACKING", pw - 8, y + 4, { align: "right" });
+  doc.text(`ORDER #${shortId(data)}`, 8, ph - 8);
+  if (data.shippedAt) {
+    doc.text(`SHIP DATE: ${fmtDate(data.shippedAt)}`, pw - 8, ph - 8, { align: "right" });
+  }
 
   doc.save(`shipping-label-${shortId(data)}.pdf`);
 }

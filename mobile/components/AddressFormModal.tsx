@@ -17,9 +17,11 @@ interface AddressFormData {
   label: string;
   fullName: string;
   streetAddress: string;
+  addressLine2: string;
   city: string;
+  district: string;
   province: string;
-  zipCode: string;
+  postalCode: string;
   phoneNumber: string;
   isDefault: boolean;
 }
@@ -112,36 +114,64 @@ const AddressFormModal = ({
                     {/* ADDRESS INPUT */}
                     <View className="mb-5">
                       <Text className="text-text-primary font-semibold mb-2.5 text-[15px]">
-                        Street Address
+                        Address Line 1
                       </Text>
                       <TextInput
-                        className="bg-surface text-text-primary px-4 py-4 rounded-2xl text-base min-h-[96px] border border-transparent"
-                        placeholder="Street address, apt/suite number"
+                        className="bg-surface text-text-primary px-4 py-4 rounded-2xl text-base border border-transparent"
+                        placeholder="Street address, building name"
                         placeholderTextColor="#666"
                         value={addressForm.streetAddress}
                         onChangeText={(text) =>
                           onFormChange({ ...addressForm, streetAddress: text })
                         }
-                        multiline
-                        textAlignVertical="top"
                       />
                     </View>
 
-                    {/* CITY INPUT */}
+                    {/* ADDRESS LINE 2 */}
                     <View className="mb-5">
                       <Text className="text-text-primary font-semibold mb-2.5 text-[15px]">
-                        City
+                        Address Line 2 (Optional)
                       </Text>
                       <TextInput
                         className="bg-surface text-text-primary px-4 py-4 rounded-2xl text-base border border-transparent"
-                        placeholder="e.g., Colombo"
+                        placeholder="Apartment, suite, unit, etc."
                         placeholderTextColor="#666"
-                        value={addressForm.city}
-                        onChangeText={(text) => onFormChange({ ...addressForm, city: text })}
+                        value={addressForm.addressLine2}
+                        onChangeText={(text) =>
+                          onFormChange({ ...addressForm, addressLine2: text })
+                        }
                       />
                     </View>
 
-                    {/* PROVINCE + ZIP */}
+                    {/* CITY + DISTRICT */}
+                    <View className="flex-row gap-3 mb-5">
+                      <View className="flex-1">
+                        <Text className="text-text-primary font-semibold mb-2.5 text-[15px]">
+                          City / Town
+                        </Text>
+                        <TextInput
+                          className="bg-surface text-text-primary px-4 py-4 rounded-2xl text-base border border-transparent"
+                          placeholder="e.g., Colombo"
+                          placeholderTextColor="#666"
+                          value={addressForm.city}
+                          onChangeText={(text) => onFormChange({ ...addressForm, city: text })}
+                        />
+                      </View>
+
+                      <View className="flex-1">
+                        <Text className="text-text-primary font-semibold mb-2.5 text-[15px]">
+                          District
+                        </Text>
+                        <TextInput
+                          className="bg-surface text-text-primary px-4 py-4 rounded-2xl text-base border border-transparent"
+                          placeholder="e.g., Colombo"
+                          placeholderTextColor="#666"
+                          value={addressForm.district}
+                          onChangeText={(text) => onFormChange({ ...addressForm, district: text })}
+                        />
+                      </View>
+                    </View>
+
                     <View className="flex-row gap-3 mb-5">
                       <View className="flex-1">
                         <Text className="text-text-primary font-semibold mb-2.5 text-[15px]">
@@ -149,7 +179,7 @@ const AddressFormModal = ({
                         </Text>
                         <TextInput
                           className="bg-surface text-text-primary px-4 py-4 rounded-2xl text-base border border-transparent"
-                          placeholder="e.g., Western Province"
+                          placeholder="e.g., Western"
                           placeholderTextColor="#666"
                           value={addressForm.province}
                           onChangeText={(text) =>
@@ -160,15 +190,15 @@ const AddressFormModal = ({
 
                       <View className="flex-1">
                         <Text className="text-text-primary font-semibold mb-2.5 text-[15px]">
-                          ZIP Code
+                          Postal Code
                         </Text>
                         <TextInput
                           className="bg-surface text-text-primary px-4 py-4 rounded-2xl text-base border border-transparent"
-                          placeholder="e.g., 10001"
+                          placeholder="e.g., 10115"
                           placeholderTextColor="#666"
-                          value={addressForm.zipCode}
+                          value={addressForm.postalCode}
                           onChangeText={(text) =>
-                            onFormChange({ ...addressForm, zipCode: text })
+                            onFormChange({ ...addressForm, postalCode: text })
                           }
                           keyboardType="numeric"
                         />

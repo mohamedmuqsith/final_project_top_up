@@ -11,12 +11,17 @@ export async function createOrder(req, res) {
     const user = req.user;
     const { orderItems, shippingAddress, paymentResult } = req.body;
 
+    // Ensure Sri Lankan address fields are properly mapped
+    if (shippingAddress && !shippingAddress.postalCode && shippingAddress.zipCode) {
+      shippingAddress.postalCode = shippingAddress.zipCode;
+    }
+
     if (!orderItems || orderItems.length === 0) {
       return res.status(400).json({ error: "No order items" });
     }
 
     // Use centralized validation and pricing calculation
-    const { validatedItems, subtotal, shipping, tax, total } = await validateCartItems(orderItems);
+    const { validatedItems, subtotal, shipping, tax, total, currency, currencySymbol } = await validateCartItems(orderItems);
 
     const orderData = {
       user: user._id,
@@ -29,7 +34,8 @@ export async function createOrder(req, res) {
         shippingFee: shipping,
         tax,
         total,
-        currency: "usd"
+        currency: currency?.toLowerCase() || "lkr",
+        currencySymbol: currencySymbol || "Rs."
       },
       paymentMethod: "online", 
       paymentStatus: "pending", 
@@ -107,7 +113,7 @@ export async function getUserOrders(req, res) {
 export async function requestOrderReturn(req, res) {
   try {
     const { id } = req.params;
-    const { reason, comment } = req.body;
+    const { reason = "", comment = "" } = req.body || {};
 
     if (!reason) {
       return res.status(400).json({ error: "Return reason is required" });

@@ -33,12 +33,18 @@ export default function AddressCard({
         )}
       </View>
       <View className="ml-15">
-        <Text className="text-text-primary font-semibold mb-1">{address.fullName}</Text>
-        <Text className="text-text-secondary text-sm mb-1">{address.streetAddress}</Text>
-        <Text className="text-text-secondary text-sm mb-2">
-          {address.city}, {address.province} {address.zipCode}
+        <Text className="text-text-primary font-bold mb-1 text-base">{address.fullName}</Text>
+        <Text className="text-text-secondary text-sm mb-0.5">{address.streetAddress}</Text>
+        {address.addressLine2 ? (
+          <Text className="text-text-secondary text-sm mb-0.5">{address.addressLine2}</Text>
+        ) : null}
+        <Text className="text-text-secondary text-sm mb-1">
+          {address.city}{address.district ? `, ${address.district}` : ""}, {address.province}
         </Text>
-        <Text className="text-text-secondary text-sm">{address.phoneNumber}</Text>
+        <Text className="text-text-secondary font-bold text-sm tracking-widest mb-2">
+          {address.postalCode || address.zipCode || ""}
+        </Text>
+        <Text className="text-text-secondary font-semibold text-sm">{address.phoneNumber}</Text>
       </View>
       <View className="flex-row mt-4 gap-2">
         <TouchableOpacity

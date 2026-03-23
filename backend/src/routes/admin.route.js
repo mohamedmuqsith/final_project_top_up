@@ -4,6 +4,7 @@ import * as OrderAdmin from "../controllers/admin/orderAdmin.controller.js";
 import * as CustomerAdmin from "../controllers/admin/customerAdmin.controller.js";
 import * as ReportAdmin from "../controllers/admin/reportAdmin.controller.js";
 import * as ReviewAdmin from "../controllers/admin/reviewAdmin.controller.js";
+import * as SettingsAdmin from "../controllers/admin/settings.controller.js";
 import { getOrderDocumentData } from "../controllers/orderDocument.controller.js";
 import { adminOnly, protectRoute } from "../middleware/auth.middleware.js";
 import { upload } from "../middleware/multer.middleware.js";
@@ -39,6 +40,10 @@ router.get("/restock-suggestions", ProductAdmin.getRestockSuggestions);
 router.get("/reviews", ReviewAdmin.getAdminReviews);
 router.patch("/reviews/:id/status", ReviewAdmin.updateReviewStatus);
 router.get("/reviews/analytics", ReviewAdmin.getReviewAnalytics);
+
+// Settings
+router.get("/settings", SettingsAdmin.getSettings);
+router.patch("/settings", SettingsAdmin.updateSettings);
 
 // PUT: Used for full resource replacement, updating the entire resource
 // PATCH: Used for partial resource updates, updating a specific part of the resource

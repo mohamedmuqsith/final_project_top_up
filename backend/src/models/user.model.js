@@ -13,7 +13,15 @@ const addressSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  addressLine2: {
+    type: String,
+    default: "",
+  },
   city: {
+    type: String,
+    required: true,
+  },
+  district: {
     type: String,
     required: true,
   },
@@ -21,7 +29,7 @@ const addressSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  zipCode: {
+  postalCode: {
     type: String,
     required: true,
   },
@@ -33,6 +41,13 @@ const addressSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+}, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
+
+// Backward compatibility for zipCode
+addressSchema.virtual("zipCode").get(function() {
+  return this.postalCode;
+}).set(function(val) {
+  this.postalCode = val;
 });
 
 const userSchema = new mongoose.Schema(

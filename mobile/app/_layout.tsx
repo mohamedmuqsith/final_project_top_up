@@ -76,15 +76,15 @@ import { CurrencyProvider } from "@/components/CurrencyProvider";
 export default Sentry.wrap(function RootLayout() {
   return (
     <SafeAreaProvider>
-      <CurrencyProvider>
-        <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-          <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <CurrencyProvider>
+          <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
             <StripeProvider publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!}>
               <Stack screenOptions={{ headerShown: false }} />
             </StripeProvider>
-          </QueryClientProvider>
-        </ClerkProvider>
-      </CurrencyProvider>
+          </ClerkProvider>
+        </CurrencyProvider>
+      </QueryClientProvider>
     </SafeAreaProvider>
   )
 });
