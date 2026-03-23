@@ -85,7 +85,7 @@ function WishlistScreen() {
               >
                 <View className="flex-row p-4">
                   <Image
-                    source={item.images[0]}
+                    source={{ uri: (typeof item.images?.[0] === "string" ? item.images[0] : item.images?.[0]?.url) || "https://placehold.co/400x400/1a1a2e/666?text=No+Image" }}
                     className="rounded-2xl bg-background-lighter"
                     style={{ width: 96, height: 96, borderRadius: 8 }}
                   />

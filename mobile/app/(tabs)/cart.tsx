@@ -269,7 +269,7 @@ const CartScreen = () => {
                 {/* product image */}
                 <View className="relative">
                   <Image
-                    source={item.product.images[0]}
+                    source={{ uri: (typeof item.product.images?.[0] === "string" ? item.product.images[0] : item.product.images?.[0]?.url) || "https://placehold.co/400x400/1a1a2e/666?text=No+Image" }}
                     className="bg-background-lighter"
                     contentFit="cover"
                     style={{ width: 112, height: 112, borderRadius: 16 }}

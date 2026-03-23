@@ -171,7 +171,7 @@ export const createCodOrder = async (req, res) => {
       shippingAddress.postalCode = shippingAddress.zipCode;
     }
 
-    const { validatedItems, subtotal, shipping, tax, total } = await validateCartItems(cartItems);
+    const { validatedItems, subtotal, shipping, tax, total, currency, currencySymbol } = await validateCartItems(cartItems);
 
     // 2. Create Order (starts as Pending/Pending per refined rules)
     const order = await Order.create({
@@ -185,7 +185,8 @@ export const createCodOrder = async (req, res) => {
         shippingFee: shipping,
         tax,
         total,
-        currency: "usd"
+        currency: currency?.toLowerCase() || "lkr",
+        currencySymbol: currencySymbol || "Rs."
       },
       paymentMethod: "cod",
       paymentStatus: "pending",

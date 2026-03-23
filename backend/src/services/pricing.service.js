@@ -151,7 +151,7 @@ export async function validateCartItems(cartItems) {
       name: product.name,
       price: effectivePrice,
       quantity: item.quantity,
-      image: product.images[0] || "/placeholder.jpg",
+      image: (typeof product.images?.[0] === "string" ? product.images[0] : product.images?.[0]?.url) || "/placeholder.jpg",
     });
   }
 
