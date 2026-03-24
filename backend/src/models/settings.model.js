@@ -31,6 +31,7 @@ const settingsSchema = new mongoose.Schema(
     tax: {
       label: { type: String, default: "VAT" },
       rate: { type: Number, default: 15 }, // Percentage
+      enabled: { type: Boolean, default: true },
     },
   },
   { timestamps: true }

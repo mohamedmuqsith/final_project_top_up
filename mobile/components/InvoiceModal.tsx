@@ -33,7 +33,7 @@ const InvoiceModal = ({ visible, onClose, data }: InvoiceModalProps) => {
   const invoiceCurrency = data.pricing?.currency || defaultCurrency;
   const invoiceCurrencySymbol = data.pricing?.currencySymbol;
 
-  const formatStoredCurrency = (amount: number) => formatCurrency(amount, invoiceCurrency as any, invoiceCurrencySymbol);
+  const formatStoredCurrency = (amount: number) => formatCurrency(amount, invoiceCurrencySymbol);
 
   const generateAndSharePDF = async () => {
     setIsSharing(true);
@@ -126,20 +126,18 @@ const InvoiceModal = ({ visible, onClose, data }: InvoiceModalProps) => {
               </div>
               <div class="total-row">
                 <span>Shipping Fee</span>
-                <span>${data.pricing.shipping === 0 ? 'FREE' : formatStoredCurrency(data.pricing.shipping)}</span>
-              </div>
-              <div class="total-row">
-                <span>Tax</span>
-                <span>${formatStoredCurrency(data.pricing.tax)}</span>
+                <span>${data.pricing.shippingFee === 0 ? 'FREE' : formatStoredCurrency(data.pricing.shippingFee)}</span>
               </div>
               <div class="total-row grand-total">
                 <span>Grand Total</span>
-                <span>${formatStoredCurrency(data.pricing.total)}</span>
+                <span>${formatStoredCurrency(data.pricing.total || data.pricing.totalAmount)}</span>
               </div>
+
             </div>
 
             <div class="footer">
               Thank you for shopping with ${data.store.name}!<br/>
+              VAT No: ${data.store.vatNumber || 'N/A'}<br/>
               This is a computer-generated document. No signature is required.
             </div>
           </body>
@@ -290,17 +288,29 @@ const InvoiceModal = ({ visible, onClose, data }: InvoiceModalProps) => {
               <Text className="text-text-secondary text-sm">Subtotal</Text>
               <Text className="text-text-primary font-semibold text-sm">{formatStoredCurrency(data.pricing.subtotal)}</Text>
             </View>
+            {(data.pricing.discountAmount || 0) > 0 && (
+              <View className="flex-row justify-between mb-3">
+                <Text className="text-green-500 text-sm">Discount</Text>
+                <Text className="text-green-500 font-semibold text-sm">- {formatStoredCurrency(data.pricing.discountAmount || 0)}</Text>
+              </View>
+            )}
             <View className="flex-row justify-between mb-3">
               <Text className="text-text-secondary text-sm">Shipping Fee</Text>
-              <Text className="text-text-primary font-semibold text-sm">{data.pricing.shipping === 0 ? "FREE" : formatStoredCurrency(data.pricing.shipping)}</Text>
-            </View>
-            <View className="flex-row justify-between mb-6">
-              <Text className="text-text-secondary text-sm">Applied Tax</Text>
-              <Text className="text-text-primary font-semibold text-sm">{formatStoredCurrency(data.pricing.tax)}</Text>
+              <Text className="text-text-primary font-semibold text-sm">{data.pricing.shippingFee === 0 ? "FREE" : formatStoredCurrency(data.pricing.shippingFee)}</Text>
             </View>
             <View className="flex-row justify-between pt-6 border-t border-white/10 items-center">
               <Text className="text-text-primary font-black text-xl">Grand Total</Text>
-              <Text className="text-primary font-black text-2xl">{formatStoredCurrency(data.pricing.total)}</Text>
+              <Text className="text-primary font-black text-2xl">{formatStoredCurrency(data.pricing.total || data.pricing.totalAmount)}</Text>
+            </View>
+            {(data.pricing.savings || 0) > 0 && (
+              <View className="bg-green-500/10 rounded-2xl py-2 px-4 mt-4 flex-row items-center justify-center">
+                <Text className="text-green-500 font-bold text-xs">
+                  🎉 You saved {formatStoredCurrency(data.pricing.savings || 0)} on this order!
+                </Text>
+              </View>
+            )}
+            <View className="mt-4 items-end">
+               <Text className="text-text-secondary text-[10px] italic">VAT (15%) included in item prices: {formatStoredCurrency(data.pricing.extractedVat || 0)}</Text>
             </View>
           </View>
 

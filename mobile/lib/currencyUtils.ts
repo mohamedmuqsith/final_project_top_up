@@ -9,19 +9,15 @@ export type Currency = "USD" | "LKR";
  * @param currencySymbol - Optional override for the symbol.
  * @returns Formatted string like "Rs. 1,499.00" or "$14.99".
  */
-export const formatCurrency = (amount: number | string, currency: Currency = "LKR", currencySymbol?: string) => {
+export const formatCurrency = (amount: number | string, currencySymbol: string = "Rs.") => {
   const value = typeof amount === "string" ? parseFloat(amount) : amount;
 
-  if (isNaN(value)) return currency?.toUpperCase() === "USD" ? "$0.00" : "Rs. 0.00";
+  if (isNaN(value)) return `${currencySymbol} 0.00`;
 
   const formatted = value.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 
-  if (currency?.toUpperCase() === "LKR") {
-    return `${currencySymbol || "Rs."} ${formatted}`;
-  }
-
-  return `${currencySymbol || "$"}${formatted}`;
+  return `${currencySymbol} ${formatted}`;
 };

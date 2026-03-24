@@ -122,6 +122,11 @@ const OffersPage = () => {
     data.value = parseFloat(data.value);
     data.isActive = data.isActive === "on";
 
+    // Ensure couponCode is always null (automatic offers only)
+    data.couponCode = null;
+    data.minOrderAmount = 0;
+    data.usageLimit = null;
+
     if (data.appliesTo === "all") {
       data.category = null;
       data.productId = null;
@@ -229,7 +234,7 @@ const OffersPage = () => {
                 <tr className="bg-base-200/70 text-base-content">
                   <th>Offer Details</th>
                   <th>Discount</th>
-                  <th>Applies To</th>
+                  <th>Target / Scope</th>
                   <th>Validity</th>
                   <th>Status</th>
                   <th className="text-right">Actions</th>
@@ -269,7 +274,7 @@ const OffersPage = () => {
                             </>
                           ) : (
                             <>
-                              <DollarSign className="size-4" /> {formatCurrency(offer.value, currency)} OFF
+                              <span className="text-sm font-black">Rs.</span> {formatCurrency(offer.value, currency).replace('Rs.', '').trim()} OFF
                             </>
                           )}
                         </div>
@@ -285,6 +290,9 @@ const OffersPage = () => {
                             (allProducts?.find((p) => p._id === offer.productId)?.name ||
                               "Unknown Product")}
                           {offer.appliesTo === "category" && offer.category}
+                        </div>
+                        <div className="mt-2 text-[10px] text-base-content/50 font-bold uppercase tracking-widest italic flex items-center gap-1">
+                           <CheckCircle className="size-3" /> Auto-Applied
                         </div>
                       </td>
 
@@ -439,7 +447,7 @@ const OffersPage = () => {
                             required
                           >
                             <option value="percentage">Percentage (%)</option>
-                            <option value="fixed">Fixed Amount ($)</option>
+                            <option value="fixed">Fixed Amount (Rs.)</option>
                           </select>
                         </div>
 
@@ -476,6 +484,15 @@ const OffersPage = () => {
                             }
                             className="input input-bordered w-full rounded-2xl h-13 bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                           />
+                        </div>
+
+                        {/* Automatic Offer Info */}
+                        <div className="md:col-span-2 mt-2 bg-info/10 p-4 rounded-2xl border border-info/20 flex gap-3 items-start">
+                          <CheckCircle className="size-5 text-info mt-0.5" />
+                          <div>
+                             <h5 className="font-bold text-info">Automatic Application</h5>
+                             <p className="text-sm text-info/80 mt-1">This offer will be automatically applied to eligible products at checkout. No coupon codes are required.</p>
+                          </div>
                         </div>
                       </div>
                     </div>

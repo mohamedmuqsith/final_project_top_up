@@ -568,23 +568,25 @@ function OrderDetailModal({ order, onClose, onMarkAsPaid, onStatusChange, isUpda
                       <div className="space-y-1 mt-1">
                         <div className="flex justify-between text-xs">
                           <span className="opacity-60">Subtotal:</span>
-                          <span className="font-bold">{formatCurrency(order.pricing?.subtotal || order.orderItems.reduce((s, i) => s + (i.price * i.quantity), 0), currency)}</span>
+                          <span className="font-bold">{formatCurrency(order.pricing?.subtotal, currency)}</span>
                         </div>
-                        {typeof order.pricing?.tax === "number" && (
-                          <div className="flex justify-between text-xs">
-                            <span className="opacity-60">Tax:</span>
-                            <span className="font-bold">{formatCurrency(order.pricing.tax, currency)}</span>
-                          </div>
-                        )}
+                        <div className="flex justify-between text-xs">
+                          <span className="opacity-60">VAT (15% Included):</span>
+                          <span className="font-bold">
+                            {formatCurrency(order.pricing?.extractedVat || order.pricing?.taxAmount || 0, currency)}
+                          </span>
+                        </div>
                         <div className="flex justify-between text-xs">
                           <span className="opacity-60">Shipping:</span>
                           <span className={((order.pricing?.shippingFee || 0) === 0) ? "text-success font-bold" : "font-bold"}>
-                            {(order.pricing?.shippingFee || 0) === 0 ? "Free" : formatCurrency(order.pricing.shippingFee, currency)}
+                            {order.pricing?.shippingFee === 0 ? "Free" : formatCurrency(order.pricing?.shippingFee || 0, currency)}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm border-t border-base-content/5 pt-2 mt-2">
                           <span className="font-black">TOTAL:</span>
-                          <span className="font-black text-primary">{formatCurrency(order.pricing?.total || order.totalPrice, currency)}</span>
+                          <span className="font-black text-primary">
+                            {formatCurrency(order.pricing?.total || order.pricing?.totalAmount || order.totalPrice, currency)}
+                          </span>
                         </div>
                       </div>
                     </div>

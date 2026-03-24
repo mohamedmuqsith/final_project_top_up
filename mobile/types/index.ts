@@ -78,11 +78,33 @@ export interface Order {
   };
   pricing?: {
     subtotal: number;
+    originalSubtotal?: number;
+    discountAmount?: number;
     shippingFee: number;
-    tax: number;
+    taxAmount: number;
     discount?: number;
-    total: number;
+    total: number; // standardized
+    totalAmount?: number; // legacy
     currency: string;
+    currencySymbol?: string;
+    extractedVat?: number;
+    taxIncluded?: boolean;
+    vatRate?: number;
+    savings?: number;
+    appliedCoupon?: {
+      code: string;
+      title: string;
+      discountType: string;
+      value: number;
+      discountGiven: number;
+    } | null;
+    appliedOffers?: {
+      offerId: string;
+      title: string;
+      type: string;
+      value: number;
+      scope: string;
+    }[];
   };
   shippingDetails?: {
     method: string;
@@ -157,6 +179,36 @@ export interface Cart {
   user: string;
   clerkId: string;
   items: CartItem[];
+  pricing?: {
+    subtotal: number;
+    originalSubtotal?: number;
+    discountAmount?: number;
+    shippingFee: number;
+    taxAmount: number;
+    discount?: number;
+    total: number;
+    totalAmount?: number;
+    currency: string;
+    currencySymbol: string;
+    extractedVat?: number;
+    taxIncluded?: boolean;
+    vatRate?: number;
+    savings?: number;
+    appliedCoupon?: {
+      code: string;
+      title: string;
+      discountType: string;
+      value: number;
+      discountGiven: number;
+    } | null;
+    appliedOffers?: {
+      offerId: string;
+      title: string;
+      type: string;
+      value: number;
+      scope: string;
+    }[];
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -190,11 +242,26 @@ export interface OrderDocumentData {
   }[];
   pricing: {
     subtotal: number;
-    shipping: number;
-    tax: number;
+    originalSubtotal?: number;
+    discountAmount?: number;
+    shippingFee: number;
+    taxAmount: number;
+    discount?: number;
     total: number;
+    totalAmount: number;
     currency?: string;
     currencySymbol?: string;
+    extractedVat?: number;
+    taxIncluded?: boolean;
+    vatRate?: number;
+    savings?: number;
+    appliedCoupon?: {
+      code: string;
+      title: string;
+      discountType: string;
+      value: number;
+      discountGiven: number;
+    } | null;
   };
   payment: {
     status: string;
@@ -217,5 +284,6 @@ export interface OrderDocumentData {
     zipCode?: string;
     email: string;
     phone: string;
+    vatNumber?: string;
   };
 }

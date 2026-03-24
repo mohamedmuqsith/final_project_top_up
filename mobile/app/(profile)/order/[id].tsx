@@ -396,7 +396,7 @@ export default function OrderDetailsScreen() {
               </View>
             )}
           </View>
-          <Text className="text-text-primary text-3xl font-bold">{formatCurrency(order.totalPrice, currency)}</Text>
+          <Text className="text-text-primary text-3xl font-bold">{formatCurrency(order.pricing?.totalAmount || order.totalPrice, currency)}</Text>
           <Text className="text-text-secondary mt-1">Order #{order._id.slice(-8).toUpperCase()}</Text>
         </View>
 
@@ -501,36 +501,54 @@ export default function OrderDetailsScreen() {
         <View className="px-6 mb-8">
           <Text className="text-text-primary font-bold text-lg mb-4">Payment Summary</Text>
           <View className="bg-surface rounded-3xl p-5">
-            <View className="flex-row justify-between mb-3">
-              <Text className="text-text-secondary">Method</Text>
+            <View className="flex-row justify-between mb-3 text-sm">
+              <Text className="text-text-secondary">Payment Method</Text>
               <Text className="text-text-primary font-bold">
-                {order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}
+                {order.paymentMethod === "cod" ? "Cash on Delivery" : "Online"}
               </Text>
             </View>
+
             <View className="flex-row justify-between mb-3">
               <Text className="text-text-secondary">Subtotal</Text>
               <Text className="text-text-primary font-medium">
-                {formatCurrency(order.pricing?.subtotal || order.orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0), currency)}
+                {formatCurrency(order.pricing?.subtotal || order.totalPrice, currency)}
               </Text>
             </View>
-            {typeof order.pricing?.tax === "number" && (
+
+            {(order.pricing?.discountAmount || 0) > 0 && (
               <View className="flex-row justify-between mb-3">
-                <Text className="text-text-secondary">Tax</Text>
-                <Text className="text-text-primary font-medium">
-                  {formatCurrency(order.pricing?.tax || 0, currency)}
+                <Text className="text-green-500">Discount</Text>
+                <Text className="text-green-500 font-bold">
+                  - {formatCurrency(order.pricing?.discountAmount || 0, currency)}
                 </Text>
               </View>
             )}
-            <View className="flex-row justify-between mb-3 border-b border-background pb-3">
+
+            <View className="flex-row justify-between mb-4 border-b border-background pb-3">
               <Text className="text-text-secondary">Shipping</Text>
               <Text className={((order.pricing?.shippingFee || 0) === 0) ? "text-[#1DB954] font-medium" : "text-text-primary font-medium"}>
                 {(order.pricing?.shippingFee || 0) === 0 ? "Free" : formatCurrency(order.pricing?.shippingFee || 0, currency)}
               </Text>
             </View>
+
             <View className="flex-row justify-between items-center">
               <Text className="text-text-primary font-bold text-base">Total</Text>
-              <Text className="text-primary font-bold text-xl">{formatCurrency(order.pricing?.total || order.totalPrice, currency)}</Text>
+              <Text className="text-primary font-bold text-xl">{formatCurrency(order.pricing?.total || order.pricing?.totalAmount || order.totalPrice, currency)}</Text>
             </View>
+
+            {/* Savings badge */}
+            {(order.pricing?.savings || 0) > 0 && (
+              <View className="bg-green-500/10 rounded-2xl py-2 px-4 mt-4 flex-row items-center justify-center">
+                <Text className="text-green-500 font-bold text-xs">
+                  🎉 You saved {formatCurrency(order.pricing?.savings || 0, currency)} on this order!
+                </Text>
+              </View>
+            )}
+
+            {/* VAT helper text */}
+            <Text className="text-text-secondary/60 text-[10px] text-center mt-3">
+              VAT included in item prices
+            </Text>
           </View>
         </View>
 

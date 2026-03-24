@@ -111,12 +111,18 @@ export async function getOrderDocumentData(req, res) {
 
       pricing: {
         subtotal: order.pricing?.subtotal || order.totalPrice,
+        originalSubtotal: order.pricing?.originalSubtotal || order.pricing?.subtotal || order.totalPrice,
+        discountAmount: order.pricing?.discountAmount || 0,
         shippingFee: order.pricing?.shippingFee || 0,
-        tax: order.pricing?.tax || 0,
+        taxAmount: order.pricing?.taxAmount || 0,
         discount: order.pricing?.discount || 0,
-        total: order.pricing?.total || order.totalPrice,
+        total: order.pricing?.total || order.pricing?.totalAmount || order.totalPrice,
+        totalAmount: order.pricing?.totalAmount || order.totalPrice,
+        savings: order.pricing?.savings || 0,
+        extractedVat: order.pricing?.extractedVat || 0,
         currency: order.pricing?.currency || "LKR",
-        currencySymbol: order.pricing?.currencySymbol || "Rs."
+        currencySymbol: order.pricing?.currencySymbol || "Rs.",
+        appliedCoupon: order.pricing?.appliedCoupon || null,
       },
 
       payment: {

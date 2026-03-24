@@ -6,12 +6,14 @@ import {
   updateOffer,
   deleteOffer,
   getActiveOffers,
+  validateCoupon,
 } from "../controllers/offer.controller.js";
 
 const router = express.Router();
 
 // Public/Customer routes
 router.get("/active", getActiveOffers);
+router.post("/validate-coupon", protectRoute, validateCoupon);
 
 // Admin routes
 router.get("/", protectRoute, adminOnly, getOffers);

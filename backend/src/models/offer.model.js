@@ -57,6 +57,31 @@ const offerSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // Coupon/voucher support
+    couponCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      sparse: true,
+    },
+    minOrderAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    maxDiscount: {
+      type: Number,
+      min: 0,
+    },
+    usageLimit: {
+      type: Number,
+      min: 0,
+    },
+    usedCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   { timestamps: true }
 );

@@ -21,21 +21,23 @@ export async function createOrder(req, res) {
     }
 
     // Use centralized validation and pricing calculation
-    const { validatedItems, subtotal, shipping, tax, total, currency, currencySymbol } = await validateCartItems(orderItems);
+    const pricing = await validateCartItems(orderItems);
 
     const orderData = {
       user: user._id,
       clerkId: user.clerkId,
-      orderItems: validatedItems,
+      orderItems: pricing.validatedItems,
       shippingAddress,
-      totalPrice: total,
+      totalPrice: pricing.total,
       pricing: {
-        subtotal,
-        shippingFee: shipping,
-        tax,
-        total,
-        currency: currency?.toLowerCase() || "lkr",
-        currencySymbol: currencySymbol || "Rs."
+        subtotal: pricing.subtotal,
+        shippingFee: pricing.shippingFee,
+        total: pricing.total,
+        extractedVat: pricing.extractedVat,
+        vatRate: pricing.vatRate,
+        taxIncluded: true,
+        currency: pricing.currency,
+        currencySymbol: pricing.currencySymbol
       },
       paymentMethod: "online", 
       paymentStatus: "pending", 

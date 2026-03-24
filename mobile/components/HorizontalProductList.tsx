@@ -56,8 +56,9 @@ const HorizontalProductList = ({ products, isLoading, isError, title, aiEnhanced
           resizeMode="cover"
         />
         {product.hasActiveOffer && (
-          <View className="absolute top-3 left-3 bg-primary px-2 py-1.5 rounded-lg shadow-sm">
-            <Text className="text-background text-[10px] font-black uppercase tracking-wider">
+          <View className="absolute top-2 left-2 bg-red-500 px-2.5 py-1.5 rounded-br-2xl rounded-tl-xl shadow-lg shadow-red-500/30 border border-white/20 flex-row items-center gap-1">
+            <Ionicons name="flash" size={12} color="#FFFFFF" />
+            <Text className="text-white text-[10px] font-black uppercase tracking-widest">
               {product.offerLabel || (product.appliedOffer?.type === "percentage" 
                 ? `-${product.appliedOffer.value}%` 
                 : `SAVE ${formatCurrency(product.savingsAmount || 0, currency)}`)}
@@ -101,13 +102,15 @@ const HorizontalProductList = ({ products, isLoading, isError, title, aiEnhanced
 
         <View className="flex-row items-center justify-between mt-auto pt-2">
           <View>
-            <Text className="text-primary font-bold text-lg">
+            <Text className={`font-black text-lg tracking-tight ${product.hasActiveOffer ? "text-red-500" : "text-primary"}`}>
               {formatCurrency(product.discountedPrice ?? product.price, currency)}
             </Text>
             {product.hasActiveOffer && product.originalPrice && (
-              <Text className="text-text-secondary text-[10px] line-through font-semibold opacity-70">
-                {formatCurrency(product.originalPrice, currency)}
-              </Text>
+              <View className="flex-row items-center gap-1.5 mt-0.5">
+                <Text className="text-text-secondary text-[11px] line-through font-bold opacity-60">
+                  {formatCurrency(product.originalPrice, currency)}
+                </Text>
+              </View>
             )}
           </View>
           <TouchableOpacity
