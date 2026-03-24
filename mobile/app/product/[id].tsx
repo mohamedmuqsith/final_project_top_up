@@ -151,19 +151,22 @@ const ProductDetailScreen = () => {
 
           <View className="flex-row items-center gap-4 mb-6">
             <View>
-              <Text className="text-primary text-4xl font-bold">
+              <Text className={`text-4xl font-black tracking-tight ${product.hasActiveOffer ? "text-red-500" : "text-primary"}`}>
                 {formatCurrency(product.discountedPrice ?? product.price, currency)}
               </Text>
               {product.hasActiveOffer && product.originalPrice && (
-                <Text className="text-text-secondary text-lg line-through font-semibold opacity-70">
-                  {formatCurrency(product.originalPrice, currency)}
-                </Text>
+                <View className="flex-row items-center mt-1.5">
+                   <Text className="text-text-secondary text-base line-through font-bold opacity-60">
+                     {formatCurrency(product.originalPrice, currency)}
+                   </Text>
+                </View>
               )}
             </View>
 
             {product.hasActiveOffer && (
-               <View className="bg-primary/20 border border-primary/30 px-3 py-2 rounded-2xl">
-                 <Text className="text-primary font-bold text-sm">
+               <View className="bg-red-500/15 border border-red-500/30 px-3 py-2 rounded-2xl flex-row items-center gap-1.5">
+                 <Ionicons name="flash" size={14} color="#ef4444" />
+                 <Text className="text-red-500 font-bold text-sm tracking-wide">
                     {product.appliedOffer?.type === "percentage" 
                       ? `${product.appliedOffer.value}% OFF`
                       : `SAVE ${formatCurrency(product.savingsAmount || 0, currency)}`}
@@ -173,13 +176,13 @@ const ProductDetailScreen = () => {
           </View>
 
           {product.hasActiveOffer && product.appliedOffer && (
-            <View className="bg-surface p-4 rounded-3xl mb-6 border border-primary/20 flex-row items-center gap-4 shadow-sm">
-              <View className="bg-primary/10 p-3 rounded-2xl">
-                <Ionicons name="pricetag" size={24} color="#00D9FF" />
+            <View className="bg-red-500/10 p-4 rounded-3xl mb-6 border border-red-500/20 flex-row items-center gap-4 shadow-sm relative overflow-hidden">
+              <View className="bg-red-500 p-3 rounded-2xl shadow-lg shadow-red-500/40">
+                <Ionicons name="pricetag" size={24} color="#FFFFFF" />
               </View>
               <View className="flex-1">
-                <Text className="text-text-primary font-bold text-lg">{product.offerLabel || product.appliedOffer.title}</Text>
-                <Text className="text-text-secondary text-xs mt-0.5">{product.appliedOffer.bannerText || "Limited time offer unlocked!"}</Text>
+                <Text className="text-text-primary font-black text-lg">{product.offerLabel || product.appliedOffer.title}</Text>
+                <Text className="text-red-400 font-bold text-[10px] mt-0.5 uppercase tracking-widest">{product.appliedOffer.bannerText || "Limited time offer unlocked!"}</Text>
               </View>
             </View>
           )}

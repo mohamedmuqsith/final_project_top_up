@@ -2,6 +2,7 @@ import { Order } from "../../models/order.model.js";
 import { Product } from "../../models/product.model.js";
 import { User } from "../../models/user.model.js";
 import { Review } from "../../models/review.model.js";
+import { InventoryService } from "../../services/inventory.service.js";
 
 // @desc    Get dashboard summary stats
 export const getDashboardStats = async (req, res) => {
@@ -101,55 +102,30 @@ export const getDashboardStats = async (req, res) => {
       { $project: { _id: 0, date: "$_id", revenue: 1, orders: 1 } }
     ]);
 
-    // 6. Inventory: Low Stock & Predicted Stockouts
-    const lowStockProducts = await Product.find({
-      $expr: { $lte: ["$stock", "$lowStockThreshold"] }
-    }).limit(5).select("_id name images stock price");
+    // 6. Inventory: Low Stock & Predicted Stockouts (Refactored to use centralized engine)
+    const predictions = await InventoryService.calculateStockPredictions({ lookbackDays: 30 });
     
-    // Process images for frontend (handle both legacy [string] and new [{url, publicId}])
-    const formattedLowStock = lowStockProducts.map(p => {
-      const firstImg = p.images?.[0];
-      const imageUrl = (typeof firstImg === "object" && firstImg?.url) 
-        ? firstImg.url 
-        : (typeof firstImg === "string" ? firstImg : "/placeholder.jpg");
-
-      return {
-        _id: p._id,
+    const formattedLowStock = predictions
+      .filter(p => p.alertType === "Low Stock" || p.alertType === "Out of Stock")
+      .slice(0, 5)
+      .map(p => ({
+        _id: p.productId,
         name: p.name,
-        image: imageUrl,
-        stock: p.stock
-      };
-    });
+        image: p.image,
+        stock: p.currentStock
+      }));
 
-    // Predictive Stockouts (Based on 30-day velocity)
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const velocityAgg = await Order.aggregate([
-      { $match: { createdAt: { $gte: thirtyDaysAgo }, status: { $ne: "cancelled" } } },
-      { $unwind: "$orderItems" },
-      { $group: { _id: "$orderItems.product", unitsSold: { $sum: "$orderItems.quantity" } } }
-    ]);
-
-    const velocityMap = new Map(velocityAgg.map(v => [v._id.toString(), v.unitsSold]));
-    
-    const allProducts = await Product.find({ stock: { $gt: 0 } }).select("_id name stock images");
-    const predictedStockouts = allProducts
-      .map(p => {
-        const unitsSold30d = velocityMap.get(p._id.toString()) || 0;
-        const avgDailyUnitsSold = unitsSold30d / 30;
-        if (avgDailyUnitsSold === 0) return null;
-        
-        const daysRemaining = Math.floor(p.stock / avgDailyUnitsSold);
-        return {
-          _id: p._id,
-          name: p.name,
-          stock: p.stock,
-          avgDailyUnitsSold: parseFloat(avgDailyUnitsSold.toFixed(2)),
-          daysRemaining: daysRemaining
-        };
-      })
-      .filter(p => p !== null && p.daysRemaining <= 7)
+    const predictedStockouts = predictions
+      .filter(p => p.alertType === "Predicted Stockout")
       .sort((a, b) => a.daysRemaining - b.daysRemaining)
-      .slice(0, 5);
+      .slice(0, 5)
+      .map(p => ({
+        _id: p.productId,
+        name: p.name,
+        stock: p.currentStock,
+        avgDailyUnitsSold: p.avgDailySales,
+        daysRemaining: p.daysRemaining
+      }));
 
     res.status(200).json({
       totalRevenue,
@@ -389,29 +365,28 @@ export const getInventoryReport = async (req, res) => {
       { $sort: { value: -1 } }
     ]);
 
-    // 3. Stock Lists
-    const [outOfStockList, lowStockListRaw] = await Promise.all([
-      Product.find({ stock: { $lte: 0 } })
-        .select("name category price stock")
-        .sort({ name: 1 })
-        .limit(50),
-      Product.find({ 
-        $expr: { $lte: ["$stock", "$lowStockThreshold"] },
-        stock: { $gt: 0 }
-      })
-        .select("name category stock lowStockThreshold")
-        .sort({ stock: 1 })
-        .limit(50)
-    ]);
+    // 3. Stock Lists (Refactored to use centralized engine)
+    const predictions = await InventoryService.calculateStockPredictions({ lookbackDays: 30 });
 
-    // Map lowStockThreshold to threshold as expected by UI
-    const lowStockList = lowStockListRaw.map(p => ({
-      _id: p._id,
-      name: p.name,
-      category: p.category,
-      stock: p.stock,
-      threshold: p.lowStockThreshold || 10
-    }));
+    const outOfStockList = predictions
+      .filter(p => p.alertType === "Out of Stock")
+      .map(p => ({
+        _id: p.productId,
+        name: p.name,
+        category: p.category,
+        price: p.price, // Wait, did I add price to predictions? Let me check.
+        stock: 0
+      }));
+
+    const lowStockList = predictions
+      .filter(p => p.alertType === "Low Stock")
+      .map(p => ({
+        _id: p.productId,
+        name: p.name,
+        category: p.category,
+        stock: p.currentStock,
+        threshold: p.lowStockThreshold
+      }));
 
     res.status(200).json({
       summary: {

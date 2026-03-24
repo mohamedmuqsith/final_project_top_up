@@ -1,6 +1,6 @@
 import { Notification } from "../models/notification.model.js";
 import { Product } from "../models/product.model.js";
-import { Order } from "../models/order.model.js";
+import { InventoryService } from "./inventory.service.js";
 
 /**
  * Core notification creation wrapper with optional deduplication.
@@ -47,57 +47,22 @@ export async function createNotification(data) {
  */
 export async function checkAndCreateInventoryNotifications(productIds = []) {
   try {
-    const query = productIds.length > 0 ? { _id: { $in: productIds } } : {};
-    const products = await Product.find(query, "name stock images lowStockThreshold").lean();
-
-    if (products.length === 0) return;
-
-    // We need 7-day sales velocity for PREDICTED_STOCKOUT
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    // Only aggregate sales for the products we are checking to save db cost
-    const matchQuery = {
-      createdAt: { $gte: sevenDaysAgo },
-      paymentStatus: "paid",
-      status: { $ne: "cancelled" },
-    };
-
-    const salesAggregation = await Order.aggregate([
-      { $match: matchQuery },
-      { $unwind: "$orderItems" },
-      { 
-        $match: productIds.length > 0 
-          ? { "orderItems.product": { $in: products.map(p => p._id) } } 
-          : {} 
-      },
-      {
-        $group: {
-          _id: "$orderItems.product",
-          totalQuantitySold: { $sum: "$orderItems.quantity" },
-        },
-      },
-    ]);
-
-    const salesMap = {};
-    salesAggregation.forEach((item) => {
-      salesMap[item._id.toString()] = item.totalQuantitySold / 7;
+    // 1. Get standardized predictions from centralized engine
+    const predictions = await InventoryService.calculateStockPredictions({ 
+      lookbackDays: 30, 
+      productIds 
     });
 
-    for (const product of products) {
-      const avgDaily = salesMap[product._id.toString()] || 0;
-      const daysRemaining = avgDaily > 0 ? product.stock / avgDaily : Infinity;
-      const threshold = product.lowStockThreshold !== undefined ? product.lowStockThreshold : 10;
-
-      // Determine current boolean conditions natively
-      const isOutOfStock = product.stock <= 0;
-      const isLowStock = !isOutOfStock && product.stock <= threshold;
-      const isPredictedStockout = !isOutOfStock && !isLowStock && daysRemaining <= 7;
+    for (const p of predictions) {
+      // Determine current boolean conditions
+      const isOutOfStock = p.alertType === "Out of Stock";
+      const isLowStock = p.alertType === "Low Stock";
+      const isPredictedStockout = p.alertType === "Predicted Stockout";
 
       // Ensure exact state resolution mapping
-      await manageConditionState(product, "OUT_OF_STOCK", isOutOfStock);
-      await manageConditionState(product, "LOW_STOCK", isLowStock);
-      await manageConditionState(product, "PREDICTED_STOCKOUT", isPredictedStockout);
+      await manageConditionState(p, "OUT_OF_STOCK", isOutOfStock);
+      await manageConditionState(p, "LOW_STOCK", isLowStock);
+      await manageConditionState(p, "PREDICTED_STOCKOUT", isPredictedStockout);
     }
   } catch (error) {
     console.error("Error in checkAndCreateInventoryNotifications:", error);
@@ -112,7 +77,7 @@ async function manageConditionState(product, type, isConditionActive) {
   const activeNotification = await Notification.findOne({
     recipientType: "admin",
     type: type,
-    entityId: product._id,
+    entityId: product.productId,
     isResolved: false
   });
 
@@ -126,9 +91,9 @@ async function manageConditionState(product, type, isConditionActive) {
       if (type === "OUT_OF_STOCK") {
         message = `Business Alert: '${product.name}' is completely OUT OF STOCK. Immediate restock required.`;
       } else if (type === "LOW_STOCK") {
-        message = `Business Alert: '${product.name}' is running low (${product.stock} units remaining). Threshold: ${threshold}.`;
+        message = `Business Alert: '${product.name}' is running low (${product.currentStock} units remaining). Threshold: ${product.lowStockThreshold}.`;
       } else if (type === "PREDICTED_STOCKOUT") {
-        message = `Predictive Alert: '${product.name}' is expected to stock out within 7 days based on current sales velocity.`;
+        message = `Predictive Alert: '${product.name}' is expected to stock out within ${product.daysRemaining} days based on current sales velocity.`;
       }
 
       if (message) {
@@ -137,7 +102,7 @@ async function manageConditionState(product, type, isConditionActive) {
           title: type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' '),
           message,
           type,
-          entityId: product._id,
+          entityId: product.productId,
           entityModel: "Product",
         });
       }

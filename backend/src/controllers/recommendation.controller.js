@@ -1,9 +1,10 @@
 import { Product } from "../models/product.model.js";
 import { Order } from "../models/order.model.js";
 import { rankProductsWithGemini } from "../services/gemini.service.js";
+import { enrichProductsWithPrices } from "../services/pricing.service.js";
 
 // Helper to reliably map returned Gemini IDs to populated products
-const mapGeminiOutputToProducts = (geminiOutput, candidates) => {
+const mapGeminiOutputToProducts = async (geminiOutput, candidates) => {
   if (!geminiOutput || !Array.isArray(geminiOutput)) return null;
 
   const validProducts = [];
@@ -11,13 +12,16 @@ const mapGeminiOutputToProducts = (geminiOutput, candidates) => {
     const candidate = candidates.find((c) => c._id.toString() === item.id);
     if (candidate) {
       // Attach the AI reason to the product object before returning
-      const enhancedProduct = candidate.toObject();
+      const enhancedProduct = candidate.toObject ? candidate.toObject() : candidate;
       enhancedProduct.recommendationReason = item.reason || "Recommended for you";
       validProducts.push(enhancedProduct);
     }
   }
   
-  return validProducts.length > 0 ? validProducts : null;
+  if (validProducts.length === 0) return null;
+
+  // Enrich with pricing
+  return await enrichProductsWithPrices(validProducts);
 };
 
 // GET /api/recommendations/similar/:productId
@@ -52,7 +56,7 @@ export const getSimilarProducts = async (req, res) => {
 
     // Step 2: Ask Gemini to rank
     const aiRanking = await rankProductsWithGemini(context, candidates, "similar");
-    const enhancedRecommendations = mapGeminiOutputToProducts(aiRanking, candidates);
+    const enhancedRecommendations = await mapGeminiOutputToProducts(aiRanking, candidates);
 
     // Step 3: Fallback if Gemini fails/disabled
     if (enhancedRecommendations) {
@@ -60,10 +64,12 @@ export const getSimilarProducts = async (req, res) => {
     }
 
     // Fallback logic: sort by highest rating or closest price
+    const enrichedFallback = await enrichProductsWithPrices(
+      candidates.sort((a, b) => b.averageRating - a.averageRating).slice(0, 5)
+    );
+
     return res.status(200).json({
-      recommendations: candidates
-        .sort((a, b) => b.averageRating - a.averageRating)
-        .slice(0, 5),
+      recommendations: enrichedFallback,
       aiEnhanced: false
     });
 
@@ -123,7 +129,7 @@ export const getPersonalizedRecommendations = async (req, res) => {
     };
 
     const aiRanking = await rankProductsWithGemini(context, candidates, "personalized");
-    const enhancedRecommendations = mapGeminiOutputToProducts(aiRanking, candidates);
+    const enhancedRecommendations = await mapGeminiOutputToProducts(aiRanking, candidates);
 
     // Step 3: Returns
     if (enhancedRecommendations) {
@@ -131,8 +137,12 @@ export const getPersonalizedRecommendations = async (req, res) => {
     }
 
     // Fallback: top rated from DB shortlist
+    const enrichedFallback = await enrichProductsWithPrices(
+      candidates.sort((a, b) => b.averageRating - a.averageRating).slice(0, 5)
+    );
+
     return res.status(200).json({
-      recommendations: candidates.sort((a, b) => b.averageRating - a.averageRating).slice(0, 5),
+      recommendations: enrichedFallback,
       aiEnhanced: false
     });
 
@@ -195,14 +205,15 @@ export const getTrendingProducts = async (req, res) => {
     // Stage 2: Gemini Reranking
     const context = { type: "trending", store: "Premium Electronics", timeframe: "Last 14 days" };
     const aiRanking = await rankProductsWithGemini(context, candidates, "trending");
-    const enhancedRecommendations = mapGeminiOutputToProducts(aiRanking, candidates);
+    const enhancedRecommendations = await mapGeminiOutputToProducts(aiRanking, candidates);
 
     if (enhancedRecommendations) {
       return res.status(200).json({ recommendations: enhancedRecommendations, aiEnhanced: true });
     }
 
     // Fallback
-    return res.status(200).json({ recommendations: candidates.slice(0, 5), aiEnhanced: false });
+    const enrichedFallback = await enrichProductsWithPrices(candidates.slice(0, 5));
+    return res.status(200).json({ recommendations: enrichedFallback, aiEnhanced: false });
   } catch (error) {
     console.error("Error in getTrendingProducts:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -244,7 +255,7 @@ export const getFrequentlyBoughtTogether = async (req, res) => {
     const target = await Product.findById(productId);
     const context = { target: target.name, category: target.category };
     const aiRanking = await rankProductsWithGemini(context, candidates, "similar");
-    const enhancedRecommendations = mapGeminiOutputToProducts(aiRanking, candidates);
+    const enhancedRecommendations = await mapGeminiOutputToProducts(aiRanking, candidates);
 
     if (enhancedRecommendations) {
       // Deduplicate: filter out product itself again just in case AI returned it
@@ -252,9 +263,9 @@ export const getFrequentlyBoughtTogether = async (req, res) => {
       return res.status(200).json({ recommendations: final.slice(0, 5), aiEnhanced: true });
     }
 
-    const finalFallback = candidates
-      .filter(p => p._id.toString() !== productId)
-      .slice(0, 5);
+    const finalFallback = await enrichProductsWithPrices(
+      candidates.filter(p => p._id.toString() !== productId).slice(0, 5)
+    );
 
     return res.status(200).json({ recommendations: finalFallback, aiEnhanced: false });
   } catch (error) {

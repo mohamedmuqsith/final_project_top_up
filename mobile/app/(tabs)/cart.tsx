@@ -2,7 +2,7 @@ import SafeScreen from "@/components/SafeScreen";
 import { useAddresses } from "@/hooks/useAddressess";
 import useCart from "@/hooks/useCart";
 import { useApi } from "@/lib/api";
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import { useStripe } from "@stripe/stripe-react-native";
 import { useState } from "react";
 import { Address } from "@/types";
@@ -19,13 +19,16 @@ import * as Linking from "expo-linking";
 import * as Sentry from "@sentry/react-native";
 
 const CartScreen = () => {
+  const { width } = useWindowDimensions();
+  const isTablet = width > 768;
   const { currency } = useCurrency();
   const api = useApi();
   const queryClient = useQueryClient();
+
   const {
     cart,
     cartItemCount,
-    cartTotal,
+    cartPricing,
     clearCart,
     isError,
     isLoading,
@@ -33,6 +36,7 @@ const CartScreen = () => {
     isUpdating,
     removeFromCart,
     updateQuantity,
+    refetch,
   } = useCart();
   const { addresses } = useAddresses();
 
@@ -44,16 +48,21 @@ const CartScreen = () => {
 
   const { data: settings } = useSettings();
   const cartItems = cart?.items || [];
-  const subtotal = cartTotal;
   
-  // Use dynamic settings for shipping and tax
-  const shippingThreshold = settings?.shipping?.freeShippingThreshold ?? 5000;
-  const shippingFee = settings?.shipping?.baseFee ?? 350;
-  const taxRate = settings?.tax?.enabled ? (settings?.tax?.rate ?? 0) : 0;
+  // Use backend-calculated pricing as the single source of truth
+  const subtotal = cartPricing?.originalSubtotal ?? cartPricing?.subtotal ?? 0;
+  const shippingFee = cartPricing?.shippingFee ?? 0;
+  const total = cartPricing?.total ?? 0;
+  const discountAmount = cartPricing?.discountAmount ?? 0;
+  const savings = cartPricing?.savings ?? 0;
 
-  const currentShipping = subtotal >= shippingThreshold ? 0 : shippingFee;
-  const taxAmount = (subtotal + currentShipping) * (taxRate / 100);
-  const total = subtotal + currentShipping + taxAmount;
+  console.log("[CartScreen] Pricing Data Flow:", {
+    hasPricing: !!cartPricing,
+    subtotal,
+    discountAmount,
+    shippingFee,
+    total
+  });
 
   const handleQuantityChange = (productId: string, currentQuantity: number, change: number) => {
     const newQuantity = currentQuantity + change;
@@ -71,6 +80,7 @@ const CartScreen = () => {
       },
     ]);
   };
+
 
   const handleCheckout = () => {
     if (cartItems.length === 0) return;
@@ -92,7 +102,6 @@ const CartScreen = () => {
   const handleProceedWithPayment = async (selectedAddress: Address) => {
     setAddressModalVisible(false);
 
-    // log chechkout initiated
     Sentry.logger.info("Checkout initiated", {
       itemCount: cartItemCount,
       total: total.toFixed(2),
@@ -125,6 +134,7 @@ const CartScreen = () => {
           postalCode: selectedAddress.postalCode || selectedAddress.zipCode,
           phoneNumber: selectedAddress.phoneNumber,
         },
+        paymentMethod: paymentMethod,
       };
 
       if (paymentMethod === "cod") {
@@ -253,10 +263,11 @@ const CartScreen = () => {
 
   return (
     <SafeScreen>
-      <Text className="px-6 pb-5 text-text-primary text-3xl font-bold tracking-tight">Cart</Text>
+      <View style={{ maxWidth: 600, alignSelf: "center", width: "100%", flex: 1 }}>
+        <Text className="px-6 pb-5 text-text-primary text-3xl font-bold tracking-tight">Cart</Text>
 
-      <ScrollView
-        className="flex-1"
+        <ScrollView
+          className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 240 }}
       >
@@ -268,41 +279,41 @@ const CartScreen = () => {
               <View className="p-4 flex-row">
                 {/* product image */}
                 <View className="relative">
-                  <Image
-                    source={{ uri: (typeof item.product.images?.[0] === "string" ? item.product.images[0] : item.product.images?.[0]?.url) || "https://placehold.co/400x400/1a1a2e/666?text=No+Image" }}
-                    className="bg-background-lighter"
-                    contentFit="cover"
-                    style={{ width: 112, height: 112, borderRadius: 16 }}
-                  />
+                    <Image
+                      source={{ uri: (typeof item.product.images?.[0] === "string" ? item.product.images[0] : item.product.images?.[0]?.url) || "https://placehold.co/400x400/1a1a2e/666?text=No+Image" }}
+                      className="bg-background-lighter"
+                      contentFit="cover"
+                      style={{ width: isTablet ? 140 : 112, height: isTablet ? 140 : 112, borderRadius: 16 }}
+                    />
                   <View className="absolute top-2 right-2 bg-primary rounded-full px-2 py-0.5">
                     <Text className="text-background text-xs font-bold">×{item.quantity}</Text>
                   </View>
                 </View>
 
-                <View className="flex-1 ml-4 justify-between">
+                <View className="flex-1 ml-4">
                   <View>
-                    <Text
-                      className="text-text-primary font-bold text-lg leading-tight"
-                      numberOfLines={2}
-                    >
-                      {item.product.name}
-                    </Text>
-                    <View className="flex-row items-center mt-2">
-                      <Text className="text-primary font-bold text-2xl">
-                        {formatCurrency((item.product.discountedPrice ?? item.product.price) * item.quantity, currency)}
+                      <Text
+                        className={`text-text-primary font-bold ${isTablet ? "text-xl" : "text-lg"} leading-tight`}
+                        numberOfLines={2}
+                      >
+                        {item.product.name}
                       </Text>
+                        <View className="flex-row items-baseline mt-2 flex-wrap">
+                        <Text className={`text-primary font-bold ${isTablet ? "text-3xl" : "text-2xl"}`}>
+                          {formatCurrency((item.product.discountedPrice ?? item.product.price) * item.quantity, currency)}
+                        </Text>
                       <Text className="text-text-secondary text-sm ml-2">
                         {formatCurrency(item.product.discountedPrice ?? item.product.price, currency)} each
                       </Text>
                       {item.product.hasActiveOffer && item.product.originalPrice && (
-                        <Text className="text-text-secondary text-xs line-through ml-2 font-semibold opacity-70">
+                        <Text className="text-text-secondary text-xs line-through ml-2 font-semibold opacity-70 mb-1">
                           {formatCurrency(item.product.originalPrice, currency)}
                         </Text>
                       )}
                     </View>
                   </View>
 
-                  <View className="flex-row items-center mt-3">
+                  <View className="flex-row items-center mt-auto pt-3 flex-wrap">
                     <TouchableOpacity
                       className="bg-background-lighter rounded-full w-9 h-9 items-center justify-center"
                       activeOpacity={0.7}
@@ -391,12 +402,19 @@ const CartScreen = () => {
           </View>
         </View>
 
-        <OrderSummary subtotal={subtotal} shipping={currentShipping} tax={taxAmount} total={total} />
+        <OrderSummary 
+          subtotal={subtotal} 
+          shippingFee={shippingFee} 
+          totalAmount={total}
+          discountAmount={discountAmount}
+          savings={savings}
+        />
       </ScrollView>
 
       <View
         className="absolute bottom-0 left-0 right-0 bg-background/95 backdrop-blur-xl border-t
-       border-surface pt-4 pb-32 px-6"
+         border-surface pt-4 pb-32 px-6"
+        style={{ maxWidth: 600, alignSelf: "center", width: "100%" }}
       >
         {/* Quick Stats */}
         <View className="flex-row items-center justify-between mb-4">
@@ -407,7 +425,7 @@ const CartScreen = () => {
             </Text>
           </View>
           <View className="flex-row items-center">
-            <Text className="text-text-primary font-bold text-xl">{formatCurrency(total, currency)}</Text>
+            <Text className="text-text-primary font-bold text-xl">{formatCurrency(total)}</Text>
           </View>
         </View>
 
@@ -437,6 +455,7 @@ const CartScreen = () => {
         onProceed={handleProceedWithPayment}
         isProcessing={paymentLoading}
       />
+      </View>
     </SafeScreen>
   );
 };
@@ -465,17 +484,22 @@ function ErrorUI() {
 }
 
 function EmptyUI() {
+  const { width } = useWindowDimensions();
+  const isTablet = width > 768;
+  
   return (
     <View className="flex-1 bg-background">
-      <View className="px-6 pt-16 pb-5">
-        <Text className="text-text-primary text-3xl font-bold tracking-tight">Cart</Text>
-      </View>
-      <View className="flex-1 items-center justify-center px-6">
-        <Ionicons name="cart-outline" size={80} color="#666" />
-        <Text className="text-text-primary font-semibold text-xl mt-4">Your cart is empty</Text>
-        <Text className="text-text-secondary text-center mt-2">
-          Add some products to get started
-        </Text>
+      <View style={{ maxWidth: 600, alignSelf: "center", width: "100%", flex: 1 }}>
+        <View className="px-6 pt-16 pb-5">
+          <Text className="text-text-primary text-3xl font-bold tracking-tight">Cart</Text>
+        </View>
+        <View className="flex-1 items-center justify-center px-6">
+          <Ionicons name="cart-outline" size={isTablet ? 120 : 80} color="#666" />
+          <Text className={`text-text-primary font-semibold ${isTablet ? "text-2xl" : "text-xl"} mt-4`}>Your cart is empty</Text>
+          <Text className={`text-text-secondary text-center mt-2 ${isTablet ? "text-lg" : "text-base"}`}>
+            Add some products to get started
+          </Text>
+        </View>
       </View>
     </View>
   );

@@ -67,7 +67,7 @@ export const OrderService = {
       title: paymentMethod === "cod" ? "Order Placed (Cash on Delivery)" : "Order Placed Successfully",
       message: paymentMethod === "cod" 
         ? "Your COD order has been received and is currently pending. Please have the amount ready at delivery."
-        : `Your order for ${order.pricing?.currencySymbol || 'Rs.'}${order.totalPrice.toFixed(2)} has been received and is currently pending.`,
+        : `Your order for ${order.pricing?.currencySymbol || 'Rs.'}${(order.pricing?.total || order.totalPrice).toFixed(2)} has been received and is currently pending.`,
       type: "ORDER_PLACED",
       entityId: order._id,
       entityModel: "Order",

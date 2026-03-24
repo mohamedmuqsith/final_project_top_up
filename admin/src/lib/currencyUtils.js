@@ -7,21 +7,15 @@
  * @param {string|null} currencySymbol - Optional override for the symbol.
  * @returns {string} Formatted string like "Rs. 1,499.00" or "$14.99".
  */
-export const formatCurrency = (amount, currencyCode = 'LKR', currencySymbol = null) => {
+export const formatCurrency = (amount, currencySymbol = 'Rs.') => {
   if (amount === null || amount === undefined || isNaN(amount)) {
-    return currencyCode?.toUpperCase() === 'USD' ? '$0.00' : 'Rs. 0.00';
+    return `${currencySymbol} 0.00`;
   }
-
-  const code = currencyCode?.toUpperCase() || 'LKR';
 
   const formatted = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
 
-  if (code === 'LKR') {
-    return `${currencySymbol || 'Rs.'} ${formatted}`;
-  }
-
-  return `${currencySymbol || '$'}${formatted}`;
+  return `${currencySymbol} ${formatted}`;
 };

@@ -23,22 +23,35 @@ export async function createPaymentIntent(req, res) {
       shippingAddress.postalCode = shippingAddress.zipCode;
     }
 
-    const { validatedItems, subtotal, shipping, tax, total, currency, currencySymbol } = await validateCartItems(cartItems);
+    const pricing = await validateCartItems(cartItems, false);
 
     // 1. Create PENDING Order in DB (Source of Truth with Snapshot)
     const order = await Order.create({
       user: user._id,
       clerkId: user.clerkId,
-      orderItems: validatedItems,
+      orderItems: pricing.validatedItems,
       shippingAddress,
-      totalPrice: total,
+      totalPrice: pricing.total,
       pricing: {
-        subtotal,
-        shippingFee: shipping,
-        tax,
-        total,
-        currency: currency?.toLowerCase() || "lkr",
-        currencySymbol: currencySymbol || "Rs."
+        subtotal: pricing.subtotal,
+        originalSubtotal: pricing.originalSubtotal,
+        discountAmount: pricing.discountAmount,
+        shippingFee: pricing.shippingFee,
+        total: pricing.total,
+        savings: pricing.savings,
+        extractedVat: pricing.extractedVat,
+        vatRate: pricing.vatRate,
+        taxIncluded: true,
+        currency: pricing.currency,
+        currencySymbol: pricing.currencySymbol,
+        appliedOffers: pricing.appliedOffers,
+        appliedCoupon: pricing.appliedCoupon ? {
+          code: pricing.appliedCoupon.code,
+          title: pricing.appliedCoupon.title,
+          discountType: pricing.appliedCoupon.discountType,
+          value: pricing.appliedCoupon.value,
+          discountGiven: pricing.appliedCoupon.discountGiven,
+        } : undefined,
       },
       paymentMethod: "online",
       paymentStatus: "pending",
@@ -72,8 +85,8 @@ export async function createPaymentIntent(req, res) {
 
     // create payment intent
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(total * 100), // convert to cents
-      currency: currency?.toLowerCase() || "usd",
+      amount: Math.round(pricing.total * 100), // convert to cents
+      currency: pricing.currency?.toLowerCase() || "lkr",
       customer: customer.id,
       automatic_payment_methods: {
         enabled: true,
@@ -82,7 +95,7 @@ export async function createPaymentIntent(req, res) {
         orderId: order._id.toString(),
         userId: user._id.toString(),
         clerkId: user.clerkId,
-        totalPrice: total.toFixed(2),
+        totalPrice: pricing.total.toFixed(2),
       },
       // in the webhooks section we will use this metadata
     });
@@ -171,22 +184,35 @@ export const createCodOrder = async (req, res) => {
       shippingAddress.postalCode = shippingAddress.zipCode;
     }
 
-    const { validatedItems, subtotal, shipping, tax, total, currency, currencySymbol } = await validateCartItems(cartItems);
+    const pricing = await validateCartItems(cartItems, false);
 
     // 2. Create Order (starts as Pending/Pending per refined rules)
     const order = await Order.create({
       user: req.user._id,
       clerkId: req.user.clerkId,
-      orderItems: validatedItems,
+      orderItems: pricing.validatedItems,
       shippingAddress,
-      totalPrice: total,
+      totalPrice: pricing.total,
       pricing: {
-        subtotal,
-        shippingFee: shipping,
-        tax,
-        total,
-        currency: currency?.toLowerCase() || "lkr",
-        currencySymbol: currencySymbol || "Rs."
+        subtotal: pricing.subtotal,
+        originalSubtotal: pricing.originalSubtotal,
+        discountAmount: pricing.discountAmount,
+        shippingFee: pricing.shippingFee,
+        total: pricing.total,
+        savings: pricing.savings,
+        extractedVat: pricing.extractedVat,
+        vatRate: pricing.vatRate,
+        taxIncluded: true,
+        currency: pricing.currency,
+        currencySymbol: pricing.currencySymbol,
+        appliedOffers: pricing.appliedOffers,
+        appliedCoupon: pricing.appliedCoupon ? {
+          code: pricing.appliedCoupon.code,
+          title: pricing.appliedCoupon.title,
+          discountType: pricing.appliedCoupon.discountType,
+          value: pricing.appliedCoupon.value,
+          discountGiven: pricing.appliedCoupon.discountGiven,
+        } : undefined,
       },
       paymentMethod: "cod",
       paymentStatus: "pending",

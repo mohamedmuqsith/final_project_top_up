@@ -5,8 +5,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useCurrency } from "@/components/CurrencyProvider";
+import { formatCurrency } from "@/lib/currencyUtils";
 
 function WishlistScreen() {
+  const { currency } = useCurrency();
   const { wishlist, isLoading, isError, removeFromWishlist, isRemovingFromWishlist } =
     useWishlist();
 
@@ -90,13 +93,39 @@ function WishlistScreen() {
                     style={{ width: 96, height: 96, borderRadius: 8 }}
                   />
 
-                  <View className="flex-1 ml-4">
-                    <Text className="text-text-primary font-bold text-base mb-2" numberOfLines={2}>
-                      {item.name}
-                    </Text>
-                    <Text className="text-primary font-bold text-xl mb-2">
-                      ${item.price.toFixed(2)}
-                    </Text>
+                  <View className="flex-1 ml-4 justify-center">
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-text-primary font-bold text-base mb-1 flex-1 pr-2" numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      <TouchableOpacity
+                        className="bg-red-500/10 p-1.5 rounded-full"
+                        activeOpacity={0.7}
+                        onPress={() => handleRemoveFromWishlist(item._id, item.name)}
+                        disabled={isRemovingFromWishlist}
+                      >
+                        <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <View className="flex-row items-baseline gap-2 mb-2">
+                      <Text className="text-primary font-bold text-lg">
+                        {formatCurrency(item.discountedPrice ?? item.price, currency)}
+                      </Text>
+                      {item.hasActiveOffer && item.originalPrice && (
+                        <Text className="text-text-secondary text-xs line-through opacity-60">
+                          {formatCurrency(item.originalPrice, currency)}
+                        </Text>
+                      )}
+                    </View>
+
+                    {item.hasActiveOffer && (
+                      <View className="bg-primary/20 self-start px-2 py-0.5 rounded-md mb-2">
+                        <Text className="text-primary text-[10px] font-bold uppercase">
+                          {item.offerLabel || "Special Offer"}
+                        </Text>
+                      </View>
+                    )}
 
                     {item.stock > 0 ? (
                       <View className="flex-row items-center">
@@ -113,14 +142,6 @@ function WishlistScreen() {
                     )}
                   </View>
 
-                  <TouchableOpacity
-                    className="self-start bg-red-500/20 p-2 rounded-full"
-                    activeOpacity={0.7}
-                    onPress={() => handleRemoveFromWishlist(item._id, item.name)}
-                    disabled={isRemovingFromWishlist}
-                  >
-                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                  </TouchableOpacity>
                 </View>
                 {item.stock > 0 && (
                   <View className="px-4 pb-4">

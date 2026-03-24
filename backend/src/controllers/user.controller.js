@@ -1,4 +1,5 @@
 import { User } from "../models/user.model.js";
+import { enrichProductsWithPrices } from "../services/pricing.service.js";
 
 export async function addAddress(req, res) {
   try {
@@ -150,8 +151,11 @@ export async function getWishlist(req, res) {
   try {
     // we're using populate, because wishlist is just an array of product ids
     const user = await User.findById(req.user._id).populate("wishlist");
+    
+    // Enrich with pricing
+    const enrichedWishlist = await enrichProductsWithPrices(user.wishlist);
 
-    res.status(200).json({ wishlist: user.wishlist });
+    res.status(200).json({ wishlist: enrichedWishlist });
   } catch (error) {
     console.error("Error in getWishlist controller:", error);
     res.status(500).json({ error: "Internal server error" });

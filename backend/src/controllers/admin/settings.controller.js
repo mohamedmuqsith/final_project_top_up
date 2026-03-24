@@ -53,13 +53,27 @@ export const getPublicSettings = async (req, res) => {
 
     // Only return non-sensitive info
     res.status(200).json({
-      storeName: settings.storeName,
-      storeEmail: settings.storeEmail,
-      storePhone: settings.storePhone,
-      currency: settings.localization.currency,
-      currencySymbol: settings.localization.currencySymbol,
-      shipping: settings.shipping,
-      tax: settings.tax,
+      storeProfile: {
+        name: settings.storeName,
+        email: settings.storeEmail,
+        phone: settings.storePhone,
+        address: settings.storeAddress || {},
+      },
+      localization: {
+        currency: settings.localization.currency,
+        currencySymbol: settings.localization.currencySymbol,
+        timezone: settings.localization.timezone || "Asia/Colombo",
+      },
+      shipping: {
+        ...settings.shipping.toObject(),
+        baseFee: settings.shipping.defaultFee,
+        freeShippingThreshold: settings.shipping.freeThreshold,
+      },
+      tax: {
+        rate: settings.tax.rate,
+        enabled: settings.tax.enabled,
+        label: settings.tax.label,
+      },
     });
   } catch (error) {
     console.error("Error in getPublicSettings:", error);

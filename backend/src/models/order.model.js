@@ -144,12 +144,35 @@ const orderSchema = new mongoose.Schema(
     },
     pricing: {
       subtotal: { type: Number, min: 0 },
+      originalSubtotal: { type: Number, min: 0 },
+      discountAmount: { type: Number, default: 0, min: 0 },
       shippingFee: { type: Number, min: 0 },
-      tax: { type: Number, min: 0 },
       discount: { type: Number, default: 0, min: 0 },
       total: { type: Number, min: 0 },
+      savings: { type: Number, default: 0 },
+      netAmount: { type: Number },
+      vatRate: { type: Number, default: 15 },
+      extractedVat: { type: Number },
+      taxIncluded: { type: Boolean, default: true },
       currency: { type: String, default: "LKR" },
       currencySymbol: { type: String, default: "Rs." },
+      appliedCoupon: {
+        code: String,
+        title: String,
+        discountType: String,
+        value: Number,
+        discountGiven: Number,
+      },
+      appliedOffers: [{
+        offerId: { type: mongoose.Schema.Types.ObjectId, ref: "Offer" },
+        title: String,
+        type: { type: String },
+        value: Number,
+        scope: String,
+      }],
+      // Legacy compatibility
+      taxAmount: { type: Number },
+      totalAmount: { type: Number },
     },
     shippingDetails: {
       method: { 
@@ -177,18 +200,32 @@ orderSchema.virtual("delivery").get(function() {
 });
 
 orderSchema.post("init", function(doc) {
-  if (!doc.pricing || !doc.pricing.total) {
-    const subtotal = doc.orderItems?.reduce((s, i) => s + (i.price * i.quantity), 0) || 0;
-    doc.pricing = {
-      subtotal: subtotal,
-      shippingFee: 0, // Fallback for legacy
-      tax: 0,         // Fallback for legacy
-      discount: 0,
-      total: doc.totalPrice || subtotal,
-      currency: "LKR",
-      currencySymbol: "Rs.",
-      isLegacy: true
-    };
+  if (!doc.pricing) {
+    doc.pricing = { subtotal: 0, shippingFee: 0, total: 0 };
+  }
+
+  // Support legacy fields
+  const subtotal = doc.pricing.subtotal || doc.get("pricing.subtotal") || 0;
+  const shipping = doc.pricing.shippingFee || doc.get("pricing.shippingFee") || doc.get("pricing.shipping") || 0;
+  const total = doc.pricing.total || doc.get("pricing.total") || doc.pricing.totalAmount || doc.totalPrice || 0;
+
+  // Standardization
+  doc.pricing.subtotal = subtotal;
+  doc.pricing.shippingFee = shipping;
+  doc.pricing.total = total;
+  doc.pricing.currency = "LKR";
+  doc.pricing.currencySymbol = "Rs.";
+
+  // Tax-Inclusive Logic (15% extraction)
+  doc.pricing.taxIncluded = true;
+  doc.pricing.vatRate = doc.pricing.vatRate || doc.pricing.taxRate || 15;
+  const rate = doc.pricing.vatRate;
+  
+  if (!doc.pricing.extractedVat || doc.pricing.extractedVat === 0) {
+    doc.pricing.extractedVat = subtotal * (rate / (100 + rate));
+  }
+  if (!doc.pricing.netAmount || doc.pricing.netAmount === 0) {
+    doc.pricing.netAmount = subtotal - (doc.pricing.extractedVat || 0);
   }
 });
 
