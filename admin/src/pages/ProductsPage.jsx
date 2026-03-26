@@ -28,6 +28,14 @@ const CATEGORIES = [
   "Cameras", "Storage", "Networking", "Monitors", "Computer Components"
 ];
 
+const BRANDS = [
+  "Apple", "Samsung", "Sony", "LG", "Google", "Microsoft", "Dell", "HP",
+  "ASUS", "Lenovo", "Acer", "Nikon", "Canon", "GoPro", "Logitech", "Razer",
+  "Beats", "Bose", "JBL", "Sennheiser", "Kingston", "WD", "Seagate",
+  "SanDisk", "TP-Link", "Netgear", "Xiaomi", "Huawei", "OnePlus", "Oppo",
+  "Vivo", "Realme", "Motorola", "Nokia", "Amazon", "Other"
+];
+
 function HistoryModal({ productId, onClose }) {
   const { data: history = [], isLoading } = useQuery({
     queryKey: ["inventory-history", productId],
@@ -102,9 +110,13 @@ function ProductsPage() {
     category: "",
     price: "",
     stock: "",
+    sku: "",
+    brand: "",
     lowStockThreshold: "",
     description: "",
   });
+  const [isOtherBrand, setIsOtherBrand] = useState(false);
+  const [customBrand, setCustomBrand] = useState("");
   const [images, setImages] = useState([]); // File objects for new uploads
   const [existingImages, setExistingImages] = useState([]); // URLs for already uploaded images
   const [imagePreviews, setImagePreviews] = useState([]); // Generated blob URLs for new files
@@ -182,12 +194,16 @@ function ProductsPage() {
       category: "",
       price: "",
       stock: "",
+      sku: "",
+      brand: "",
       lowStockThreshold: "",
       description: "",
     });
     setImages([]);
     setImagePreviews([]);
     setExistingImages([]);
+    setIsOtherBrand(false);
+    setCustomBrand("");
   };
 
   const handleEdit = (product) => {
@@ -197,6 +213,8 @@ function ProductsPage() {
       category: product.category,
       price: product.price.toString(),
       stock: product.stock.toString(),
+      sku: product.sku || "",
+      brand: product.brand || "",
       lowStockThreshold: product.lowStockThreshold
         ? product.lowStockThreshold.toString()
         : "",
@@ -205,6 +223,18 @@ function ProductsPage() {
     setExistingImages(product.images || []);
     setImages([]);
     setImagePreviews([]);
+    
+    // Check if the brand is custom
+    const isPredefined = BRANDS.includes(product.brand);
+    if (product.brand && !isPredefined) {
+      setIsOtherBrand(true);
+      setCustomBrand(product.brand);
+      setFormData(prev => ({ ...prev, brand: "Other" }));
+    } else {
+      setIsOtherBrand(false);
+      setCustomBrand("");
+    }
+    
     setShowModal(true);
   };
 
@@ -254,6 +284,8 @@ function ProductsPage() {
     if (formData.lowStockThreshold) {
       formDataToSend.append("lowStockThreshold", formData.lowStockThreshold);
     }
+    formDataToSend.append("sku", formData.sku);
+    formDataToSend.append("brand", isOtherBrand ? customBrand : formData.brand);
     formDataToSend.append("category", formData.category);
 
     // Send existing images to keep
@@ -438,6 +470,8 @@ function ProductsPage() {
                           </h3>
                           <p className="text-sm text-base-content/60 mt-1">
                             {product.category}
+                            {product.sku && <span className="ml-2 px-2 py-0.5 rounded bg-base-200 text-[10px] font-bold text-base-content/40 uppercase tracking-tighter">SKU: {product.sku}</span>}
+                            {!product.sku && <span className="ml-2 px-2 py-0.5 rounded bg-base-200/50 text-[10px] font-bold text-base-content/30 uppercase tracking-tighter border border-dashed border-base-300">No SKU</span>}
                           </p>
                         </div>
 
@@ -646,6 +680,74 @@ function ProductsPage() {
                           }
                           required
                         />
+                      </div>
+
+                      <div className="form-control">
+                        <label className="label pb-2">
+                           <div className="flex items-center gap-2">
+                            <span className="label-text font-semibold text-base-content">
+                              Product SKU
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-base-200 text-base-content/50 uppercase tracking-tighter">
+                              Optional
+                            </span>
+                          </div>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g., AP-IP15P-BLK"
+                          className="input input-bordered w-full rounded-2xl h-13 bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          value={formData.sku}
+                          onChange={(e) =>
+                            setFormData({ ...formData, sku: e.target.value })
+                          }
+                        />
+                      </div>
+
+                      <div className="form-control">
+                        <label className="label pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="label-text font-semibold text-base-content">
+                              Brand
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-base-200 text-base-content/50 uppercase tracking-tighter">
+                              Optional
+                            </span>
+                          </div>
+                        </label>
+                        <select
+                          className="select select-bordered w-full rounded-2xl bg-base-200/40 border-base-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          value={formData.brand}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFormData({ ...formData, brand: val });
+                            setIsOtherBrand(val === "Other");
+                            if (val !== "Other") setCustomBrand("");
+                          }}
+                        >
+                          <option value="">Choose a brand</option>
+                          {BRANDS.map((brand) => (
+                            <option key={brand} value={brand}>
+                              {brand}
+                            </option>
+                          ))}
+                        </select>
+                        
+                        {isOtherBrand && (
+                          <div className="mt-3 animate-in fade-in slide-in-from-top-1 duration-300">
+                             <label className="label py-1">
+                              <span className="label-text-alt font-black uppercase tracking-widest text-primary/60">New Brand Name</span>
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Type brand name..."
+                              className="input input-bordered w-full rounded-2xl h-11 bg-primary/5 border-primary/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10 font-bold"
+                              value={customBrand}
+                              onChange={(e) => setCustomBrand(e.target.value)}
+                              required={isOtherBrand}
+                            />
+                          </div>
+                        )}
                       </div>
 
                       <div className="form-control">

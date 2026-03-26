@@ -60,6 +60,14 @@ const productSchema = new mongoose.Schema(
         },
       },
     ],
+    brand: {
+      type: String,
+    },
+    sku: {
+      type: String,
+      sparse: true,
+      trim: true,
+    },
     averageRating: {
       type: Number,
       min: 0,
@@ -73,5 +81,8 @@ const productSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+productSchema.index({ sku: 1 }, { sparse: true });
+productSchema.index({ category: 1 });
 
 export const Product = mongoose.model("Product", productSchema);
