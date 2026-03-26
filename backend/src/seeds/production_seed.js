@@ -949,17 +949,104 @@ const catalog = {
   ]
 };
 
+const getBrandFromName = (name) => {
+  const nameLower = name.toLowerCase();
+  if (nameLower.startsWith("apple")) return "Apple";
+  if (nameLower.startsWith("samsung")) return "Samsung";
+  if (nameLower.startsWith("google nest")) return "Google";
+  if (nameLower.startsWith("google pixel")) return "Google";
+  if (nameLower.startsWith("tp-link")) return "TP-Link";
+  if (nameLower.startsWith("hp spectre")) return "HP";
+  if (nameLower.startsWith("hp omen")) return "HP";
+  if (nameLower.startsWith("asus")) return "ASUS";
+  if (nameLower.startsWith("dell")) return "Dell";
+  if (nameLower.startsWith("lenovo")) return "Lenovo";
+  if (nameLower.startsWith("acer")) return "Acer";
+  if (nameLower.startsWith("microsoft")) return "Microsoft";
+  if (nameLower.startsWith("razer")) return "Razer";
+  if (nameLower.startsWith("xiaomi")) return "Xiaomi";
+  if (nameLower.startsWith("oneplus")) return "OnePlus";
+  if (nameLower.startsWith("nothing")) return "Nothing";
+  if (nameLower.startsWith("motorola")) return "Motorola";
+  if (nameLower.startsWith("sony")) return "Sony";
+  if (nameLower.startsWith("bose")) return "Bose";
+  if (nameLower.startsWith("jbl")) return "JBL";
+  if (nameLower.startsWith("anker")) return "Anker";
+  if (nameLower.startsWith("sennheiser")) return "Sennheiser";
+  if (nameLower.startsWith("marshall")) return "Marshall";
+  if (nameLower.startsWith("skullcandy")) return "Skullcandy";
+  if (nameLower.startsWith("beats")) return "Beats";
+  if (nameLower.startsWith("jabra")) return "Jabra";
+  if (nameLower.startsWith("ultimate ears")) return "Ultimate Ears";
+  if (nameLower.startsWith("harman kardon")) return "Harman Kardon";
+  if (nameLower.startsWith("tribit")) return "Tribit";
+  if (nameLower.startsWith("lg")) return "LG";
+  if (nameLower.startsWith("playstation")) return "Sony";
+  if (nameLower.startsWith("xbox")) return "Microsoft";
+  if (nameLower.startsWith("nintendo")) return "Nintendo";
+  if (nameLower.startsWith("steam deck")) return "Valve";
+  if (nameLower.startsWith("logitech")) return "Logitech";
+  if (nameLower.startsWith("belkin")) return "Belkin";
+  if (nameLower.startsWith("spigen")) return "Spigen";
+  if (nameLower.startsWith("baseus")) return "Baseus";
+  if (nameLower.startsWith("amazon")) return "Amazon";
+  if (nameLower.startsWith("garmin")) return "Garmin";
+  if (nameLower.startsWith("amazfit")) return "Amazfit";
+  if (nameLower.startsWith("fitbit")) return "Google";
+  if (nameLower.startsWith("canon")) return "Canon";
+  if (nameLower.startsWith("fujifilm")) return "Fujifilm";
+  if (nameLower.startsWith("panasonic")) return "Panasonic";
+  if (nameLower.startsWith("gopro")) return "GoPro";
+  if (nameLower.startsWith("dji")) return "DJI";
+  if (nameLower.startsWith("insta360")) return "Insta360";
+  if (nameLower.startsWith("wd")) return "WD";
+  if (nameLower.startsWith("seagate")) return "Seagate";
+  if (nameLower.startsWith("kingston")) return "Kingston";
+  if (nameLower.startsWith("sandisk")) return "SanDisk";
+  if (nameLower.startsWith("crucial")) return "Crucial";
+  if (nameLower.startsWith("netgear")) return "Netgear";
+  if (nameLower.startsWith("linksys")) return "Linksys";
+  if (nameLower.startsWith("d-link")) return "D-Link";
+  if (nameLower.startsWith("tenda")) return "Tenda";
+  if (nameLower.startsWith("mercusys")) return "Mercusys";
+  if (nameLower.startsWith("benq")) return "BenQ";
+  if (nameLower.startsWith("msi")) return "MSI";
+  if (nameLower.startsWith("gigabyte")) return "Gigabyte";
+  if (nameLower.startsWith("viewsonic")) return "ViewSonic";
+  if (nameLower.startsWith("nvidia")) return "NVIDIA";
+  if (nameLower.startsWith("intel")) return "Intel";
+  if (nameLower.startsWith("amd")) return "AMD";
+  if (nameLower.startsWith("corsair")) return "Corsair";
+  if (nameLower.startsWith("cooler master")) return "Cooler Master";
+  
+  return name.split(" ")[0];
+};
+
+const generateSku = (name, category, index) => {
+  const brand = getBrandFromName(name);
+  const catCode = category.substring(0, 3).toUpperCase();
+  const brandCode = brand.replace(/[^a-zA-Z]/g, "").substring(0, 3).toUpperCase();
+  // Get last word and sanitize it for SKU
+  const lastWord = name.split(" ").pop().replace(/[^a-zA-Z0-9]/g, "").substring(0, 4).toUpperCase();
+  return `${brandCode}-${catCode}-${lastWord}-${100 + index}`;
+};
+
 const generateProducts = () => {
   const products = [];
 
   Object.entries(catalog).forEach(([category, items]) => {
     items.forEach((item, index) => {
+      const brand = getBrandFromName(item.name);
+      const sku = generateSku(item.name, category, index);
+
       products.push({
         name: item.name,
         description: item.description,
         price: item.price,
         stock: 20 + ((index + 1) * 2),
         category,
+        brand,
+        sku,
         images: [
           {
             url: item.imageUrl,

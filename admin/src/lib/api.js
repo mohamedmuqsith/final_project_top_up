@@ -108,8 +108,18 @@ export const inventoryApi = {
 };
 
 export const salesReportApi = {
-  get: async (range = "30d") => {
-    const { data } = await axiosInstance.get(`/admin/sales-report?range=${range}`);
+  get: async (params) => {
+    const searchParams = new URLSearchParams();
+    if (typeof params === "string") {
+      searchParams.append("range", params);
+    } else if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          searchParams.append(key, value);
+        }
+      });
+    }
+    const { data } = await axiosInstance.get(`/admin/sales-report?${searchParams.toString()}`);
     return data;
   },
 };

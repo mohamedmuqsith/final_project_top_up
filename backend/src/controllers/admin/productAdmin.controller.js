@@ -9,7 +9,7 @@ import { InventoryService } from "../../services/inventory.service.js";
 // @route   POST /api/admin/products
 export const createProduct = async (req, res) => {
   try {
-    const { name, description, price, category, stock, lowStockThreshold, color, size, brand, isFeatured, discountPrice } = req.body;
+    const { name, description, price, category, stock, lowStockThreshold, color, size, brand, sku, isFeatured, discountPrice } = req.body;
     
     // Process images
     let images = [];
@@ -37,6 +37,7 @@ export const createProduct = async (req, res) => {
       color,
       size,
       brand,
+      sku,
       isFeatured: isFeatured === "true" || isFeatured === true,
       discountPrice
     });
@@ -194,7 +195,8 @@ export const getAllProducts = async (req, res) => {
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: "i" } },
-        { brand: { $regex: search, $options: "i" } }
+        { brand: { $regex: search, $options: "i" } },
+        { sku: { $regex: search, $options: "i" } }
       ];
     }
 

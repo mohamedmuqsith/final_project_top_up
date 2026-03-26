@@ -156,11 +156,30 @@ export const getDashboardStats = async (req, res) => {
 // @desc    Get sales report with time series and comparisons
 export const getSalesReport = async (req, res) => {
   try {
-    const { range } = req.query; // 30d, 90d, ytd
-    const now = new Date();
-    let currentStartDate, previousStartDate, dateFormat, groupLabel;
+    const { 
+      range, 
+      startDate: queryStartDate, 
+      endDate: queryEndDate, 
+      category, 
+      brand, 
+      orderStatus, 
+      paymentMethod,
+      search 
+    } = req.query;
 
-    if (range === "90d") {
+    const now = new Date();
+    let currentStartDate, currentEndDate = now, previousStartDate, dateFormat, groupLabel;
+
+    // 1. Time Range Logic
+    if (queryStartDate && queryEndDate) {
+      currentStartDate = new Date(queryStartDate);
+      currentEndDate = new Date(queryEndDate);
+      const diffDays = Math.ceil(Math.abs(currentEndDate - currentStartDate) / (1000 * 60 * 60 * 24)) || 1;
+      previousStartDate = new Date(currentStartDate);
+      previousStartDate.setDate(previousStartDate.getDate() - diffDays);
+      dateFormat = "%Y-%m-%d";
+      groupLabel = "custom";
+    } else if (range === "90d") {
       currentStartDate = new Date(now);
       currentStartDate.setDate(currentStartDate.getDate() - 90);
       previousStartDate = new Date(currentStartDate);
@@ -173,6 +192,7 @@ export const getSalesReport = async (req, res) => {
       dateFormat = "%Y-%m";
       groupLabel = "monthly";
     } else {
+      // Default 30d
       currentStartDate = new Date(now);
       currentStartDate.setDate(currentStartDate.getDate() - 30);
       previousStartDate = new Date(currentStartDate);
@@ -181,48 +201,76 @@ export const getSalesReport = async (req, res) => {
       groupLabel = "daily";
     }
 
-    const getSummary = async (start, end) => {
+    // 2. Base Match Filter for Orders
+    const buildOrderMatch = (start, end) => {
       const match = { createdAt: { $gte: start } };
-      if (end) match.createdAt.$lt = end;
+      if (end) match.createdAt.$lte = end;
+      if (orderStatus && orderStatus !== "All") match.status = orderStatus;
+      if (paymentMethod && paymentMethod !== "All") match.paymentMethod = paymentMethod;
+      return match;
+    };
 
+    const currentOrderMatch = buildOrderMatch(currentStartDate, currentEndDate);
+    const previousOrderMatch = buildOrderMatch(previousStartDate, currentStartDate);
+
+    // 3. Summary Aggregation Helper (Dry)
+    const getDetailedSummary = async (match) => {
       const agg = await Order.aggregate([
         {
           $facet: {
             revenueStats: [
               { $match: { ...match, paymentStatus: "paid", status: { $ne: "cancelled" } } },
-              { $group: { _id: null, totalRevenue: { $sum: "$totalPrice" }, totalConfirmedSales: { $sum: 1 } } }
+              { $group: { 
+                _id: null, 
+                netRevenue: { $sum: "$totalPrice" }, 
+                confirmedSales: { $sum: 1 },
+                itemsSold: { $sum: { $sum: "$orderItems.quantity" } }
+              } }
             ],
-            totalStats: [
+            grossStats: [
               { $match: match },
-              { $group: { _id: null, totalOrders: { $sum: 1 }, cancelledOrders: { $sum: { $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0] } } } }
+              { $group: { 
+                _id: null, 
+                grossRevenue: { $sum: "$totalPrice" }, 
+                totalOrders: { $sum: 1 }, 
+                cancelledOrders: { $sum: { $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0] } },
+                refundedCount: { $sum: { $cond: [{ $eq: ["$paymentStatus", "refunded"] }, 1, 0] } },
+                refundAmount: { $sum: { $cond: [{ $eq: ["$paymentStatus", "refunded"] }, "$totalPrice", 0] } },
+                returnedCount: { $sum: { $cond: [{ $eq: ["$status", "returned"] }, 1, 0] } }
+              } }
             ]
           }
         },
         {
           $project: {
-            totalRevenue: { $ifNull: [{ $arrayElemAt: ["$revenueStats.totalRevenue", 0] }, 0] },
-            totalConfirmedSales: { $ifNull: [{ $arrayElemAt: ["$revenueStats.totalConfirmedSales", 0] }, 0] },
-            totalOrders: { $ifNull: [{ $arrayElemAt: ["$totalStats.totalOrders", 0] }, 0] },
-            cancelledOrders: { $ifNull: [{ $arrayElemAt: ["$totalStats.cancelledOrders", 0] }, 0] }
+            netRevenue: { $ifNull: [{ $arrayElemAt: ["$revenueStats.netRevenue", 0] }, 0] },
+            confirmedSales: { $ifNull: [{ $arrayElemAt: ["$revenueStats.confirmedSales", 0] }, 0] },
+            itemsSold: { $ifNull: [{ $arrayElemAt: ["$revenueStats.itemsSold", 0] }, 0] },
+            grossRevenue: { $ifNull: [{ $arrayElemAt: ["$grossStats.grossRevenue", 0] }, 0] },
+            totalOrders: { $ifNull: [{ $arrayElemAt: ["$grossStats.totalOrders", 0] }, 0] },
+            cancelledOrders: { $ifNull: [{ $arrayElemAt: ["$grossStats.cancelledOrders", 0] }, 0] },
+            refundedCount: { $ifNull: [{ $arrayElemAt: ["$grossStats.refundedCount", 0] }, 0] },
+            refundAmount: { $ifNull: [{ $arrayElemAt: ["$grossStats.refundAmount", 0] }, 0] },
+            returnedCount: { $ifNull: [{ $arrayElemAt: ["$grossStats.returnedCount", 0] }, 0] }
           }
         }
       ]);
-      return agg[0] || { totalRevenue: 0, totalConfirmedSales: 0, totalOrders: 0, cancelledOrders: 0 };
+      return agg[0] || { netRevenue: 0, confirmedSales: 0, itemsSold: 0, grossRevenue: 0, totalOrders: 0, cancelledOrders: 0, refundedCount: 0, refundAmount: 0, returnedCount: 0 };
     };
 
-    const currentSummary = await getSummary(currentStartDate);
-    const previousSummary = await getSummary(previousStartDate, currentStartDate);
+    const currentSummary = await getDetailedSummary(currentOrderMatch);
+    const previousSummary = await getDetailedSummary(previousOrderMatch);
 
     const calcChange = (curr, prev) => (prev ? ((curr - prev) / prev) * 100 : (curr > 0 ? 100 : 0));
 
-    const avgOrderValue = currentSummary.totalConfirmedSales ? (currentSummary.totalRevenue / currentSummary.totalConfirmedSales) : 0;
-    const prevAvgOrderValue = previousSummary.totalConfirmedSales ? (previousSummary.totalRevenue / previousSummary.totalConfirmedSales) : 0;
+    const avgOrderValue = currentSummary.confirmedSales ? (currentSummary.netRevenue / currentSummary.confirmedSales) : 0;
+    const prevAvgOrderValue = previousSummary.confirmedSales ? (previousSummary.netRevenue / previousSummary.confirmedSales) : 0;
     const cancellationRate = currentSummary.totalOrders ? ((currentSummary.cancelledOrders / currentSummary.totalOrders) * 100) : 0;
     const prevCancellationRate = previousSummary.totalOrders ? ((previousSummary.cancelledOrders / previousSummary.totalOrders) * 100) : 0;
 
-    // Get Chart Data
+    // 4. Time Series Chart Data
     const chartData = await Order.aggregate([
-      { $match: { createdAt: { $gte: currentStartDate }, paymentStatus: "paid", status: { $ne: "cancelled" } } },
+      { $match: { ...currentOrderMatch, paymentStatus: "paid", status: { $ne: "cancelled" } } },
       {
         $group: {
           _id: { $dateToString: { format: dateFormat, date: "$createdAt" } },
@@ -234,45 +282,12 @@ export const getSalesReport = async (req, res) => {
       { $project: { _id: 0, date: "$_id", revenue: 1, orders: 1 } }
     ]);
 
-    // Top Products (Corrected productId -> product in Phase 9)
-    const topProducts = await Order.aggregate([
-      { $match: { createdAt: { $gte: currentStartDate }, paymentStatus: "paid", status: { $ne: "cancelled" } } },
-      { $unwind: "$orderItems" },
-      {
-        $group: {
-          _id: "$orderItems.product",
-          name: { $first: "$orderItems.name" },
-          image: { $first: "$orderItems.image" },
-          unitsSold: { $sum: "$orderItems.quantity" },
-          revenue: { $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] } }
-        }
-      },
-      {
-        $lookup: {
-          from: "products",
-          localField: "_id",
-          foreignField: "_id",
-          as: "productInfo"
-        }
-      },
-      { $unwind: "$productInfo" },
-      {
-        $project: {
-          _id: 1,
-          name: 1,
-          image: 1,
-          unitsSold: 1,
-          revenue: 1,
-          stock: "$productInfo.stock"
-        }
-      },
-      { $sort: { revenue: -1 } },
-      { $limit: 5 }
-    ]);
-
-    // Top Categories
-    const topCategories = await Order.aggregate([
-      { $match: { createdAt: { $gte: currentStartDate }, paymentStatus: "paid", status: { $ne: "cancelled" } } },
+    // 5. Product Performance Aggregation (REAL Order Items)
+    const productPerformanceMatch = { ...currentOrderMatch, paymentStatus: "paid", status: { $ne: "cancelled" } };
+    
+    // 5. Unified Product, Brand, & Category Performance Aggregation
+    const baseAggPipeline = [
+      { $match: productPerformanceMatch },
       { $unwind: "$orderItems" },
       {
         $lookup: {
@@ -282,43 +297,210 @@ export const getSalesReport = async (req, res) => {
           as: "productInfo"
         }
       },
-      { $unwind: "$productInfo" },
+      { $unwind: { path: "$productInfo", preserveNullAndEmptyArrays: true } }
+    ];
+
+    // Apply Filters at Item level
+    const itemFilters = {};
+    if (category && category !== "All") itemFilters["productInfo.category"] = category;
+    if (brand && brand !== "All") itemFilters["productInfo.brand"] = brand;
+    if (search) {
+      itemFilters["$or"] = [
+        { "orderItems.name": { $regex: search, $options: "i" } },
+        { "productInfo.sku": { $regex: search, $options: "i" } },
+        { "productInfo.brand": { $regex: search, $options: "i" } }
+      ];
+    }
+    if (Object.keys(itemFilters).length > 0) {
+      baseAggPipeline.push({ $match: itemFilters });
+    }
+
+    // A. Product-level Performance
+    const productPerformance = await Order.aggregate([
+      ...baseAggPipeline,
       {
         $group: {
-          _id: "$productInfo.category",
+          _id: "$orderItems.product",
+          name: { $first: "$orderItems.name" },
+          image: { $first: "$orderItems.image" },
+          category: { $first: "$productInfo.category" },
+          brand: { $first: "$productInfo.brand" },
+          sku: { $first: "$productInfo.sku" },
+          unitsSold: { $sum: "$orderItems.quantity" },
+          revenue: { $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] } },
+          totalPriceSum: { $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] } },
+          stock: { $first: "$productInfo.stock" },
+          lowStockThreshold: { $first: "$productInfo.lowStockThreshold" }
+        }
+      },
+      {
+        $addFields: {
+          avgPrice: { $cond: [{ $gt: ["$unitsSold", 0] }, { $divide: ["$revenue", "$unitsSold"] }, 0] },
+          stockRisk: {
+            $cond: [
+              { $lte: ["$stock", 0] }, "Out of Stock",
+              { $cond: [{ $lte: ["$stock", "$lowStockThreshold"] }, "Low Stock", "Healthy"] }
+            ]
+          }
+        }
+      },
+      { $sort: { revenue: -1 } }
+    ]);
+
+    // B. Brand-level Performance (including Device Type Logic)
+    const brandSales = await Order.aggregate([
+      ...baseAggPipeline,
+      {
+        $group: {
+          _id: { $ifNull: ["$productInfo.brand", "Unbranded"] },
+          revenue: { $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] } },
+          unitsSold: { $sum: "$orderItems.quantity" },
+          productCount: { $addToSet: "$orderItems.product" },
+          isApple: { $first: { $cond: [{ $eq: ["$productInfo.brand", "Apple"] }, 1, 0] } }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          brand: "$_id",
+          revenue: 1,
+          unitsSold: 1,
+          productCount: { $size: "$productCount" },
+          share: {
+            $cond: [
+              { $gt: [currentSummary.netRevenue, 0] },
+              { $multiply: [{ $divide: ["$revenue", currentSummary.netRevenue] }, 100] },
+              0
+            ]
+          }
+        }
+      },
+      { $sort: { revenue: -1 } }
+    ]);
+
+    // C. Device Type Breakdown (iPhone vs Android)
+    const deviceTypeStats = await Order.aggregate([
+      ...baseAggPipeline,
+      {
+        $addFields: {
+          deviceType: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ["$productInfo.brand", "Apple"] },
+                  { $regexMatch: { input: "$orderItems.name", regex: /iPhone/i } }
+                ]
+              },
+              "iPhone",
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ["$productInfo.brand", "Apple"] },
+                      { $or: [
+                        { $eq: ["$productInfo.category", "Smartphones"] },
+                        { $eq: ["$productInfo.category", "Mobiles"] }
+                      ]}
+                    ]
+                  },
+                  "Android",
+                  "Other"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: "$deviceType",
+          revenue: { $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] } },
+          unitsSold: { $sum: "$orderItems.quantity" }
+        }
+      },
+      { $project: { _id: 0, type: "$_id", revenue: 1, unitsSold: 1 } },
+      { $sort: { revenue: -1 } }
+    ]);
+
+    // 6. Category Breakdown
+    const categoryBreakdown = await Order.aggregate([
+      ...baseAggPipeline,
+      {
+        $group: {
+          _id: { $ifNull: ["$productInfo.category", "Uncategorized"] },
           revenue: { $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] } },
           unitsSold: { $sum: "$orderItems.quantity" },
           productCount: { $addToSet: "$orderItems.product" }
         }
       },
-      { $project: { _id: 0, category: "$_id", revenue: 1, unitsSold: 1, productCount: { $size: "$productCount" } } },
+      {
+        $project: {
+          _id: 0,
+          category: "$_id",
+          revenue: 1,
+          unitsSold: 1,
+          productCount: { $size: "$productCount" },
+          avgPrice: { $cond: [{ $gt: ["$unitsSold", 0] }, { $divide: ["$revenue", "$unitsSold"] }, 0] }
+        }
+      },
       { $sort: { revenue: -1 } }
     ]);
 
+    // 7. Status Breakdown
+    const statusBreakdown = await Order.aggregate([
+      { $match: { createdAt: { $gte: currentStartDate, $lte: currentEndDate } } },
+      { $group: { _id: "$status", count: { $sum: 1 }, revenue: { $sum: "$totalPrice" } } },
+      { $project: { _id: 0, status: "$_id", count: 1, revenue: 1 } }
+    ]);
+
+    // 8. Top/Low Performers
+    const topSellers = productPerformance.slice(0, 8);
+    const lowSellers = productPerformance.filter(p => p.unitsSold > 0).slice(-8).reverse();
+
     res.status(200).json({
       summary: {
-        totalRevenue: parseFloat(currentSummary.totalRevenue.toFixed(2)),
-        totalOrders: currentSummary.totalOrders,
-        totalConfirmedSales: currentSummary.totalConfirmedSales,
-        cancelledOrders: currentSummary.cancelledOrders,
+        ...currentSummary,
         cancellationRate: parseFloat(cancellationRate.toFixed(1)),
         avgOrderValue: parseFloat(avgOrderValue.toFixed(2)),
         comparison: {
-          revenueChange: parseFloat(calcChange(currentSummary.totalRevenue, previousSummary.totalRevenue).toFixed(1)),
+          revenueChange: parseFloat(calcChange(currentSummary.netRevenue, previousSummary.netRevenue).toFixed(1)),
           ordersChange: parseFloat(calcChange(currentSummary.totalOrders, previousSummary.totalOrders).toFixed(1)),
           avgOrderValueChange: parseFloat(calcChange(avgOrderValue, prevAvgOrderValue).toFixed(1)),
           cancellationRateChange: parseFloat(calcChange(cancellationRate, prevCancellationRate).toFixed(1))
         }
       },
       chartData,
-      topProducts,
-      topCategories,
+      productPerformance,
+      categoryBreakdown: categoryBreakdown.map(cat => {
+        const topProd = productPerformance.find(p => p.category === cat.category);
+        return { ...cat, topProduct: topProd ? topProd.name : "N/A" };
+      }),
+      statusBreakdown,
+      topSellers,
+      lowSellers,
+      brandSales,
+      deviceTypeStats,
       insights: {
-        bestCategory: topCategories[0] || null,
-        periodLabel: groupLabel
+        bestCategory: categoryBreakdown[0] || null,
+        periodLabel: groupLabel,
+        bestDeviceType: deviceTypeStats[0] || null
       },
-      range
+      range,
+      filters: {
+        startDate: currentStartDate,
+        endDate: currentEndDate,
+        category,
+        brand,
+        orderStatus,
+        paymentMethod,
+        search
+      },
+      performance: {
+        slowMovers: productPerformance.filter(p => p.unitsSold < 3).slice(-5),
+        fastSellersLowStock: productPerformance.filter(p => p.unitsSold > 10 && p.stock <= p.lowStockThreshold).slice(0, 5)
+      }
     });
+
   } catch (error) {
     console.error("Error in getSalesReport:", error);
     res.status(500).json({ error: "Internal server error" });

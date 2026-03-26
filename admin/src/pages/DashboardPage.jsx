@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { statsApi } from "../lib/api";
-import { BoxesIcon, DollarSignIcon, PackageIcon, ShoppingBagIcon, UsersIcon, AlertTriangleIcon, TrendingDownIcon, CheckCircleIcon, XCircleIcon, MessageSquareIcon, StarHalfIcon, LayoutDashboardIcon, TrendingUpIcon } from "lucide-react";
+import { BoxesIcon, DollarSignIcon, PackageIcon, ShoppingBagIcon, UsersIcon,
+ AlertTriangleIcon, TrendingDownIcon, CheckCircleIcon, XCircleIcon, MessageSquareIcon,
+  StarHalfIcon, LayoutDashboardIcon, TrendingUpIcon } from "lucide-react";
+  
 import { capitalizeText, formatDate, getOrderStatusBadge } from "../lib/utils";
 import { useCurrency } from "../components/CurrencyProvider";
 import { formatCurrency } from "../lib/currencyUtils";
@@ -183,11 +186,11 @@ function DashboardPage() {
             </div>
           </div>
 
-            <select
-              className="select select-bordered rounded-2xl w-full sm:w-45 bg-base-100 border-base-300 focus:border-primary focus:outline-none"
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-            >
+          <select
+            className="select select-bordered rounded-2xl w-full sm:w-45 bg-base-100 border-base-300 focus:border-primary focus:outline-none"
+            value={timeRange}
+            onChange={(e) => setTimeRange(e.target.value)}
+          >
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>

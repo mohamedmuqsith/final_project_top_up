@@ -18,10 +18,21 @@ const verifySeed = async () => {
             console.log(`${cat}: ${count}`);
         });
 
-        // Check first product image structure
+        // Check first product image structure and new fields
         if (products.length > 0) {
-            console.log("\nSample Image Structure:");
+            console.log("\nSample Product (New Fields):");
+            console.log(`Name: ${products[0].name}`);
+            console.log(`Brand: ${products[0].brand || "❌ MISSING"}`);
+            console.log(`SKU: ${products[0].sku || "❌ MISSING"}`);
+            console.log("\nImage Structure:");
             console.log(JSON.stringify(products[0].images, null, 2));
+        }
+
+        const missingFields = products.filter(p => !p.brand || !p.sku);
+        if (missingFields.length > 0) {
+            console.log(`\n⚠️ WARNING: ${missingFields.length} products are missing brand or SKU!`);
+        } else {
+            console.log("\n✅ ALL products have valid Brand and SKU.");
         }
 
         await mongoose.connection.close();
